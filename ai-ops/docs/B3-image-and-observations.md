@@ -1,5 +1,7 @@
 # B-03 두 번째 묶음 — 독립 이미지 등록과 배포 관측 보존
 
+2026-10-19 **B-03-SEC-01 완료**: 사용자 환경 승인 후 [등록 실행 39219009295](https://github.com/f-lab-edu/F-Lab-DevOps/actions/runs/39219009295)가 성공했다. 소스는 main `b6548b82e588b09efee925a2c663ee71d3b91f1d`, 새 digest는 `sha256:bbfa1859831b5811d4bfe3057adf25141ed1c66b38c9165d235952059ef286be`다. **16:57:16 KST ECR 스캔 COMPLETE·전체 0건**으로 기존 HIGH 8건 해소를 확인했다. 등록 artifact·manifest/config digest·소스 파일 3개 해시를 대조했다. production 읽기 전용 지원도 새 이미지에 포함됐으며, [비활성 values](../config/b3-values.preflight.yaml)에 이 digest를 고정했다. AI Pod 배포는 아직 미실행이다. 다음은 암호화 StorageClass와 실제 API 경로·권한·통신·PVC 검증이다.
+
 최신 후속 상태: **2026-10-17 AI 전용 ECR/IAM 4개 생성과 GitHub 등록 환경·변수 설정 완료**, 적용 후 plan 변경 없음. 실제 OIDC 인증·이미지 등록·클러스터 배포는 대기 중이다. [적용 기록](B3-registry-apply.md)을 참고한다.
 
 2026-10-16 기준 코드와 로컬 검증을 마쳤으며 **B-03 전체는 진행 중**이다. Terraform apply·AWS 조회·이미지 등록·새 원격 workflow 실행·실환경 배포는 하지 않았다. 첫 묶음의 이미지 실제 빌드와 권한/통신/PVC 검증도 여전히 대기 중이다.

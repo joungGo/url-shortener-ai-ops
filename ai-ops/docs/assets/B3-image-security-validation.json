@@ -1,0 +1,73 @@
+{
+  "record_type": "local_image_security_validation",
+  "status": "local_and_ecr_verified",
+  "base": "python:3.11.17-alpine3.24@sha256:d9368b3a5ac59afea7b5d4f2e2aea0941dbf9fdee9c369c5bec00b98244bc929",
+  "docker_descriptor": {
+    "mediaType": "application/vnd.oci.image.index.v1+json",
+    "digest": "sha256:8563a2f3164cb9e961a9e4a13ea3867c0fe61fdd33d599cf00417ced2abd6dbd",
+    "size": 856
+  },
+  "archive_config_digest": "sha256:c8be021090b2f9ad2fcd8e10d36c81fb14131b8a95989dfb641e5d8339367de5",
+  "archive_rootfs_and_config_match": true,
+  "dockerfile_sha256": "a0cf9187337e1c7eb51a2328cd6cf308b6af9ac5521af58b30432c32034f2c96",
+  "trivy_image": "aquasec/trivy@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222",
+  "scan_created_at": "2026-10-19T07:50:39.731360635Z",
+  "vulnerability_counts": {},
+  "total_findings": 0,
+  "runtime_checks": {
+    "uid": 10001,
+    "tls": "OpenSSL 3.5.9 29 Sep 2026",
+    "tls_trusted_handshake": true,
+    "tls_wrong_hostname_rejected": true,
+    "localhost_dns": true,
+    "sqlite": "3.53.4",
+    "zlib": "1.3.2",
+    "pydantic_core": "2.46.5",
+    "runtime_build_tools_absent": true,
+    "packages": {
+      "musl": "1.2.6-r2",
+      "libssl3": "3.5.9-r0",
+      "libcrypto3": "3.5.9-r0",
+      "zlib": "1.3.2-r1"
+    }
+  },
+  "host_unit_tests": 154,
+  "runtime_unit_tests": 34,
+  "ecr_verification": {
+    "status": "COMPLETE",
+    "run_url": "https://github.com/f-lab-edu/F-Lab-DevOps/actions/runs/39219009295",
+    "artifact": "ai-ops-image-39219009295-1",
+    "registration": {
+      "schema_version": 1,
+      "record_type": "ai_ops_image_registration",
+      "source_revision": "b6548b82e588b09efee925a2c663ee71d3b91f1d",
+      "image_id": "sha256:91dd0eda50af60eae65f094e6d387bf37dc44f7ee2c4aff8e85178b41a3aab2c",
+      "tag": "sha-b6548b82e588b09efee925a2c663ee71d3b91f1d-r39219009295-a1",
+      "published": true,
+      "repository": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener-practice-ai-ops",
+      "registry_digest": "sha256:bbfa1859831b5811d4bfe3057adf25141ed1c66b38c9165d235952059ef286be",
+      "source_hashes": {
+        "ai-ops/Dockerfile": "a0cf9187337e1c7eb51a2328cd6cf308b6af9ac5521af58b30432c32034f2c96",
+        "ai-ops/requirements.lock": "628955a48213d5adfc435c5676f05fb4459c0b27ed2d6586441aa6b88002ea7a",
+        "ai-ops/runbooks/index.yaml": "c794f91bd51e15c8c28e0177bf2e9e5a798b74db9a401274205af68a8ba9968c"
+      },
+      "recorded_at": "2026-10-19T07:57:10.449145Z"
+    },
+    "scan_completed_at": "2026-10-19T07:57:16Z",
+    "finding_severity_counts": {},
+    "total_findings": 0,
+    "original_high_cves_absent": [
+      "CVE-2026-85091",
+      "CVE-2026-103111",
+      "CVE-2026-84784",
+      "CVE-2026-84782",
+      "CVE-2026-54873",
+      "CVE-2026-72897",
+      "CVE-2026-19499",
+      "CVE-2026-5435"
+    ],
+    "source_hashes_match_git_and_local": true,
+    "manifest_sha256_matches_registry_digest": true,
+    "manifest_config_matches_registration_image_id": true
+  }
+}
