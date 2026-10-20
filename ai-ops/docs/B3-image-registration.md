@@ -1,5 +1,9 @@
 # B-03 수동 이미지 빌드·등록 실행 기록
 
+최신 자체 관측 상태: 2026-10-19 19:28:15 KST 자체 관측·중지/복구 실환경 검증 완료. PR #36·main e1b30b5의 새 이미지 등록 성공, ECR 검사 전체 0건과 코드 해시 일치를 확인했다. Helm revision 4에서 Prometheus up=1·진단 갱신·수동 수집/보고서 partial 각 1회 증가를 확인했다. AI StatefulSet 0→1 복구 후 동일 PVC·기존/신규 보고서 재조회와 해시·집계 보존, 앱 UID/generation 불변·Ready 2개를 확인했다. 외부 모델은 호출하지 않았다. [관측·중지/복구 절차](B3-observability-and-recovery.md). 아래 이전 이미지·배포 내용은 해당 시점의 이력이다.
+
+최신 상태: 2026-10-19 18:12 KST 실제 수집→규칙 부분 보고서→PVC 저장→JSON/KST 재조회 연결 검증 완료. PR #34·#35 수정이 포함된 main 5d432f5 이미지로 일반 경로를 실행했고 Pod 2개 상태·설정, 배포/Argo·캐시 지표 등 7개 항목을 수집했다. 총 18개 중 available 7·invalid 2·missing 7·stale 2로, 자료 부족은 partial/unknown/insufficient_evidence로 유지했다. 이전 Pod의 저장 보고서도 새 Pod에서 해시 변화 없이 재조회했다. 외부 AI·키·예산 경로는 호출하지 않았고 기존 앱 UID/generation·Ready 2개는 유지됐다. [실제 수집 검증](B2-live-validation.md). 아래 이전 이미지·배포 결과는 해당 시점의 이력이다.
+
 2026-10-19 **B-03-SEC-01 완료**: 사용자 환경 승인 후 [등록 실행 39219009295](https://github.com/f-lab-edu/F-Lab-DevOps/actions/runs/39219009295)가 성공했다. 소스는 main `b6548b82e588b09efee925a2c663ee71d3b91f1d`, 새 digest는 `sha256:bbfa1859831b5811d4bfe3057adf25141ed1c66b38c9165d235952059ef286be`다. **16:57:16 KST ECR 스캔 COMPLETE·전체 0건**으로 기존 HIGH 8건 해소를 확인했다. 등록 artifact·manifest/config digest·소스 파일 3개 해시를 대조했다. production 읽기 전용 지원도 새 이미지에 포함됐으며, [비활성 values](../config/b3-values.preflight.yaml)에 이 digest를 고정했다. AI Pod 배포는 아직 미실행이다. 다음은 암호화 StorageClass와 실제 API 경로·권한·통신·PVC 검증이다.
 
 ## 최초 등록 이력
@@ -68,3 +72,19 @@ artifact를 내려받아 `published=true`·source revision·태그·repository·
 - Git 소스·현재 로컬 파일 3개 해시, ECR manifest 해시, config image ID 일치. [검증 JSON](assets/B3-image-security-validation.json)에 보존.
 
 비활성 values의 image digest를 위 값으로 고정했다. 기존 이미지 삭제나 AI Pod 배포는 수행하지 않았다.
+
+
+## 최종 수집 호환 수정 이미지 등록 — 2026-10-19
+
+- 소스: `5d432f5e96a01357bf7efa711bb600197a13c95b` (PR #34·#35 포함).
+- 실행: [39227539145](https://github.com/f-lab-edu/F-Lab-DevOps/actions/runs/39227539145), 사용자 승인·등록·동일 이미지 pull 대조 성공.
+- 태그: `sha-5d432f5e96a01357bf7efa711bb600197a13c95b-r39227539145-a1`.
+- registry digest: `sha256:49d1775ba0ebf1c2500e8cb7dfe6f46b40b955e08293954c86073123983080c5`.
+- image ID / manifest config: `sha256:db65c914df8078552242f9d8432338ae6ccd1426d52259dc0d5809d8fa2f7e95`.
+- artifact: `ai-ops-image-39227539145-1` / `image-registration.json`.
+- ECR 검사: COMPLETE·전체 0건. UTC 검사 시각과 원본 등록 기록은 [B2 검증 JSON](assets/B2-live-validation.json)의 list_shape_fix를 따른다.
+- Helm revision 3의 실제 코드 해시·Ready·같은 PVC와 일반 수집/보고서 저장/재조회 검증 통과.
+
+## 자체 관측 이미지 등록 — 2026-10-19 19:28:15 KST
+
+[등록 실행 39235754071](https://github.com/f-lab-edu/F-Lab-DevOps/actions/runs/39235754071) 성공. source `e1b30b510e49774ce25d54c79abc7ea21f221ec7`, digest `sha256:8f716e93ce4d51fa5c310840d9084533b8265565639182c220f4e4cc55baff76`, image ID `sha256:1dd435e607983f10f4625e4933aa72d64047652fce3ec728d19659c2ed9b2abd`다. ECR COMPLETE 전체 0건과 manifest·artifact·소스 해시를 대조했다. 실제 Helm revision 4의 같은 이미지와 Pod 코드 해시도 일치한다.

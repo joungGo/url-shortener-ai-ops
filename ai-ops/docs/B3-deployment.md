@@ -1,5 +1,11 @@
 # B-03 첫 묶음 — 배포 진단 기반
 
+최신 자체 관측 상태: 2026-10-19 19:28:15 KST 자체 관측·중지/복구 실환경 검증 완료. PR #36·main e1b30b5의 새 이미지 등록 성공, ECR 검사 전체 0건과 코드 해시 일치를 확인했다. Helm revision 4에서 Prometheus up=1·진단 갱신·수동 수집/보고서 partial 각 1회 증가를 확인했다. AI StatefulSet 0→1 복구 후 동일 PVC·기존/신규 보고서 재조회와 해시·집계 보존, 앱 UID/generation 불변·Ready 2개를 확인했다. 외부 모델은 호출하지 않았다. [관측·중지/복구 절차](B3-observability-and-recovery.md). 아래 이전 이미지·배포 내용은 해당 시점의 이력이다.
+
+최신 상태: 2026-10-19 18:12 KST 실제 수집→규칙 부분 보고서→PVC 저장→JSON/KST 재조회 연결 검증 완료. PR #34·#35 수정이 포함된 main 5d432f5 이미지로 일반 경로를 실행했고 Pod 2개 상태·설정, 배포/Argo·캐시 지표 등 7개 항목을 수집했다. 총 18개 중 available 7·invalid 2·missing 7·stale 2로, 자료 부족은 partial/unknown/insufficient_evidence로 유지했다. 이전 Pod의 저장 보고서도 새 Pod에서 해시 변화 없이 재조회했다. 외부 AI·키·예산 경로는 호출하지 않았고 기존 앱 UID/generation·Ready 2개는 유지됐다. [실제 수집 검증](B2-live-validation.md). 아래 이전 이미지·배포 결과는 해당 시점의 이력이다.
+
+2026-10-19 실제 진단 배포: 수동 Helm으로 ai-ops namespace의 StatefulSet 한 Pod와 5Gi 암호화 gp3 EBS를 배포했다. 실제 읽기·Secret/다른 namespace 거부·쓰기/exec 권한 부재·선택한 수신/송신 차단·같은 AZ의 다른 노드 EBS 재연결과 합성 SQLite 보존을 확인했다. 같은 Pod의 토큰 자동 교체·새 토큰 API 200, 임시 nodeSelector 제거·최종 Ready·같은 PVC 자료 보존까지 확인했다. [실제 배포 기록](B3-diagnostics-deployment.md).
+
 2026-10-19 저장소·API 경로 준비 완료: AI 전용 `ai-ops-gp3-encrypted` StorageClass를 생성하고 임시 Deployment에서 기본 API 차단·Service/Endpoint TLS GET·Secret 403·Prometheus 200을 확인했다. 확인한 세 `/32`와 StorageClass를 비활성 values에 반영했다. 임시 namespace·권한은 제거했으며 실제 진단 StatefulSet/PVC·EBS 암호화·재연결 검증은 후속이다. [준비·검증 기록](B3-storage-and-network.md)을 따른다.
 
 최신 사전 점검: **2026-10-19 KST** 실제 대상·Prometheus/DNS·CNI/CSI·저장소를 확인하고 [점검 기록](B3-cluster-preflight.md)과 [기본 비활성 values](../config/b3-values.preflight.yaml)를 준비했다. 사용자 선택에 따라 현재 production 읽기 전용 대상 등록과 로컬 계약 검증을 완료했다. 보안 수정 이미지 등록·검사는 완료했으며 암호화 StorageClass와 실제 통신/PVC 검증이 남아 있다.

@@ -7,7 +7,13 @@
       "type": "boolean"
     },
     "mode": {
-      "const": "diagnostics"
+      "enum": ["diagnostics", "worker"]
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {"enabled": {"type": "boolean"}},
+      "required": ["enabled"]
     },
     "replicaCount": {
       "const": 1
@@ -181,6 +187,32 @@
         "requests",
         "limits"
       ]
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tokenExpirationSeconds": {
+          "type": "integer",
+          "minimum": 600,
+          "maximum": 3600
+        }
+      },
+      "required": [
+        "tokenExpirationSeconds"
+      ]
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
     }
   },
   "required": [
@@ -191,7 +223,9 @@
     "config",
     "persistence",
     "network",
-    "resources"
+    "resources",
+    "identity",
+    "observability"
   ],
   "$defs": {
     "ArgoBinding": {
@@ -692,6 +726,7 @@
           }
         }
       }
-    }
+    },
+    {"if": {"properties": {"retention": {"properties": {"enabled": {"const": true}}, "required": ["enabled"]}}, "required": ["retention"]}, "then": {"properties": {"mode": {"const": "worker"}}}}
   ]
 }

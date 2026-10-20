@@ -35,7 +35,7 @@ spec:
       serviceAccountName: {{ .Release.Name }}-investigator
       automountServiceAccountToken: false
       enableServiceLinks: false
-      terminationGracePeriodSeconds: 15
+      terminationGracePeriodSeconds: {{ if eq .Values.mode "worker" }}90{{ else }}15{{ end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -48,8 +48,23 @@ spec:
         - name: diagnostics
           image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: [python, -m, ai_ops.deployment_check]
-          args: [--serve]
+          command: [python, -m, {{ if eq .Values.mode "worker" }}ai_ops.worker_runtime{{ else }}ai_ops.deployment_check{{ end }}]
+          {{- if or (eq .Values.mode "diagnostics") .Values.observability.enabled .Values.retention.enabled }}
+          args:
+            {{- if eq .Values.mode "diagnostics" }}
+            - --serve
+            {{- end }}
+            {{- if .Values.observability.enabled }}
+            - --metrics
+            {{- end }}
+            {{- if .Values.retention.enabled }}
+            - --retention
+            {{- end }}
+          {{- end }}
+            {{- if .Values.observability.enabled }}
+          ports:
+            - {name: metrics, containerPort: 9091, protocol: TCP}
+            {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -63,15 +78,23 @@ spec:
             {{- .Values.resources | toYaml | nindent 12 }}
           startupProbe:
             exec:
-              command: [python, -m, ai_ops.deployment_check]
+              command: {{ if eq .Values.mode "worker" }}[python, -m, ai_ops.worker_runtime, --probe]{{ else }}[python, -m, ai_ops.deployment_check]{{ end }}
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 12
           readinessProbe:
             exec:
-              command: [python, -m, ai_ops.deployment_check]
+              command: {{ if eq .Values.mode "worker" }}[python, -m, ai_ops.worker_runtime, --probe]{{ else }}[python, -m, ai_ops.deployment_check]{{ end }}
             periodSeconds: 30
             timeoutSeconds: 5
+          {{- if eq .Values.mode "worker" }}
+          livenessProbe:
+            exec:
+              command: [python, -m, ai_ops.worker_runtime, --probe]
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          {{- end }}
           volumeMounts:
             - {name: config, mountPath: /etc/ai-ops, readOnly: true}
             - {name: kubernetes-identity, mountPath: /var/run/ai-ops/kubernetes, readOnly: true}
@@ -91,7 +114,7 @@ spec:
             sources:
               - serviceAccountToken:
                   path: token
-                  expirationSeconds: 3600
+                  expirationSeconds: {{ .Values.identity.tokenExpirationSeconds }}
               - configMap:
                   name: kube-root-ca.crt
                   items:

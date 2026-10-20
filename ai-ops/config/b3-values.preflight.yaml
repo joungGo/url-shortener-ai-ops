@@ -1,5 +1,5 @@
 # 2026-10-19 현재 production 읽기 대상의 비활성 배포 설정이다.
-# 이미지 검사·StorageClass 생성·임시 Pod API 경로 확인 완료. 실제 진단 Pod/PVC 검증은 후속이다.
+# 진단 Pod/PVC·제한된 실제 수집 검증 완료. 자체 관측은 별도 overlay로 명시적으로 활성화한다.
 # API Service와 Endpoint /32는 재설치·주소 변경 뒤 다시 점검한다.
 {
   "enabled": false,
@@ -7,7 +7,7 @@
   "replicaCount": 1,
   "image": {
     "repository": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener-practice-ai-ops",
-    "digest": "sha256:bbfa1859831b5811d4bfe3057adf25141ed1c66b38c9165d235952059ef286be"
+    "digest": "sha256:8f716e93ce4d51fa5c310840d9084533b8265565639182c220f4e4cc55baff76"
   },
   "config": {
     "bindings": {

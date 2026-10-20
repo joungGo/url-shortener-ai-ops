@@ -1,5 +1,7 @@
 # AI 운영 조사 기능
 
+최신 실환경 상태: 2026-10-19 18:12 KST 실제 수집→규칙 부분 보고서→PVC 저장→JSON/KST 재조회 연결 검증 완료. PR #34·#35 수정이 포함된 main 5d432f5 이미지로 일반 경로를 실행했고 Pod 2개 상태·설정, 배포/Argo·캐시 지표 등 7개 항목을 수집했다. 총 18개 중 available 7·invalid 2·missing 7·stale 2로, 자료 부족은 partial/unknown/insufficient_evidence로 유지했다. 이전 Pod의 저장 보고서도 새 Pod에서 해시 변화 없이 재조회했다. 외부 AI·키·예산 경로는 호출하지 않았고 기존 앱 UID/generation·Ready 2개는 유지됐다. [상세 범위·한계](docs/B2-live-validation.md). 아래 단계별 기록은 작성 당시의 이력이다.
+
 현재 **A0~A4와 A6 로컬 검증을 완료**했다. A5의 합성 증거 전용 OpenAI Responses 어댑터는 실제 AI 보고서 생성·근거 인용·감사 기록을 확인했고 현재 엔진으로 사용한다. 실패 실행의 알려진 부분 사용량과 S2 정상 캐시 miss 재검증도 마쳤다. 다만 원래 계획한 HolmesGPT와 동등 조건의 4~6건 품질 비교는 아직 수행하지 않아 **A5 전체 상태는 검증 중**이다. 그 판단과 한계는 [A5 문서](docs/A5-engine-decision.md)에 있다. A6는 현재 어댑터의 보고서 계약·실패 시 규칙 부분 결과·보안 경계를 모의 응답으로 검증했다. **A7은 새 v3 합성 입력에서 수정 고정 증거 AI와 도구 탐색 AI를 각각 48/48회 완료**했다. 기대 진단 자동 채점은 각각 45/48, 36/48이다. 첫 반복의 Codex 예비 검토와 Claude 외부 AI 교차검토, [AI 전용 원격 CI 통과](https://github.com/f-lab-edu/F-Lab-DevOps/actions/runs/37116993482), [앱 CI 원격 검증](https://github.com/f-lab-edu/F-Lab-DevOps/actions/runs/37118365182), [두 workflow의 PR 이벤트 검증](https://github.com/f-lab-edu/F-Lab-DevOps/pull/16)을 확인했다. 익명 A/B 검토 화면과 원본 증거 전용 수동 분석 화면·빈 기록표를 준비했지만 사람의 독립 의미 채점과 수동 분석 기준선은 남았다. B-02 읽기 수집기는 모의 API로 검증했으며 실클러스터 연결과 변경 실행은 후속 구현 범위다.
 
 - [A0 코드 기준선과 확인 결과](docs/A0-baseline.md)
@@ -102,3 +104,19 @@ B-03 현재 클러스터 연결(2026-10-19): 사용자가 production 읽기 전�
 2026-10-19 **B-03-SEC-01 완료**: 사용자 환경 승인 후 [등록 실행 39219009295](https://github.com/f-lab-edu/F-Lab-DevOps/actions/runs/39219009295)가 성공했다. 소스는 main `b6548b82e588b09efee925a2c663ee71d3b91f1d`, 새 digest는 `sha256:bbfa1859831b5811d4bfe3057adf25141ed1c66b38c9165d235952059ef286be`다. **16:57:16 KST ECR 스캔 COMPLETE·전체 0건**으로 기존 HIGH 8건 해소를 확인했다. 등록 artifact·manifest/config digest·소스 파일 3개 해시를 대조했다. production 읽기 전용 지원도 새 이미지에 포함됐으며, [비활성 values](config/b3-values.preflight.yaml)에 이 digest를 고정했다. AI Pod 배포는 아직 미실행이다. 다음은 암호화 StorageClass와 실제 API 경로·권한·통신·PVC 검증이다. [대응 기록](docs/B3-image-security.md).
 
 2026-10-19 저장소·API 경로 준비 완료: AI 전용 `ai-ops-gp3-encrypted` StorageClass를 생성하고 임시 Deployment에서 기본 API 차단·Service/Endpoint TLS GET·Secret 403·Prometheus 200을 확인했다. 확인한 세 `/32`와 StorageClass를 비활성 values에 반영했다. 임시 namespace·권한은 제거했으며 실제 진단 StatefulSet/PVC·EBS 암호화·재연결 검증은 후속이다. [준비·검증 기록](docs/B3-storage-and-network.md)을 따른다.
+
+2026-10-19 실제 진단 배포: 수동 Helm으로 ai-ops namespace의 StatefulSet 한 Pod와 5Gi 암호화 gp3 EBS를 배포했다. 실제 읽기·Secret/다른 namespace 거부·쓰기/exec 권한 부재·선택한 수신/송신 차단·같은 AZ의 다른 노드 EBS 재연결과 합성 SQLite 보존을 확인했다. 같은 Pod의 토큰 자동 교체·새 토큰 API 200, 임시 nodeSelector 제거·최종 Ready·같은 PVC 자료 보존까지 확인했다. [실제 배포 기록](docs/B3-diagnostics-deployment.md).
+
+2026-10-19 실제 수집 검증 진행: 수집 반환 후 오래된 배포 이력의 범위 밖 observed_at 때문에 저장이 중단되는 문제를 발견했다. 원시 시각은 감사에 남기고 분석용 시각을 비우는 최소 수정과 회귀 검사 포함 155건을 통과했다. PR #34 CI·main 반영 완료, 수정 이미지 등록은 사용자 환경 승인 대기다. 실제 보고서 저장·재조회는 아직 완료가 아니다. [실제 수집 검증 기록](docs/B2-live-validation.md).
+
+실제 부분 보고서 저장·JSON/KST 재조회는 통과했다. 이어 발견한 Kubernetes 목록의 생략 kind 호환 수정도 Python 156건과 PR #35 CI·main 반영을 완료했다. 최종 이미지 등록 실행 39227539145의 사용자 승인 후 Pod 교체·일반 경로 수집/재조회 검증을 진행한다. [진행 기록](docs/B2-live-validation.md).
+
+B-03 자체 관측의 지표 의미와 안전한 중지·복구 절차는 [자체 관측 가이드](docs/B3-observability-and-recovery.md)에 정리했다. 새 이미지 등록·ECR 0건·Helm revision 4 적용, Prometheus 수집·실제 부분 결과 집계와 AI Pod 중지/복구 후 자료 보존까지 확인했다.
+
+B-04 첫 묶음은 [영속 큐·수동 worker·재시작 복구](docs/B4-durable-queue.md)를 구현했다. 요청 접수/중복·단일 worker·60초 lease·최대 세 시도·취소·저장 보고서와 큐의 중단 조정을 로컬 합성 자료에서 검증했다. 첫 묶음 당시 전체 Python 178건 통과. 두 번째 묶음은 [7일 보관표·연계 삭제](docs/B4-retention.md)를 추가하고 현재 전체 Python 199건을 통과했다. 실제 클러스터는 진단 모드이며 queue worker 배포·관측·실제 Pod 복구 검증과 예약 정리는 후속이다.
+
+2026-10-20 **B-04 worker 배포·실제 Pod 복구 검증 완료**: PR #40·main c17ac3d, 원격 Python 207건·이미지 실행 통과와 사용자 승인 이미지 등록 후 Helm revision 2로 배포했다. 실제 수집 checkpoint 뒤 AI Pod를 교체해 2차 partial·재수집 없음·기존 보고서/중복 키/동일 PVC/앱 불변을 확인했다. Prometheus up=1·31개 지표와 조사 주체의 exec/Secret/patch 거부도 확인했다. 예약 보관 정리는 후속이다. [배포·운영 기록](docs/B4-worker-deployment.md).
+
+B-04 후속 [예약 보관 정리](docs/B4-retention-schedule.md)를 구현했다. 기존 worker가 작업 사이에 정리하며 새 Kubernetes 권한이나 CronJob을 추가하지 않는다. 기본 비활성이고 worker overlay에서만 명시적으로 활성화한다. 실제 배포 상태는 해당 문서 상단을 따른다.
+
+2026-10-20 **B-04 예약 보관 정리 배포·검증 완료**: PR #42·원격 217건/이미지 통과와 사용자 승인 등록 후 Helm revision 3에서 활성화했다. 실제 운영 큐의 예약 실행·38개 지표와 합성 만료 요청 자동 삭제/미만료·보호 파일 보존·재시작 후 예약 유지를 확인했다. 운영 큐 2건·보고서·동일 PVC·앱 Ready 2개는 보존됐다. B-04 현재 범위 완료, 다음은 B-05 경보 연동이다. [최신 기록·실제 운영 만료 삭제 미시험 한계](docs/B4-retention-schedule.md).
