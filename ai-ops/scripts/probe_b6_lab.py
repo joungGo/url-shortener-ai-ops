@@ -96,7 +96,7 @@ store=IncidentStore(Path('/data/incidents'))
 record=store.investigate_snapshot(snapshot=snapshot,settings=settings,question='실습 대상에서 관측 가능한 자료와 부족한 자료를 확인해 주세요.',request_id=sys.argv[1])
 record=store.show(record.incident_id,record.run_id)
 report=record.report
-assert report.execution.engine=='rules-captured-v2' and report.execution.mode=='rules'
+assert report.execution.engine in ('rules-captured-v2','rules-captured-v3') and report.execution.mode=='rules'
 assert snapshot.bundle.target.namespace=='ai-ops-lab'
 try:
     ensure_external_model_allowed(snapshot.bundle)

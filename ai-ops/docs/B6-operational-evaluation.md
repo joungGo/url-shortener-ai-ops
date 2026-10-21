@@ -27,7 +27,7 @@ captured 자료 30개 중 available 7·invalid 2·stale 15·missing 6이다. Pod
 |---|---|---|---|
 | S1 | Redis 접근 불가 | 실습 하위 사례 통과 | 연결된 실습 Redis 중단·error 3회·HTTP 200 fallback·캐시 근거 후보·원복 확인. unavailable 변형은 후속이다. |
 | S2 | 정상 캐시 미스 증가 | 실습 하위 사례 통과 | cold miss→hit 두 쌍·오류 증가 없음·허위 후보 0·원복 확인. 자연 TTL과 전체 정상 판정은 후속이다. |
-| S3 | 잘못된 이미지 태그 | 준비 완료·미실행 | 독립 실습 Deployment·복구 digest 준비. 이미지 오류 주입·복구는 후속이다. |
+| S3 | 잘못된 이미지 태그 | 보고서 보완 필요 | 실제 ErrImagePull·Ready 0·복구 성공. Failed 이벤트 표식과 기존 규칙 형태가 달라 원인 후보를 만들지 못했다. |
 | S4 | DB 지연 | 실습 하위 사례 통과 | 앱 DB 세션 750ms 지연 3회·histogram·규칙 설명·지연 해제 확인. RDS 서버 문제의 재현은 아니다. |
 | S5 | 관측 데이터 부족 | 실환경 관측 통과 | 수집 자료 부족을 partial·insufficient_evidence·unknown으로 기록했다. 가설 0개이며 정상 또는 원인을 단정하지 않았다. |
 | S6 | 정상 상태 | 일부 근거 | 앱 Ready 2개와 기존 DB·Redis·HTTPS 정상 관측은 있으나 현재 보고서는 unknown이다. 정상 진단 성공으로 채점하지 않는다. |
@@ -64,3 +64,11 @@ captured 자료 30개 중 available 7·invalid 2·stale 15·missing 6이다. Pod
 ## S4 앱 DB 세션 지연 하위 사례
 
 [실측·복구](B6-db-delay-scenario.md)에서 기준선 약 9.31ms→주입 중 758.25~763.90ms→해제 후 5.97ms를 확인했다. 실제 DB histogram도 증가했다. 규칙은 DB 지연 근거를 설명하고 원인 후보 없이 partial/unknown을 유지했다. 자기 데이터·설정·운영 식별자를 보존/복구했고 로컬 전체 274개 시험이 통과했다. 단일 실습 앱의 pg_sleep 사례이며 RDS 서버 진단이나 라이브 모델 검증으로 확대하지 않는다. 다음은 S3 잘못된 이미지·원래 digest 복구다.
+
+## S3 이미지 실패·복구와 보고서 보완 필요
+
+[이미지 실측과 진단 공백](B6-image-failure-scenario.md)에서 실습 이미지 태그 부재·ErrImagePull·Ready 0과 원래 digest/HTTP 복구를 확인했다. 저장 증거의 Failed 이벤트에는 이미지 실패 표식이 있었지만 rules-captured-v2의 ImagePullBackOff reason·progressing 조합과 달라 partial/insufficient_evidence/unknown·후보 0이었다. 설명 품질은 needs_review이며 성공으로 채점하지 않는다. 다음은 실제 이벤트 형태에 맞는 버전별 규칙과 저장 증거 비교다. 이번은 운영자 수동 복구이며 CI 자동 롤백·에이전트 조치 실행이 아니다.
+
+## S3 규칙 v3 후보 비교
+
+[동일 저장 입력 비교](B6-image-rules-v3.md)는 native Failed의 이미지 표식과 해당 Pod의 소유·Deployment 이미지·120초 이내 시각을 대조해 원인 후보 0→1을 확인했다. partial/unknown은 유지했고 v1/v2 재조회·v3 내용 재검증과 로컬 전체 289개 시험을 통과했다. 실습 기존 v2 6건/18개 파일은 같았으며 수정 이미지는 배포하지 않았다. 최초 S3 v2 needs_review는 유지하고 다음 단계에서 승인 이미지 배포·새 v3 실환경 저장/조회로 확인한다.

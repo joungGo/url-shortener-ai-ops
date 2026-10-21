@@ -22,8 +22,8 @@
     {
       "id": "S3",
       "name": "잘못된 이미지 태그",
-      "status": "not_run",
-      "finding": "독립 실습 Deployment와 고정 복구 digest를 준비했다. 잘못된 이미지 적용·복구 실험은 아직 실행하지 않았다."
+      "status": "needs_review",
+      "finding": "실습 앱 이미지 부재·ErrImagePull·Ready 0·원래 digest/HTTP 복구 확인. 실제 Failed 이벤트의 이미지 표식이 있지만 규칙 v2의 ImagePullBackOff reason+progressing 조건과 달라 후보 0·insufficient_evidence였다. 규칙 보완 필요. 후속 v3 후보는 같은 저장 입력에서 원인 후보 1개와 partial/unknown을 유지했다. 기존 6건/18개 파일 보존과 로컬 289개 시험 통과, 새 이미지 미배포다."
     },
     {
       "id": "S4",
@@ -84,7 +84,9 @@
     "quality_deployment": "B6-deployment-validation.json",
     "isolated_lab_preparation": "B6-isolated-lab-validation.json",
     "cache_scenarios": "B6-cache-scenarios-validation.json",
-    "db_delay_scenario": "B6-db-delay-validation.json"
+    "db_delay_scenario": "B6-db-delay-validation.json",
+    "image_failure_scenario": "B6-image-failure-validation.json",
+    "image_rules_v3_saved_comparison": "B6-image-rules-v3-comparison.json"
   },
   "quality": {
     "captured_items": 30,
@@ -114,14 +116,17 @@
     "external_production_data": "blocked",
     "normal_diagnosis_quality": "not_demonstrated",
     "live_model_quality": "not_tested",
-    "isolated_fault_scenarios": "partial_S1_S2_S4_subcases",
+    "isolated_fault_scenarios": "partial_S1_S2_S4_passed_S3_report_needs_review",
     "isolated_lab_preparation": "passed_single_db_scope",
     "cache_cold_key_false_cause": "passed_one_live_case",
     "connected_redis_failure_and_recovery": "passed_one_live_case",
-    "app_db_session_delay_and_recovery": "passed_one_live_case"
+    "app_db_session_delay_and_recovery": "passed_one_live_case",
+    "image_failure_and_manual_restore": "passed_one_live_case",
+    "image_failure_report_quality": "v2_needs_review_v3_candidate_passed_deployment_pending",
+    "image_rules_v3_saved_comparison": "passed_candidate_no_deployment"
   },
   "next_actions": [
-    "S3 잘못된 이미지의 실패 관측과 원래 digest의 finally 복구를 구현한다. S2 자연 TTL·S1 unavailable 변형·S4 부하/반복 변형, S9/S11 단일 DB 한계와 S10 CI·이력도 남는다.",
+    "규칙 v3 변경을 원격 CI와 이미지 등록으로 검증한 후 기존 v1/v2 재조회·새 v3 저장/조회·필요 범위의 S3 실환경 설명을 확인한다. 현재 후보 비교는 배포 성공이 아니다.",
     "captured 외부 전송 정책과 승인 범위를 별도 설계한 뒤 모델 비교를 검증한다. 현재 차단을 제거하지 않는다."
   ],
   "initial_live_demo": "B6-operational-demo.json",

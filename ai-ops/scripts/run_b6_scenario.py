@@ -1,4 +1,4 @@
-"""실습 S2·S1·S4의 단일 실행을 잠그고 이전 5분 창과 복구 기록을 확인한다."""
+"""실습 S1~S4의 단일 실행을 잠그고 이전 5분 창과 복구 기록을 확인한다."""
 
 import argparse
 import fcntl
@@ -12,12 +12,13 @@ from ai_ops.path_policy import cli_paths, permitted_path, write_private_json
 
 
 def main():
-    parser = argparse.ArgumentParser(description="고정 실습 namespace의 캐시 정상/실패·DB 세션 지연 재현·복구")
-    parser.add_argument("--scenario", choices=("S1", "S2", "S4"), required=True)
+    parser = argparse.ArgumentParser(description="고정 실습 namespace의 캐시·이미지 실패·DB 세션 지연 재현·복구")
+    parser.add_argument("--scenario", choices=("S1", "S2", "S3", "S4"), required=True)
     parser.add_argument("--state-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = cli_paths(parser, parser.parse_args(), {"state_dir": "store", "output": "output"})
     checkpoint = permitted_path(args.output.with_name(args.output.stem + ".ground-truth.json"), "output")
+    recovery = permitted_path(args.output.with_name(args.output.stem + ".recovery-plan.json"), "output")
     args.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     if args.state_dir.stat().st_mode & 0o077:
         parser.error("시나리오 제어 폴더는 현재 사용자 전용이어야 합니다")
@@ -47,10 +48,11 @@ def main():
                 os.fsync(stream.fileno())
         run_id = uuid.uuid4().hex
         save({"active": True, "recovery_complete": False, "scenario": args.scenario, "run_id": run_id,
-              "output": str(args.output), "checkpoint": str(checkpoint)})
+              "output": str(args.output), "checkpoint": str(checkpoint), "recovery_plan": str(recovery)})
         result = execute(args.scenario, LabClient(), run_id=run_id,
                          event=lambda message: print(message, flush=True),
-                         checkpoint=lambda value: write_private_json(checkpoint, value))
+                         checkpoint=lambda value: write_private_json(checkpoint, value),
+                         recovery_plan=lambda value: write_private_json(recovery, value))
         result["previous_window_guard"] = True
         write_private_json(args.output, result)
         save({"active": False, "recovery_complete": all(result["cleanup"].values()),

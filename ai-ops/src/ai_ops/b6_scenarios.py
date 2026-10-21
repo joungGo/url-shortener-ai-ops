@@ -95,6 +95,14 @@ elif action in ('cold','hit','fault-read'):
     result.update(http_status=status,counters_before=before,counters_after=counters())
 elif action=='ping':
     result={'redis_ping':bool(cache.ping())}
+elif action=='health':
+    statuses={}
+    for route in ('/readyz','/items'):
+        status,_=request('GET',route)
+        assert status==200
+        statuses[route]=status
+    assert cache.ping()
+    result={'http':statuses,'redis_ping':True}
 elif action in ('delay-baseline','delay-read','delay-recovered'):
     item=owned()['id']
     assert os.environ['MAX_FAULT_DELAY_MS']=='1000'
@@ -160,7 +168,7 @@ store=IncidentStore(Path('/data/incidents'))
 record=store.investigate_snapshot(snapshot=snapshot,settings=settings,question='현재 요청 처리와 캐시 관측을 확인하고 부족한 자료를 설명해 주세요.',request_id=sys.argv[1])
 record=store.show(record.incident_id,record.run_id)
 report=record.report
-assert report.execution.mode=='rules' and report.execution.engine=='rules-captured-v2'
+assert report.execution.mode=='rules' and report.execution.engine in ('rules-captured-v2','rules-captured-v3')
 available={item.evidence_id for item in snapshot.bundle.evidence if item.status=='available'}
 assert all(set(f.evidence_ids)<=available for f in report.facts)
 assert all(a.execution_status=='not_executed' for a in report.suggested_actions)
@@ -177,6 +185,11 @@ print(json.dumps({'incident_id':record.incident_id,'run_id':record.run_id,'bundl
     'current_state':report.current_state,'facts':len(report.facts),'hypotheses':len(report.hypotheses),
     'hypothesis_evidence_ids':[h.supporting_evidence_ids for h in report.hypotheses],
     'fact_evidence_ids':[f.evidence_ids for f in report.facts],
+    'workload_states':[{'id':item.evidence_id,'phase':item.payload.get('phase'),'ready':item.payload.get('ready')}
+        for item in snapshot.bundle.evidence if item.status=='available' and item.kind=='workload_status'],
+    'event_reasons':[{'id':item.evidence_id,'reason':item.payload.get('reason'),
+        'image_failure_marker':any(token in item.payload.get('message','') for token in ('ImagePullBackOff','ErrImagePull'))}
+        for item in snapshot.bundle.evidence if item.status=='available' and item.kind=='event'],
     'evidence_statuses':dict(Counter(e.status for e in snapshot.bundle.evidence)),
     'collection_entries':[{'id':e.evidence_id,'status':e.status,'reason':e.reason} for e in snapshot.audit.entries],
     'metric_samples':metrics,'external_model_blocked':True,'fact_citations_available':True}))
@@ -206,7 +219,7 @@ print(json.dumps(values))
 
 
 class LabClient:
-    """쓰기 명령은 고정 실습 Redis의 replicas 변경만 허용한다."""
+    """고정 실습 Redis replicas와 실습 앱 이미지의 제한된 변경만 지원한다."""
 
     def command(self, *args, timeout=45):
         result = subprocess.run(["kubectl", "--context", CONTEXT, *args], capture_output=True, text=True, timeout=timeout)
@@ -225,7 +238,7 @@ class LabClient:
             result[namespace + "/" + name] = {k: obj["metadata"][k] for k in ("uid", "generation") if k in obj["metadata"]}
         return result
 
-    def guard(self):
+    def guard(self, *, require_quality=True):
         namespace = self.get(NAMESPACE, "namespace", NAMESPACE)
         if any(namespace["metadata"].get("labels", {}).get(k) != v for k, v in PURPOSE.items()):
             raise ValueError("실습 소유 label이 다릅니다")
@@ -248,8 +261,94 @@ class LabClient:
                                      "--as=system:serviceaccount:ai-ops-lab:lab-investigator"], capture_output=True, text=True, timeout=30)
             if result.returncode not in (0, 1) or result.stdout.strip() != expected:
                 raise ValueError("실습 읽기 인가 경계가 다릅니다")
-        self.remote("lab-collector", "collector", QUALITY_PROGRAM)
+        if require_quality:
+            self.remote("lab-collector", "collector", QUALITY_PROGRAM)
         return identity
+
+    def missing_image(self, run_id):
+        """동일 앱 저장소의 임의 태그 부재를 ECR의 명시적 실패 코드로 확인한다."""
+        if not re.fullmatch(r"[a-f0-9]{32}", run_id):
+            raise ValueError("이미지 실습 ID가 유효하지 않습니다")
+        result = subprocess.run(["aws", "ecr", "batch-get-image", "--region", "ap-northeast-2",
+            "--registry-id", "716174522908", "--repository-name", "urlshortener",
+            "--image-ids", "imageTag=b6-missing-" + run_id, "--output", "json"],
+            capture_output=True, text=True, timeout=45)
+        if result.returncode:
+            raise ValueError("이미지 부재를 확인할 수 없습니다")
+        data = json.loads(result.stdout)
+        failures = data.get("failures", [])
+        if (data.get("images") != [] or len(failures) != 1
+                or failures[0].get("failureCode") != "ImageNotFound"
+                or failures[0].get("imageId", {}).get("imageTag") != "b6-missing-" + run_id):
+            raise ValueError("명시적으로 부재가 확인된 실습 태그가 아닙니다")
+        return "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener:b6-missing-" + run_id
+
+    def replace_image(self, baseline, old_image, new_image):
+        """UID·resourceVersion·기존 이미지가 일치할 때만 api 컨테이너 이미지를 바꾼다."""
+        repository = "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener"
+        for image in (old_image, new_image):
+            if not re.fullmatch(re.escape(repository) + r"(?:@sha256:[a-f0-9]{64}|:b6-missing-[a-f0-9]{32})", image):
+                raise ValueError("실습용 앱 저장소 밖의 이미지는 사용할 수 없습니다")
+        obj = self.get(NAMESPACE, "deployment", "lab-api")
+        containers = obj["spec"]["template"]["spec"]["containers"]
+        if (obj["metadata"]["uid"] != baseline["uid"] or len(containers) != 1 or containers[0]["name"] != "api"
+                or obj["spec"]["replicas"] != 1 or obj["spec"]["strategy"]["type"] != "Recreate"
+                or any(obj["metadata"].get("labels", {}).get(k) != v for k, v in PURPOSE.items())):
+            raise ValueError("기준선과 다른 실습 앱은 변경하지 않습니다")
+        current = containers[0]["image"]
+        if current == new_image:
+            return
+        if current != old_image:
+            raise ValueError("다른 변경이 적용된 실습 이미지는 덮어쓰지 않습니다")
+        patch = [{"op": "test", "path": "/metadata/uid", "value": baseline["uid"]},
+                 {"op": "test", "path": "/metadata/resourceVersion", "value": obj["metadata"]["resourceVersion"]},
+                 {"op": "test", "path": "/spec/template/spec/containers/0/image", "value": old_image},
+                 {"op": "replace", "path": "/spec/template/spec/containers/0/image", "value": new_image}]
+        self.command("-n", NAMESPACE, "patch", "deployment", "lab-api", "--type=json", "--patch", json.dumps(patch))
+
+    def wait_image_failure(self, baseline, bad_image, *, sleep=time.sleep):
+        """새 ReplicaSet 소유 Pod의 실제 대기 상태와 image 실패 이벤트를 기다린다."""
+        deadline = time.monotonic() + 120
+        while time.monotonic() < deadline:
+            obj = self.get(NAMESPACE, "deployment", "lab-api")
+            if (obj["metadata"]["uid"] != baseline["uid"]
+                    or obj["spec"]["template"]["spec"]["containers"][0]["image"] != bad_image):
+                raise ValueError("실습 배포가 실행 중 바뀌었습니다")
+            replicasets = json.loads(self.command("-n", NAMESPACE, "get", "replicasets", "-l", "app=lab-api", "-o", "json"))["items"]
+            owners = {r["metadata"]["uid"] for r in replicasets if any(o.get("uid") == baseline["uid"] and o.get("controller") is True
+                       for o in r["metadata"].get("ownerReferences", []))}
+            pods = json.loads(self.command("-n", NAMESPACE, "get", "pods", "-l", "app=lab-api", "-o", "json"))["items"]
+            for pod in pods:
+                if (pod["metadata"].get("deletionTimestamp") or not any(o.get("uid") in owners and o.get("controller") is True
+                        for o in pod["metadata"].get("ownerReferences", []))):
+                    continue
+                containers = pod["spec"]["containers"]
+                if len(containers) != 1 or containers[0]["name"] != "api" or containers[0]["image"] != bad_image:
+                    continue
+                states = [s for s in pod["status"].get("containerStatuses", []) if s["name"] == "api"]
+                if not states:
+                    continue
+                reason = states[0].get("state", {}).get("waiting", {}).get("reason")
+                if reason not in {"ImagePullBackOff", "ErrImagePull"} or states[0]["ready"]:
+                    continue
+                events = json.loads(self.command("-n", NAMESPACE, "get", "events", "--field-selector",
+                    "involvedObject.uid=" + pod["metadata"]["uid"], "-o", "json"))["items"]
+                reasons = sorted({e.get("reason") for e in events if e.get("reason") in {"Failed", "BackOff", "Pulling", "ErrImagePull", "ImagePullBackOff"}})
+                if not {"Failed", "ErrImagePull", "ImagePullBackOff"}.intersection(reasons):
+                    continue
+                if obj["status"].get("readyReplicas", 0) != 0:
+                    continue
+                return {"deployment_uid": baseline["uid"], "deployment_generation": obj["metadata"]["generation"],
+                        "replicaset_uids": sorted(owners), "pod_uid": pod["metadata"]["uid"],
+                        "waiting_reason": reason, "ready_replicas": 0, "event_reasons": reasons, "at": utc_now()}
+            sleep(5)
+        raise ValueError("제한 시간 안에 실제 이미지 취득 실패를 확인하지 못했습니다")
+
+    def restore_image(self, baseline, bad_image):
+        self.replace_image(baseline, bad_image, baseline["image"])
+        self.command("-n", NAMESPACE, "rollout", "status", "deployment/lab-api", "--timeout=180s", timeout=195)
+        health = self.app("health", uuid.uuid4().hex)
+        return health
 
     def remote(self, deployment, container, program, *args):
         if (deployment, container) not in {("lab-api", "api"), ("lab-collector", "collector")}:
@@ -324,13 +423,15 @@ def check_delay(read, *, delayed, baseline=None):
     return seconds
 
 
-def execute(scenario, client, *, sleep=time.sleep, run_id=None, event=None, checkpoint=None):
+def execute(scenario, client, *, sleep=time.sleep, run_id=None, event=None, checkpoint=None, recovery_plan=None):
     """관측·주입·복구를 구분하며 어떤 실패도 성공 결과로 바꾸지 않는다."""
-    if scenario not in {"S1", "S2", "S4"}:
-        raise ValueError("이번 실행기는 S1·S2·S4만 지원합니다")
+    if scenario not in {"S1", "S2", "S3", "S4"}:
+        raise ValueError("이번 실행기는 S1·S2·S3·S4만 지원합니다")
     run_id = run_id or uuid.uuid4().hex
     if not re.fullmatch(r"[a-f0-9]{32}", run_id):
         raise ValueError("실습 실행 ID 형식이 다릅니다")
+    if scenario == "S3":
+        return execute_image(client, run_id, event=event, checkpoint=checkpoint, recovery_plan=recovery_plan)
     notify = event or (lambda message: None)
     result = {"scenario": scenario, "run_id": run_id, "namespace": NAMESPACE, "status": "failed",
               "started_at": utc_now(), "observations": [], "http_calls": 0, "external_model_calls": 0,
@@ -460,4 +561,69 @@ def execute(scenario, client, *, sleep=time.sleep, run_id=None, event=None, chec
         if result["http_calls"] > 20:
             result["status"] = "failed"
             result["failure_reason"] = "request_budget_exceeded"
+    return result
+
+
+def execute_image(client, run_id, *, event=None, checkpoint=None, recovery_plan=None):
+    """실습 앱의 실패 이미지를 관측하고 어떤 결과에서도 고정 digest로 복구한다."""
+    result = {"scenario": "S3", "run_id": run_id, "namespace": NAMESPACE, "status": "failed",
+              "started_at": utc_now(), "external_model_calls": 0, "http_calls": 0,
+              "scope": "isolated_image_failure_manual_restore_not_ci_rollback"}
+    notify = event or (lambda message: None)
+    try:
+        before = client.production()
+        identity = client.guard()
+        baseline = identity["lab-api"]
+        if not re.fullmatch(r"716174522908\.dkr\.ecr\.ap-northeast-2\.amazonaws\.com/urlshortener@sha256:[a-f0-9]{64}", baseline["image"]):
+            raise ValueError("복구용 이미지가 고정 digest가 아닙니다")
+        bad_image = client.missing_image(run_id)
+        result.update(baseline=identity, bad_image=bad_image, image_absence_confirmed=True)
+        health = client.app("health", run_id)
+        result["http_calls"] += health["http_calls"]
+        if recovery_plan is None:
+            raise ValueError("변경 전 복구 계획을 별도 저장해야 합니다")
+        recovery_plan({"record_type": "pre_mutation_recovery_plan", "scenario": "S3", "run_id": run_id,
+                       "namespace": NAMESPACE, "baseline": baseline, "bad_image": bad_image, "created_at": utc_now()})
+    except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired):
+        result.update(status="blocked", failure_reason="image_preflight_failed", cleanup={"no_mutation_started": True}, finished_at=utc_now())
+        return result
+    attempted = False
+    try:
+        attempted = True
+        result["intervention_started_at"] = utc_now()
+        client.replace_image(baseline, baseline["image"], bad_image)
+        notify("실습 앱 이미지 변경·실제 취득 실패 대기")
+        result["failure_observation"] = client.wait_image_failure(baseline, bad_image)
+        result["intervention_verified"] = True
+        result["ground_truth_recorded_at"] = utc_now()
+        if checkpoint:
+            checkpoint({**result, "status": "observations_recorded", "execution_status_final": False})
+        result["report"] = client.collect(run_id)
+        report = result["report"]
+        event_ids = {e["id"] for e in report.get("event_reasons", []) if e["reason"] in {"ImagePullBackOff", "ErrImagePull"}
+                     or (e["reason"] in {"Failed", "BackOff"} and e.get("image_failure_marker") is True)}
+        supported = any(event_ids.intersection(ids) for ids in report.get("hypothesis_evidence_ids", []))
+        result["report_check"] = "image_failure_supported" if (report["diagnosis_status"] == "suspected_cause" and supported) else "needs_review"
+        result["status"] = "passed" if supported and report["diagnosis_status"] == "suspected_cause" else "needs_review"
+    except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired):
+        result["failure_reason"] = "image_observation_failed"
+    finally:
+        cleanup = {}
+        if attempted:
+            try:
+                result["recovery_observation"] = client.restore_image(baseline, bad_image)
+                result["http_calls"] += result["recovery_observation"]["http_calls"]
+                current = client.guard(require_quality=False)
+                cleanup["original_digest_ready_http_and_redis_restored"] = all(
+                    current[k]["uid"] == v["uid"] and current[k]["image"] == v["image"]
+                    and (k == "lab-api" or current[k]["generation"] == v["generation"]) for k, v in identity.items())
+            except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired):
+                cleanup["original_digest_ready_http_and_redis_restored"] = False
+        try:
+            cleanup["production_unchanged"] = client.production() == before
+        except (ValueError, OSError, KeyError, subprocess.TimeoutExpired):
+            cleanup["production_unchanged"] = False
+        result.update(cleanup=cleanup, finished_at=utc_now())
+        if not all(cleanup.values()):
+            result["status"] = "recovery_failed"
     return result
