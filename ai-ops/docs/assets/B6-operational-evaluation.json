@@ -10,26 +10,26 @@
     {
       "id": "S1",
       "name": "Redis 접근 불가",
-      "status": "not_run",
-      "finding": "독립 실습 Redis 없음. production Redis는 중지하지 않았다."
+      "status": "observed_live_subcase",
+      "finding": "연결된 실습 Redis 중단·앱 error 3회·HTTP 200 DB fallback과 캐시 근거 원인 후보 1개를 확인했다. Redis·데이터 원복 통과. 미연결 unavailable 변형과 운영 Redis는 미검증이다."
     },
     {
       "id": "S2",
       "name": "정상 캐시 미스 증가",
-      "status": "not_run",
-      "finding": "의도적 cold key·TTL 실험은 미수행. 현재 트래픽 부족을 정상 miss 검증으로 대체하지 않는다."
+      "status": "observed_live_subcase",
+      "finding": "실습 아이템 cold miss→hit 두 쌍·오류 증가 없음·허위 원인 후보 0을 확인했다. 보고서는 partial/unknown을 유지했다. 자연 TTL 만료 변형은 미검증이다."
     },
     {
       "id": "S3",
       "name": "잘못된 이미지 태그",
       "status": "not_run",
-      "finding": "독립 실습 Deployment와 복구 기준 미준비. 운영 앱 이미지를 바꾸지 않았다."
+      "finding": "독립 실습 Deployment와 고정 복구 digest를 준비했다. 잘못된 이미지 적용·복구 실험은 아직 실행하지 않았다."
     },
     {
       "id": "S4",
       "name": "DB 지연",
-      "status": "not_run",
-      "finding": "실습 전용 지연·부하 주입은 미수행. RDS 장애라고 주장하지 않는다."
+      "status": "observed_live_subcase",
+      "finding": "실습 앱 DB 세션 750ms 지연 3회·응답/DB histogram 증가·DB 근거 설명과 원인 유보·지연 헤더 없는 회복을 확인했다. RDS 서버 장애·부하 실험은 아니다."
     },
     {
       "id": "S5",
@@ -59,7 +59,7 @@
       "id": "S9",
       "name": "쓰기 직후 정상 Primary 조회",
       "status": "not_run",
-      "finding": "실습 데이터 생성·삭제와 marker 만료 비교를 수행하지 않았다."
+      "finding": "실습 marker 5초 설정을 준비했지만 쓰기 직후·만료 비교는 미실행이다. 단일 Primary이며 실제 Replica 전환은 검증할 수 없다."
     },
     {
       "id": "S10",
@@ -81,7 +81,10 @@
     "historical_synthetic_retention_in_live_process": "B4-retention-schedule-validation.json",
     "synthetic_model_evaluation": "../A7-fixed-evaluation.md",
     "initial_live_demo": "B6-operational-demo.json",
-    "quality_deployment": "B6-deployment-validation.json"
+    "quality_deployment": "B6-deployment-validation.json",
+    "isolated_lab_preparation": "B6-isolated-lab-validation.json",
+    "cache_scenarios": "B6-cache-scenarios-validation.json",
+    "db_delay_scenario": "B6-db-delay-validation.json"
   },
   "quality": {
     "captured_items": 30,
@@ -111,10 +114,14 @@
     "external_production_data": "blocked",
     "normal_diagnosis_quality": "not_demonstrated",
     "live_model_quality": "not_tested",
-    "isolated_fault_scenarios": "not_tested"
+    "isolated_fault_scenarios": "partial_S1_S2_S4_subcases",
+    "isolated_lab_preparation": "passed_single_db_scope",
+    "cache_cold_key_false_cause": "passed_one_live_case",
+    "connected_redis_failure_and_recovery": "passed_one_live_case",
+    "app_db_session_delay_and_recovery": "passed_one_live_case"
   },
   "next_actions": [
-    "독립 실습 대상과 ground truth를 준비해 S1/S2/S3/S4/S9/S10/S11을 재현한다.",
+    "S3 잘못된 이미지의 실패 관측과 원래 digest의 finally 복구를 구현한다. S2 자연 TTL·S1 unavailable 변형·S4 부하/반복 변형, S9/S11 단일 DB 한계와 S10 CI·이력도 남는다.",
     "captured 외부 전송 정책과 승인 범위를 별도 설계한 뒤 모델 비교를 검증한다. 현재 차단을 제거하지 않는다."
   ],
   "initial_live_demo": "B6-operational-demo.json",

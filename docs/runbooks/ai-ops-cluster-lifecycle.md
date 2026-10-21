@@ -11,6 +11,10 @@
 | namespace·암호화 StorageClass | 커밋된 `ai-ops/kubernetes/` 원본 | PVC/EBS 삭제 확인 후 삭제 |
 | 수동 조사 worker StatefulSet·PVC·전용 읽기 RBAC·NetworkPolicy·metrics Service/ServiceMonitor | 고정 digest와 새 클러스터 값으로 수동 Helm | Helm uninstall 후 남은 PVC 명시 삭제·EBS 부재 확인 |
 | AI state·bucket의 버전/삭제 마커 | 별도 backend key 유지 | 두 root와 AWS 실물 제거 확인 후 마지막 정리 |
+| B-06 `ai-ops-lab` 실습 앱·임시 DB/Redis·수집기 | 운영/Prometheus 준비 후 별도 선택 설치 | 목적 label·context 확인 후 EKS 삭제 전에 namespace 정리. PVC·LB·별도 state 없음 |
+
+B-06 실습 환경이 존재하면 [실습 준비·종료 절차](../../ai-ops/docs/B6-isolated-lab.md)를 전체 정리에 포함한다. 실습 데이터와 보고서는 emptyDir라 namespace 삭제 시 보존되지 않는다. 재설치는 새 이미지 digest·API /32·전용 Secret을 준비해 별도로 수행하며 운영 설치 완료와 구분한다.
+
 
 `ai-ops` namespace만 지우거나 EKS만 destroy해서 EBS까지 없어졌다고 판단하지 않는다. StatefulSet의 PVC 보존 정책은 Retain, AI PV의 reclaim은 Delete다. 보고서·정제 입력·관측 집계는 PVC 삭제 시 사라진다. 전체 삭제 요청이 없는 평상시 중지는 [0→1 복구 가이드](../../ai-ops/docs/B3-observability-and-recovery.md)를 따른다. 로컬 소스·개인 API 키 파일·로컬 설명 사이트는 AWS 정리 대상이 아니다.
 
