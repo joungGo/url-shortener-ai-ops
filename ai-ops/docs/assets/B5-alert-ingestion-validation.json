@@ -1,0 +1,113 @@
+{
+  "phase": "B-05",
+  "status": "reinstalled_slack_failure_paths_verified",
+  "python_tests": 239,
+  "new_tests": 21,
+  "test_breakdown": {
+    "alert_inbox": 13,
+    "tls_receiver": 6,
+    "routing": 2
+  },
+  "helm_receiver_default_enabled": false,
+  "application_ai_labels_default_enabled": false,
+  "cluster_alertmanager_routing_changed": true,
+  "cluster_receiver_deployed": true,
+  "external_model_calls": 0,
+  "external_notification_test_sent": true,
+  "runtime_dependencies_added": [],
+  "limitations": [
+    "Watchdog 분기는 실제 실행 설정으로 확인했으며 인위적 외부 heartbeat 시험 메시지는 보내지 않음",
+    "partial 규칙 보고서는 자료 부족을 명시하며 장애 원인 확정이나 복구 성공을 의미하지 않음",
+    "동일 Pod의 PVC·UID·네트워크를 공유",
+    "중복/해제 장부 최대 10000행, 장기 아카이브 정책 후속",
+    "TLS 만료 자동 갱신·경보는 아직 없으며 수동 회전 필요",
+    "외부 Watchdog 인위적 시험·Slack 대화 이력 원문 재조회는 수행하지 않음"
+  ],
+  "initial_checkout_python_tests": 237,
+  "implementation_pr": 44,
+  "source_revision": "4da4add26f3ec4614b128cd1155f58582c811e29",
+  "image_run_id": 39393659389,
+  "image_run_status": "success",
+  "cluster_identity_secrets_created": true,
+  "server_certificate_expires_at": "2027-01-18T08:40:42Z",
+  "alertmanager_route_test": {
+    "version": "0.32.0",
+    "tool": "amtool config routes test",
+    "watchdog_heartbeat_only": true,
+    "ai_and_slack": true,
+    "ordinary_slack": true,
+    "live_config_changed": false
+  },
+  "helm_revision": 4,
+  "image_digest": "sha256:c96654ccb9517e55161a1a0849d67c9de42638cfbaac77f7b07c8d2dc8c8d5fc",
+  "certificate_algorithm": "RSA",
+  "internal_https_validation": {
+    "method": "localhost_port_forward",
+    "untrusted_ca_rejected": true,
+    "wrong_token_status": 401,
+    "accepted_status": 202,
+    "duplicate_resolved_late_firing_verified": true,
+    "existing_jobs_preserved": 2,
+    "new_job_state": "partial",
+    "new_job_attempts": 1,
+    "new_report_files": 5,
+    "networkpolicy_sender_verified": false,
+    "actual_alertmanager_sender_verified": false
+  },
+  "routing_activation_pr": 45,
+  "cluster_application_ai_labels_enabled": true,
+  "network_boundary": {
+    "allowed_actual_alertmanager_pod": "CA+hostname verified TLS; HTTP 405; no alert sent",
+    "denied_prometheus_pod": "TCP timeout; no monitoring egress policy",
+    "verified": true
+  },
+  "isolated_alertmanager_delivery": {
+    "binary_version": "0.32.0",
+    "location": "actual Alertmanager Pod network",
+    "receiver": "AI only",
+    "api": "loopback only",
+    "webhooks": 2,
+    "failed_webhooks": 0,
+    "firing_and_resolved": true,
+    "new_job_state": "partial",
+    "attempts": 1,
+    "report_files": 5,
+    "temporary_process_and_directory_cleaned": true,
+    "production_alertmanager_test_alert_injected": false
+  },
+  "existing_jobs_preserved": 2,
+  "internal_test_jobs": 2,
+  "same_pvc_and_ebs_preserved": true,
+  "historical_cluster_receiver_deployed": true,
+  "current_runtime_status": "running",
+  "historical_gitops": {
+    "monitoring": "Synced/Healthy",
+    "application": "Synced/Healthy",
+    "application_ready_replicas": 2
+  },
+  "gitops": {
+    "monitoring": "Synced/Healthy",
+    "application": "Synced/Healthy"
+  },
+  "slack_delivery_validation": "B5-slack-delivery-validation.json",
+  "historical_cleanup": {
+    "operational_infrastructure_removed": true,
+    "both_terraform_states_empty": true,
+    "route53_unchanged": true,
+    "final_snapshot_available": true,
+    "backend_and_additional_logs_preserved_due_to_auto_review_rejection": true
+  },
+  "historical_external_delivery_attempt": {
+    "authorized": true,
+    "result": "failed",
+    "existing_slack_status": 404,
+    "existing_slack_error": "channel_not_found",
+    "baseline_slack_attempts": 18,
+    "baseline_slack_failures": 18,
+    "receiver_stopped_test_completed": false,
+    "authentication_failure_test_started": false,
+    "replica_and_identity_restored_after_failed_test": true,
+    "test_alert_resolved_requested": true,
+    "following_task": "user requested full AWS project cleanup"
+  }
+}
