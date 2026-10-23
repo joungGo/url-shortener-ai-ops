@@ -1,0 +1,29 @@
+{
+  "phase": "B-06-M2",
+  "status": "local_mock_validated",
+  "verified_date_kst": "2026-10-23",
+  "base_revision": "ef7a005475a432be0881c818efa9dd4f3e032694",
+  "new_tests": 24,
+  "full_tests": 398,
+  "compile": "passed",
+  "deployment_static_checks": "passed",
+  "api_calls": 0,
+  "actual_projection_export_executed": false,
+  "cluster_mutations": 0,
+  "model_quality_verified": false,
+  "new_model_cost_usd": 0,
+  "network_transport": "not_enabled_mock_only",
+  "new_files_sha256": {
+    "src/ai_ops/model_projection.py": "7697e3e1cf808a526d548ec8df1e89fc92496e0361d1fd51525b94666af005c9",
+    "src/ai_ops/model_comparison.py": "7244b54973bc2cb425b405dccf53befc55b7442d6515839fec38c1d8a71555e8",
+    "src/ai_ops/projected_model_engine.py": "f3ddc1a3d4b7f35197a9bb256b0d412fc6980db26a0b77ef3a335a40b4fea947",
+    "scripts/prepare_model_projection.py": "afae76fcb1f1f7b7f0b8b2f080b67f5ec24cad8f0e44ac4842cea2e102dea27b",
+    "scripts/compare_model_projection.py": "bb56d588b85af636432004a798421686b16f1dfa1752050d74af0962bb4655a2",
+    "tests/test_model_projection.py": "4c1f739d1475c554bfadb3d7cc7db321bafa14039bffa636456313b89d2fd923",
+    "tests/test_model_comparison.py": "07d5b40ded8a3be74407a74687ba45c39fcbbb0ae77bc694d4a4565cf27cce46"
+  },
+  "existing_gates_changed": false,
+  "resource_warning_filter": "ignore::ResourceWarning (existing SQLite log-capture interference; not a fix)",
+  "next_step": "B-06-M3",
+  "recommended_reasoning": "GPT-6 SOL high"
+}

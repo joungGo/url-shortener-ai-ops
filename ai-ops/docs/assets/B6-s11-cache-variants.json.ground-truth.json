@@ -1,0 +1,83 @@
+{
+  "variant": "json",
+  "observations": [
+    {
+      "at": "2026-10-21T08:33:34.363901+00:00",
+      "http_status": 200,
+      "counters_before": {
+        "miss": 4.0,
+        "consistency_primary": 3.0,
+        "hit": 3.0,
+        "bypass": 2.0
+      },
+      "counters_after": {
+        "miss": 4.0,
+        "consistency_primary": 3.0,
+        "hit": 4.0,
+        "bypass": 2.0,
+        "error": 1.0
+      },
+      "db_count_before": 9.0,
+      "db_count_after": 10.0,
+      "redis_configured": true,
+      "redis_ping": true,
+      "json_invalid_injected": true,
+      "bypass_header_sent": false,
+      "delay_header_sent": false,
+      "cached_value_unchanged": null,
+      "http_calls": 3
+    },
+    {
+      "at": "2026-10-21T08:34:12.024323+00:00",
+      "http_status": 200,
+      "counters_before": {
+        "miss": 4.0,
+        "consistency_primary": 3.0,
+        "hit": 4.0,
+        "bypass": 2.0,
+        "error": 1.0
+      },
+      "counters_after": {
+        "miss": 4.0,
+        "consistency_primary": 3.0,
+        "hit": 5.0,
+        "bypass": 2.0,
+        "error": 2.0
+      },
+      "db_count_before": 10.0,
+      "db_count_after": 11.0,
+      "redis_configured": true,
+      "redis_ping": true,
+      "json_invalid_injected": true,
+      "bypass_header_sent": false,
+      "delay_header_sent": false,
+      "cached_value_unchanged": null,
+      "http_calls": 3
+    }
+  ],
+  "started_at": "2026-10-21T08:33:29.556668+00:00",
+  "preparation": {
+    "created": true,
+    "redis_configured": true,
+    "database_roles": {
+      "write_in_recovery": false,
+      "read_in_recovery": false
+    },
+    "baseline": {
+      "cache": {
+        "miss": 4.0,
+        "consistency_primary": 3.0,
+        "hit": 3.0,
+        "bypass": 2.0
+      },
+      "db_count": 9.0
+    },
+    "redis_ping": true,
+    "http_calls": 5
+  },
+  "ground_truth_recorded_at": "2026-10-21T08:34:47.029663+00:00",
+  "scenario": "S11",
+  "run_id": "c5f03fa99b8647a189f2bd67b2fb20eb",
+  "status": "observations_recorded",
+  "execution_status_final": false
+}

@@ -1,6 +1,6 @@
 # B-06 S3 실습 이미지 취득 실패와 원래 digest 복구
 
-상태: **이미지 부재·실제 취득 실패·원래 digest 복구는 확인, 보고서 설명은 needs_review**. [검증 요약](assets/B6-image-failure-validation.json), [실측 결과](assets/B6-s3-image-failure.json), [조사 전 관측](assets/B6-s3-image-failure.ground-truth.json), [변경 전 복구 계획](assets/B6-s3-image-failure.recovery-plan.json)을 함께 확인한다.
+최초 v2 실행 상태: **이미지 부재·실제 취득 실패·원래 digest 복구는 확인, 보고서 설명은 needs_review**. 후속 승인 v3 배포와 별도 S3 하위 사례는 통과했으며 [최신 결과](B6-image-rules-v3.md)를 따른다. 아래 최초 기록은 덮어쓰지 않는다. [검증 요약](assets/B6-image-failure-validation.json), [실측 결과](assets/B6-s3-image-failure.json), [조사 전 관측](assets/B6-s3-image-failure.ground-truth.json), [변경 전 복구 계획](assets/B6-s3-image-failure.recovery-plan.json)을 함께 확인한다.
 
 이 작업은 **실습 앱에 존재하지 않는 이미지 태그를 적용해 실제 Pod 실패를 관측하고, 수집·규칙 보고서와 대조한 뒤 원래 이미지로 복구하는 단계**다. 자동 CI 롤백·GitOps 복구 구현은 S10과 C단계의 별도 범위다. 운영 앱·RDS·Redis·AI worker 이미지는 변경하지 않는다.
 
@@ -60,3 +60,8 @@ finally에서 원래 digest 복구·Ready 1·/readyz와 /items 200·Redis PING�
 ## 후속 v3 후보 비교
 
 [규칙 v3와 동일 저장 입력 검증](B6-image-rules-v3.md)에서 native Failed 표식·Pod 소유·Deployment 이미지·근접 시각을 대조했다. 같은 입력에서 후보 0→1·사실 3→4, partial/unknown 유지와 기존 v2 6건/18개 파일 해시 보존을 확인했다. 전체 289개 시험이 통과했다. 후보 소스 비교이며 수정 이미지 배포·새 실환경 v3 보고서 검증은 아직 남아 있다. 위 최초 needs_review 기록은 그대로 유지한다.
+
+
+## 후속 v3 실제 배포 검증
+
+[규칙 v3 배포 결과](B6-image-rules-v3.md)에서 승인 이미지·기존 10건 보고서 보존·새 운영 조사와 수정 후 S3 한 번의 실제 재현을 확인했다. 새 S3는 원인 후보 1개와 available 세 근거를 연결해 image_failure_supported였고 원래 digest·HTTP를 복구했다. 최초 v2 needs_review와 이번 v3 통과는 별도 실행으로 보존한다. S3의 지정 실습 하위 사례이며 라이브 모델·자동 복구·B-06 전체 완료를 뜻하지 않는다.

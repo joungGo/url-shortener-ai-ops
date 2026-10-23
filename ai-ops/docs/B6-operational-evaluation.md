@@ -1,8 +1,8 @@
 # B-06 실환경 운영 평가
 
-현재 판정: **운영 연결 데모 통과, B-06 진행 중·B 전체 완료 및 C단계 진입 보류**. 실제 읽기 조사 한 건이 접수→수집→정제→규칙 보고서→재조회로 이어지는 것을 확인했다. 정상·장애 진단 품질과 라이브 모델 비교가 완료된 것은 아니다.
+현재 판정(2026-10-23 KST): **읽기 조사·실습 CI 자동 접수/규칙 보고서 연결 검증 완료, B-06 진행 중·B 전체 완료 및 C단계 진입 보류**. S3·S9·S11 하위 사례와 S10 상시 전달기 실측을 반영했다. 실제 수집 자료를 외부 모델에 보내는 경로와 정상 진단 품질은 아직 검증하지 않았다. 아래 첫 데모·후속 기록은 각각의 측정 시점 결과이며 재설치 후 새 측정으로 합산하지 않는다.
 
-[첫 실측 결과](assets/B6-operational-demo.json), [v2 실측 결과](assets/B6-operational-demo-v2.json), [평가표 JSON](assets/B6-operational-evaluation.json), [재현 절차](B6-operational-demo.md), [포트폴리오 초안](B6-portfolio.md)을 함께 관리한다. 아래 첫 데모 수치는 v1 이력이며 최신 v2 측정은 마지막 절에 구분한다.
+[첫 실측 결과](assets/B6-operational-demo.json), [v2 실측 결과](assets/B6-operational-demo-v2.json), [v3 실측 결과](assets/B6-operational-demo-v3.json), [평가표 JSON](assets/B6-operational-evaluation.json), [재현 절차](B6-operational-demo.md), [포트폴리오 초안](B6-portfolio.md)을 함께 관리한다. 아래 첫 데모 수치는 v1 이력이며 v2·v3 측정은 후속 절에 구분한다.
 
 ## 실제로 확인한 범위
 
@@ -25,17 +25,17 @@ captured 자료 30개 중 available 7·invalid 2·stale 15·missing 6이다. Pod
 
 | ID | 시나리오 | 현재 범위 | 근거·미검증 이유 |
 |---|---|---|---|
-| S1 | Redis 접근 불가 | 실습 하위 사례 통과 | 연결된 실습 Redis 중단·error 3회·HTTP 200 fallback·캐시 근거 후보·원복 확인. unavailable 변형은 후속이다. |
-| S2 | 정상 캐시 미스 증가 | 실습 하위 사례 통과 | cold miss→hit 두 쌍·오류 증가 없음·허위 후보 0·원복 확인. 자연 TTL과 전체 정상 판정은 후속이다. |
-| S3 | 잘못된 이미지 태그 | 보고서 보완 필요 | 실제 ErrImagePull·Ready 0·복구 성공. Failed 이벤트 표식과 기존 규칙 형태가 달라 원인 후보를 만들지 못했다. |
+| S1 | Redis 접근 불가 | 실습 하위 사례 통과 | 연결된 Redis 중단·HTTP 200 DB fallback·캐시 근거 후보·원복 확인. S11의 미설정 unavailable과 구분하며 초기 연결 실패 unavailable은 미검증이다. |
+| S2 | 정상 캐시 미스 증가 | 실습 하위 사례 통과 | cold-key miss→hit·허위 후보 0 확인. 목록 캐시의 자연 TTL 만료는 S9 하위 사례에서 별도로 확인했으며 전체 정상 진단을 입증한 것은 아니다. |
+| S3 | 잘못된 이미지 태그 | v3 실습 하위 사례 통과 | 최초 v2 needs_review 보존. 승인 v3 배포 뒤 실제 ErrImagePull·Ready 0·세 근거 인용 후보 1개·partial/unknown·원래 digest/HTTP 복구를 확인했다. |
 | S4 | DB 지연 | 실습 하위 사례 통과 | 앱 DB 세션 750ms 지연 3회·histogram·규칙 설명·지연 해제 확인. RDS 서버 문제의 재현은 아니다. |
 | S5 | 관측 데이터 부족 | 실환경 관측 통과 | 수집 자료 부족을 partial·insufficient_evidence·unknown으로 기록했다. 가설 0개이며 정상 또는 원인을 단정하지 않았다. |
 | S6 | 정상 상태 | 일부 근거 | 앱 Ready 2개와 기존 DB·Redis·HTTPS 정상 관측은 있으나 현재 보고서는 unknown이다. 정상 진단 성공으로 채점하지 않는다. |
 | S7 | 악성 입력·권한 경계 | 일부 근거 | 현재 identity의 Secret·exec·patch·다른 namespace 조회 거부를 확인했다. 악성 문장 라이브 주입은 하지 않았다. 기존 합성 입력 계약 시험과 구분한다. |
 | S8 | 플랫폼 실패 | 일부 근거 | 현재 큐 중복, B-04 실제 재시작 복구와 B-05 실제 중단/401 중 Slack 유지 근거가 있다. 모델 429·timeout·예산 초과의 실환경 모델 경로는 미검증이다. |
-| S9 | 쓰기 직후 정상 Primary 조회 | 미실행 | 실습 데이터 생성·삭제와 marker 만료 비교를 수행하지 않았다. |
-| S10 | 자동 복구 이후 배포 사건 | 미실행 | 독립 실습 CI의 실패·자동 롤백과 전후 증거 보존 미검증. 현재 CI 이력이 없는 것을 사건 부재로 단정하지 않는다. |
-| S11 | 캐시 의미·DB 경로 계약 | 일부 근거 | 재설치의 실제 DB 역할과 기존 합성 계약 검증 근거만 있다. 미설정·연결 오류·JSON 오류를 독립 실환경에서 분리하지 않았다. |
+| S9 | 쓰기 직후 정상 Primary 조회 | 단일 Primary 하위 사례 통과 | 목록 표식 5초·캐시 60초 자연 만료와 Primary→hit→read 세션 miss→hit를 확인했다. 허위 후보 0·자기 데이터 정리 통과. 실제 Replica/복제 지연은 미검증이다. |
+| S10 | 자동 복구 이후 배포 사건 | 실습 CI 자동 조사·규칙 보고서 통과 | 실행 39848636802의 최초 실패·자동 원복·출처/해시/UID 검증, 전달기 자동 접수·중복 방지·worker 저장/재조회 확인. 보고서는 partial/suspected_cause/unknown이며 사용자 경로의 복구 확정·외부 모델 분석은 미검증이다. |
+| S11 | 캐시 의미·DB 경로 계약 | 세 하위 사례 통과 | 최초 실패 보존·수정 이미지 배포 후 미설정 구성 false/후보 0/자동 원복 재확인. 기존 우회/JSON 결과 재사용. 초기 연결 실패 unavailable·실제 Replica는 미검증이다. |
 
 운영 연결의 신뢰성 근거는 [B-04 실제 복구](B4-worker-deployment.md), [예약 정리](B4-retention-schedule.md), [B-05 실제 실패 경로](B5-slack-delivery.md)를 재사용했다. 통과한 시험을 이번 단계라는 이유만으로 전부 반복하지 않았다. B-05 합성 경보의 실제 전송 성공은 진짜 서비스 장애의 진단 정확도가 아니다.
 
@@ -72,3 +72,77 @@ captured 자료 30개 중 available 7·invalid 2·stale 15·missing 6이다. Pod
 ## S3 규칙 v3 후보 비교
 
 [동일 저장 입력 비교](B6-image-rules-v3.md)는 native Failed의 이미지 표식과 해당 Pod의 소유·Deployment 이미지·120초 이내 시각을 대조해 원인 후보 0→1을 확인했다. partial/unknown은 유지했고 v1/v2 재조회·v3 내용 재검증과 로컬 전체 289개 시험을 통과했다. 실습 기존 v2 6건/18개 파일은 같았으며 수정 이미지는 배포하지 않았다. 최초 S3 v2 needs_review는 유지하고 다음 단계에서 승인 이미지 배포·새 v3 실환경 저장/조회로 확인한다.
+
+
+## 규칙 v3 배포·보존·새 S3 검증 완료
+
+[배포 결과](B6-image-rules-v3.md)에서 PR #50·main 10a7ef6, 원격 전체 290개 시험·이미지 검사 통과와 사용자 승인 실행 39562933098·ECR 검사 0건을 확인했다. 운영 Helm revision 3은 같은 PVC·v1 3건/v2 1건·12개 자료 해시를 유지했고 새 운영 조사는 약 13.90초·시도 1회·v3 사실 3·가설 0·partial/unknown이었다. available 7·missing 9·stale 1·invalid 0으로, 낮은 트래픽·자료 부족을 전체 정상으로 확대하지 않았다.
+
+실습 emptyDir는 임시 Pod 간 직접 스트림 이관 후 기존 v2 6건·전체 파일 38개 해시를 확인하고 임시 Pod를 삭제했다. 새 S3 한 번은 실제 ErrImagePull·Ready 0에서 v3 사실 4·후보 1·available 세 근거·partial/suspected_cause/unknown을 저장·재조회했고 원래 digest·HTTP·Redis를 복구했다. 최초 v2 needs_review는 그대로 보존한다. 이는 단일 하위 사례 통과이며 정확도/MTTR 개선률·라이브 모델·자동 복구를 입증하지 않는다. 외부 모델 호출 0·운영 식별자 불변을 유지했다. 다음은 미실행 S9의 제한된 marker 전후 관측과 남은 범위 결정이며 GPT-6 SOL high를 추천한다. B-06 전체·B 완료·C 진입은 계속 보류한다.
+
+
+## S9 목록 표식·자연 만료 하위 사례 완료
+
+[실제 결과와 한계](B6-primary-read-scenario.md)에서 POST가 단건이 아닌 목록 표식만 설정하는 코드에 맞춰 `/items`·`select_all`을 검증했다. 두 묶음 모두 5초 표식 유효 시 consistency_primary·DB +1, 표식 만료 뒤 hit·DB 증가 없음, 목록 캐시 60초 자연 만료 뒤 miss·DB +1, 후속 hit를 확인했다. 표식·캐시를 강제로 지우거나 TTL을 줄이지 않았다. 총 HTTP 28회·전체 약 186.47초에 자연 대기와 수집/정리를 포함한다. 전체 Python 299개 시험이 통과했다.
+
+새 v3는 캐시 consistency_primary 지표 근거를 설명하고 사실 4·후보 0·partial/insufficient_evidence/unknown을 유지했다. 로그는 truncated이므로 전체 정상 진단을 입증하지 않는다. 자기 데이터 두 개·표식/소유 파일을 정리하고 DB 행 0·실습 네 Pod Ready·운영/실습 식별자 불변을 확인했다. write/read 두 세션 모두 실제 Primary이며 실제 Replica 전환/복제 지연은 여전히 미검증이다. 외부 모델 호출 0·권한/이미지 변경 없음이다. 다음은 미검증 S11 하위 변형의 실습 설정·원복 범위 정의이며 GPT-6 SOL high를 추천한다.
+
+
+## S11 세 변형 관측·빈 환경변수 처리 보완
+
+[최초 실측과 복구](B6-cache-variants.md)에서 bypass는 후보 0, JSON hit/error는 일반 캐시 처리 오류 후보 1과 HTTP 200 DB fallback을 확인했다. 미설정 unavailable도 관측했으나 API가 빈 value를 생략해 구성 요약과 원복 검사가 이를 처리하지 못했다. 최초 recovery_failed·미설정 needs_review는 보존한다. 자기 자료는 정리했고 검사기 수정 후 원래 Redis 설정/Pod 정의·HTTP·Redis·DB 행 0을 수동 복구 검증했다. 로컬 314개 시험 통과, 수집기 수정 PR #51 원격 CI 통과. 다음은 승인 이미지 배포와 미설정만 새 입력으로 재확인하는 작업이다. 전체 S11·B 완료·C 진입·라이브 모델 완료로 표시하지 않는다.
+
+
+## S11 승인 이미지 배포·미설정 단독 재확인 완료
+
+[후속 실측](B6-cache-variants.md)에서 사용자 승인 실행 39571993434·main 38b5d85·ECR 검사 0건의 수정 수집기를 운영 Helm revision 4와 실습 수집기에 배포했다. 같은 PVC와 기존 운영 5건/실습 11건을 보존했다. 미설정만 새 실행으로 재확인해 available 구성 false·unavailable·후보 0·partial/unknown과 자동 원복을 확인했다. 최초 recovery_failed·미설정 needs_review·수동 복구는 덮어쓰지 않았다. 자기 DB 행 0·원래 Pod 정의·Ready·HTTP/Redis·worker/Prometheus/retention/HTTPS도 정상이다. 우회/JSON을 다시 시험하지 않았으며 세 하위 사례 묶음만 완료로 본다. 다음은 S10 실습 CI/자동 롤백·신뢰할 배포 전후 이력 준비다. B-06 전체·B 완료·C 진입·라이브 모델은 계속 보류한다.
+
+## S10 CI 이력 출처 사전 점검
+
+[출처 검사와 후속 순서](B6-ci-history-preflight.md)를 추가했다. 운영자 `gh` 읽기로 등록 저장소·main workflow·검토한 SHA·run/attempt를 확인하고, 선택한 artifact의 ZIP 해시·단일 JSON·관측 형식·시간 순서를 검사한다. Healthy가 최초 실패를 지우거나 CI 롤백 검증을 사용자 HTTP 복구로 확대하지 않게 했다. 신규 시험 13개가 통과했고 기존 전체 시험은 이번 작업만을 위해 반복하지 않았다.
+
+기존 실제 실행 39538744371·39202258522의 출처 조회는 통과했지만 배포/롤백 관측 파일은 모두 누락이었다. `incomplete`로 남겼으며 실제 유효 ZIP 경로·자동 롤백 성공은 미검증이다. 현재 v1 기록은 운영 앱용이고 cluster/Deployment UID가 없어 실습 대상과 결합하지 않는다. 조사 입력 연결을 비활성으로 유지하고 기존 `missing_history`도 남겼다. 운영 리소스·이미지·권한·외부 모델 정책은 변경하지 않았다. 다음은 S10-02 격리된 GitOps 경로와 최소 실행 권한 준비다.
+
+## S10-02 GitOps·공유 잠금 후속
+
+[적용 전 준비](B6-gitops-preparation.md)에서 실습 앱 한 개의 GitOps 입력과 수동 Application·Project·최소 권한·서버 대상 제한 정책을 작성했다. 기존 수동 실행기와 설치기에 공유 Lease와 소유권 검사를 연결했다. 새 19개를 포함한 관련 시험 79개, 실제 서버 dry-run과 앱 spec 불변·운영/실습 식별자 불변, 공유 잠금 경쟁 거부·정상 해제를 확인했다.
+
+실제 추가한 것은 해제된 Lease 한 개이며 정책/권한·Application·collector binding은 미적용이다. 선택한 기준 커밋에 새 배포 파일이 없어 인계 준비 플래그는 false로 남겼다. 다음은 코드 원격 반영·검토 SHA 고정과 정책/권한 실제 검사·Argo 인계·S10-03 CI 연결이다. CI 자동 롤백과 진단의 실환경 성공, B 완료·C 진입은 계속 보류한다.
+
+## 2026-10-21 종료 정리 이후 현재 상태
+
+사용자 요청으로 프로젝트 AWS 인프라와 AI PVC/실습 데이터를 정리했다. 위 실측은 정리 이전 결과이며 현재 실행 클러스터·저장 보고서가 남아 있다는 뜻이 아니다. 로컬 구현·평가 요약은 유지하며 B 완료·C 진입 보류도 유지한다. 재개 시 재설치와 보존 로그 import·승인 이미지·현재 환경 검증을 먼저 수행한다. [실제 정리 확인](../../docs/runbooks/infrastructure-cleanup-2026-10-21.md).
+
+
+## 2026-10-23 완료 근거 통합과 다음 작업
+
+이 절과 위 시나리오 표가 최신 판정이다. 앞선 절의 “다음 작업·미검증·현재 클러스터 없음”은 해당 기록 시점의 상태이며 아래 근거로 갱신한다. 최초 실패·v2 needs_review·자료 누락·stale 결과는 그대로 보존한다.
+
+| 범위 | 완료 근거 | 남겨 두는 한계 |
+|---|---|---|
+| S3 규칙 v3 | [승인 배포와 실제 재현](B6-image-rules-v3.md), [검증 JSON](assets/B6-rules-v3-deployment-validation.json) | 후보 1개는 이미지 취득 실패 가능성이다. 정확한 태그/인증/네트워크 원인과 서비스 전체 상태는 확정하지 않는다. |
+| S9 목록 경로 | [단일 Primary 실측](B6-primary-read-scenario.md), [검증 JSON](assets/B6-primary-read-validation.json) | 표식·목록 캐시 자연 만료·조회 세션 전환만 확인했다. 실제 Replica/복제 지연은 미검증이다. |
+| S11 의미 변형 | [우회·JSON·미설정 및 원복](B6-cache-variants.md), [최종 관측](assets/B6-s11-final-health.json) | 미설정 재확인 성공과 초기 실패를 구분한다. 최초 연결 실패 unavailable·정확한 JSON 원인 진단은 미검증이다. |
+| S10 상시 자동 조사 | [전달기·worker 실측](B6-ci-service-deployment.md), [검증 JSON](assets/B6-ci-service-deployment.json) | 실제 CI 자동 원복과 AI의 복구 조치는 다르다. 최종 CI failure는 최초 실패 보존의 의도된 결과다. |
+| 10월 23일 두 번째 재설치 | [설치 결과](../../docs/runbooks/installation-execution-2026-10-23-r2.md), [검증 JSON](../../docs/runbooks/installation-execution-2026-10-23-r2.json) | 현재 8개 Application·운영/AI/실습/CI 서비스 정상. 과거 보고서/PVC는 복원하지 않았고 새 장애 실험은 하지 않았다. |
+
+S10의 실제 자동 보고서는 규칙 `rules-captured-ci-v1`, 시도 1회, 사실 4·후보 1개였다. available 18·missing 7·invalid 2·stale 1로, 부족 자료를 숨기지 않았다. 큐 HMAC·CI 출처와 snapshot 결합·보고서 계약·재조회를 확인했다. 10월 23일 두 번째 재설치에서의 목록 조회는 과거 CI 2개 skipped·신규 접수 0이었다. 이를 새로운 CI 자동 조사 성공으로 계산하지 않는다.
+
+### 남은 작업 순서와 종료 기준
+
+| 순서·ID | 작업과 목적 | 완료 조건 |
+|---|---|---|
+| 1 · B-06-M1 · 설계 완료 | 실제 수집 자료의 외부 모델 비교 설계. A단계 모델 어댑터를 B단계의 어떤 정제 자료에 연결할지, 실습 대상·필드·전송 미리보기·승인 범위·비용/보관 조건을 정한다. | 기본 captured 차단을 유지한 설계와 허용/금지 필드·대상·재현 입력·실패 시 동작이 구체적으로 정해진다. 이 항목 자체로 외부 전송을 승인하지 않는다. |
+| 2 · B-06-M2 · 로컬/모의 완료 | 정한 정책에 맞는 제한된 입력 변환과 모델 어댑터 연결. | 현재 규칙 경로·기존 보고서를 보존하고 대상/필드/비용 제한 위반 시 전송 전 차단한다. 필요한 경계 시험만 수행한다. |
+| 3 · B-06-M3 | 허용된 입력 하나로 규칙과 모델 보고서를 비교. | 동일 입력의 근거 인용·원인 후보·부족 자료·정상 오진·시간·비용을 확인한다. 한 사례를 일반 정확도·MTTR 개선으로 확대하지 않는다. |
+| 4 · B-06-E1 | 최종 평가와 B 범위 확정. | S1~S11의 검증/부분 검증/보류 범위와 모델 한계, 운영 데모·포트폴리오 주장을 일치시키고 C 진입 조건을 판정한다. |
+
+추가 Replica 토폴로지, 초기 연결 실패 unavailable, 정상 진단 기준·실시간 악성 입력, 모델 timeout/429/예산 경로, 장기간 가용성은 남은 검증 범위다. 모두 지금 즉시 반복 실행할 목록으로 취급하지 않는다. 위 설계에서 이번 포트폴리오의 필수 범위와 후속 확장으로 구분하고, 코드 변경·새 실패·명확한 미검증 조건이 있을 때 해당 검사만 추가한다. 기존 통과 시나리오의 전면 재실행이나 C 실행 권한 부여는 이번 정리에 포함하지 않았다. 다음 추천 추론 깊이는 GPT-6 SOL high다.
+
+### B-06-M1 설계 완료 — 2026-10-23
+
+[실습 모델 비교 정책](B6-model-data-policy.md)에 정확한 대상·허용/금지 필드·원본 출처 보존·미리보기·일회 승인·외부 토큰 계산·비용/보관·동일 view 비교와 M2 파일별 순서를 정했다. 첫 비교는 새 장애 없는 읽기 관측 한 건이다. 기본 gate와 worker 모델 비활성은 유지했다. 실제 projection/API 호출·모델 과금은 없다. 다음은 **B-06-M2 외부 호출 없는 구현과 모의 검증**이다. 정상 진단 품질·실제 모델 비교·B 완료·C 진입은 보류한다.
+
+### B-06-M2 구현·모의 검증 완료 — 2026-10-23
+
+[구현 기록](B6-model-projection-implementation.md): 별도 정제 계약/실습 내부 exporter·미리보기·입력/코드 결합 승인·모의 예산·중단/중복 차단·같은 view 규칙/모의 보고서·보관 정리를 구현했다. 신규 24개·최신 main 전체 398개 시험과 기존 배포 경계 검사를 통과했다. 실제 자료 반출/API/클러스터 변경은 없고, mock 결과를 모델 품질이나 실제 비용으로 계산하지 않는다. 다음 B-06-M3에서 실제 반출 호환성·전송 미리보기·계정/가격/보관·실제 HTTP transport와 새 승인을 준비한다. B 전체 완료·C 진입은 보류한다.

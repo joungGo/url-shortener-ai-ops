@@ -1,0 +1,379 @@
+{
+  "scenario": "S11",
+  "run_id": "c340b1e5df414ecda054890c10eb7fbf",
+  "namespace": "ai-ops-lab",
+  "status": "passed",
+  "started_at": "2026-10-21T09:03:50.250191+00:00",
+  "cases": [
+    {
+      "variant": "unconfigured",
+      "observations": [
+        {
+          "at": "2026-10-21T09:09:23.295340+00:00",
+          "http_status": 200,
+          "counters_before": {},
+          "counters_after": {
+            "unavailable": 1.0
+          },
+          "db_count_before": null,
+          "db_count_after": 1.0,
+          "redis_configured": false,
+          "redis_ping": true,
+          "json_invalid_injected": false,
+          "bypass_header_sent": false,
+          "delay_header_sent": false,
+          "cached_value_unchanged": null,
+          "http_calls": 3
+        },
+        {
+          "at": "2026-10-21T09:10:00.926301+00:00",
+          "http_status": 200,
+          "counters_before": {
+            "unavailable": 1.0
+          },
+          "counters_after": {
+            "unavailable": 2.0
+          },
+          "db_count_before": 1.0,
+          "db_count_after": 2.0,
+          "redis_configured": false,
+          "redis_ping": true,
+          "json_invalid_injected": false,
+          "bypass_header_sent": false,
+          "delay_header_sent": false,
+          "cached_value_unchanged": null,
+          "http_calls": 3
+        }
+      ],
+      "started_at": "2026-10-21T09:03:58.496293+00:00",
+      "preparation": {
+        "created": true,
+        "redis_configured": false,
+        "database_roles": {
+          "write_in_recovery": false,
+          "read_in_recovery": false
+        },
+        "baseline": {
+          "cache": {},
+          "db_count": null
+        },
+        "redis_ping": true,
+        "http_calls": 3
+      },
+      "ground_truth_recorded_at": "2026-10-21T09:10:35.931690+00:00",
+      "report": {
+        "incident_id": "inc-6658695d19564adc9c75cdf686747eb0",
+        "run_id": "run-754ba86110164143bd9e6d788601e010",
+        "bundle_hash": "bed3dbf04d1be6684df1fbcf09fbd18a7343fe3c6d9e3cccf1de99a5cb29e4cf",
+        "engine": "rules-captured-v3",
+        "analysis_status": "partial",
+        "diagnosis_status": "insufficient_evidence",
+        "current_state": "unknown",
+        "facts": 4,
+        "hypotheses": 0,
+        "hypothesis_evidence_ids": [],
+        "fact_evidence_ids": [
+          [
+            "ev-metric-db_latency"
+          ],
+          [
+            "ev-pod-0-status"
+          ],
+          [
+            "ev-deployment-object"
+          ],
+          [
+            "ev-metric-cache_outcomes"
+          ]
+        ],
+        "workload_states": [
+          {
+            "id": "ev-pod-0-status",
+            "phase": "Running",
+            "ready": true
+          }
+        ],
+        "event_reasons": [
+          {
+            "id": "ev-event-2",
+            "reason": "Scheduled",
+            "image_failure_marker": false
+          },
+          {
+            "id": "ev-event-4",
+            "reason": "SuccessfulCreate",
+            "image_failure_marker": false
+          },
+          {
+            "id": "ev-event-5",
+            "reason": "Created",
+            "image_failure_marker": false
+          },
+          {
+            "id": "ev-event-7",
+            "reason": "ScalingReplicaSet",
+            "image_failure_marker": false
+          },
+          {
+            "id": "ev-event-9",
+            "reason": "Pulled",
+            "image_failure_marker": false
+          },
+          {
+            "id": "ev-event-10",
+            "reason": "ScalingReplicaSet",
+            "image_failure_marker": false
+          },
+          {
+            "id": "ev-event-13",
+            "reason": "Started",
+            "image_failure_marker": false
+          }
+        ],
+        "evidence_statuses": {
+          "available": 14,
+          "stale": 6,
+          "invalid": 1,
+          "missing": 5
+        },
+        "collection_entries": [
+          {
+            "id": "ev-pod-0-status",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-pod-0-log",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-pod-0-config",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-event-0",
+            "status": "stale",
+            "reason": "outside_window"
+          },
+          {
+            "id": "ev-event-1",
+            "status": "stale",
+            "reason": "outside_window"
+          },
+          {
+            "id": "ev-event-2",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-event-3",
+            "status": "stale",
+            "reason": "outside_window"
+          },
+          {
+            "id": "ev-event-4",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-event-5",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-event-6",
+            "status": "invalid",
+            "reason": "invalid_payload"
+          },
+          {
+            "id": "ev-event-7",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-event-8",
+            "status": "stale",
+            "reason": "outside_window"
+          },
+          {
+            "id": "ev-event-9",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-event-10",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-event-11",
+            "status": "stale",
+            "reason": "outside_window"
+          },
+          {
+            "id": "ev-event-12",
+            "status": "stale",
+            "reason": "outside_window"
+          },
+          {
+            "id": "ev-event-13",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-deployment-object",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-deployment-argo",
+            "status": "missing",
+            "reason": "not_found"
+          },
+          {
+            "id": "ev-deployment-ci-history",
+            "status": "missing",
+            "reason": "missing_history"
+          },
+          {
+            "id": "ev-metric-cache-outcome-gaps",
+            "status": "missing",
+            "reason": "empty_response"
+          },
+          {
+            "id": "ev-metric-cache_outcomes",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-metric-cache_hit_ratio",
+            "status": "missing",
+            "reason": "empty_response"
+          },
+          {
+            "id": "ev-metric-http_error_ratio",
+            "status": "missing",
+            "reason": "empty_response"
+          },
+          {
+            "id": "ev-metric-api_latency",
+            "status": "available",
+            "reason": "collected"
+          },
+          {
+            "id": "ev-metric-db_latency",
+            "status": "available",
+            "reason": "collected"
+          }
+        ],
+        "cache_configured_values": [
+          false
+        ],
+        "generic_cache_error_only": true,
+        "metric_samples": {
+          "cache_outcomes": [
+            {
+              "at": "2026-10-21T09:10:37.712020Z",
+              "outcome": "unavailable",
+              "value": 2.110866666666667,
+              "source_at": "2026-10-21T09:10:37.712020Z",
+              "source_offset": "Z"
+            }
+          ],
+          "api_latency": [
+            {
+              "at": "2026-10-21T09:10:37.712020Z",
+              "outcome": "count",
+              "value": 2.110866666666667,
+              "source_at": "2026-10-21T09:10:37.712020Z",
+              "source_offset": "Z"
+            },
+            {
+              "at": "2026-10-21T09:10:37.712020Z",
+              "outcome": "p95",
+              "value": 0.00975,
+              "source_at": "2026-10-21T09:10:37.712020Z",
+              "source_offset": "Z"
+            }
+          ],
+          "db_latency": [
+            {
+              "at": "2026-10-21T09:10:37.712020Z",
+              "outcome": "count",
+              "value": 2.110866666666667,
+              "source_at": "2026-10-21T09:10:37.712020Z",
+              "source_offset": "Z"
+            },
+            {
+              "at": "2026-10-21T09:10:37.712020Z",
+              "outcome": "p99",
+              "value": 0.00496,
+              "source_at": "2026-10-21T09:10:37.712020Z",
+              "source_offset": "Z"
+            }
+          ]
+        },
+        "external_model_blocked": true,
+        "fact_citations_available": true
+      },
+      "report_check": "no_false_cause",
+      "recovery": {
+        "owned_data_removed": true,
+        "json_value_restored": null,
+        "markers_expired": true,
+        "redis_ping": true,
+        "http_status": 200,
+        "http_calls": 4
+      },
+      "finished_at": "2026-10-21T09:10:41.305041+00:00"
+    }
+  ],
+  "http_calls": 15,
+  "http_call_limit": 48,
+  "external_model_calls": 0,
+  "scope": "bypass_json_unconfigured_variants_single_primary_not_live_model",
+  "selected_variants": [
+    "unconfigured"
+  ],
+  "baseline": {
+    "lab-api": {
+      "uid": "b4d16b99-31af-4e15-8084-99b46b0056b0",
+      "generation": 7,
+      "image": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener@sha256:038046d5407d0c6843b31e26e32e8a6f4a812b1dc7e5710413b44207b696b699"
+    },
+    "lab-redis": {
+      "uid": "28b7adfb-8a1b-4040-a5e0-37d262c9360f",
+      "generation": 3,
+      "image": "docker.io/library/redis@sha256:ca0acbb137c1dc3339c8b147a58fd6f42775d4599327b50e7b116c23de501af2"
+    },
+    "lab-postgres": {
+      "uid": "34ffa79b-5b39-449f-90f8-877e4f11a740",
+      "generation": 1,
+      "image": "docker.io/library/postgres@sha256:da9ee8a31159116ea979e5018ce5e3fb19d1494f43115bfb5696ed398ed2ff5a"
+    },
+    "lab-collector": {
+      "uid": "5c1a3b42-0179-4614-8c1b-cab13c1b3bc9",
+      "generation": 3,
+      "image": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener-practice-ai-ops@sha256:dc34cf5e5fd776aaadf2a14a8e9bb04a659b58fcc7c30e5cc67f2df14aa05f3f"
+    }
+  },
+  "restored_health": {
+    "http": {
+      "/readyz": 200,
+      "/items": 200
+    },
+    "redis_ping": true,
+    "http_calls": 2
+  },
+  "cleanup": {
+    "unconfigured_data_removed": true,
+    "cache_setting_restored": true,
+    "restored_http_and_redis": true,
+    "production_unchanged": true,
+    "lab_uids_images_unchanged": true
+  },
+  "finished_at": "2026-10-21T09:10:58.357638+00:00",
+  "previous_window_guard": true
+}

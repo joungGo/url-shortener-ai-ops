@@ -1,0 +1,40 @@
+{
+  "status": "passed",
+  "verified_at": "2026-10-21T09:11:21.485454+00:00",
+  "report_preservation": {
+    "ai-ops": {
+      "preserved_reports": 5,
+      "preserved_files": 15,
+      "all_old_hashes_unchanged": true
+    },
+    "ai-ops-lab": {
+      "preserved_reports": 11,
+      "preserved_files": 33,
+      "all_old_hashes_unchanged": true
+    }
+  },
+  "metrics": {
+    "up": 1.0,
+    "retention_enabled": 1.0,
+    "retention_last_success": 1792573844.798793,
+    "retention_overdue": 0.0,
+    "worker_progress_age_seconds": 33.62885403633118
+  },
+  "https": {
+    "readyz": {
+      "http_status": 200,
+      "tls_verify_result": 0
+    },
+    "items": {
+      "http_status": 200,
+      "tls_verify_result": 0
+    }
+  },
+  "same_pvc": true,
+  "app_identity_unchanged": true,
+  "ecr_scan_status": "COMPLETE",
+  "ecr_scan_finding_counts": {},
+  "external_model_calls": 0,
+  "b_stage_completion": "held",
+  "c_stage_ready": false
+}

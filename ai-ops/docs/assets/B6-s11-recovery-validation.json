@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "verified_at": "2026-10-21T08:46:01.816795+00:00",
+  "scope": "manual_recovery_only_initial_S11_failed_report_preserved",
+  "run_id": "c5f03fa99b8647a189f2bd67b2fb20eb",
+  "app_checks": {
+    "redis_setting_restored": true,
+    "owned_database_rows_remaining": 0,
+    "owner_files_removed": true,
+    "list_marker_expired": true,
+    "redis_ping": true
+  },
+  "original_template_hash_matches": true,
+  "lab_uids_images_unchanged": true,
+  "original_failed_result_preserved": true,
+  "unconfigured_report_quality": "needs_review",
+  "local_tests_after_fix": 313,
+  "external_model_calls": 0
+}

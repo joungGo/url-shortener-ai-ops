@@ -10,6 +10,7 @@ import time
 import uuid
 
 from ai_ops.b6_lab import CONTEXT, NAMESPACE, PURPOSE
+from ai_ops.b6_coordination import require_manual_deployment
 
 
 def utc_now():
@@ -163,7 +164,9 @@ settings=load_b_settings(*(Path('/etc/ai-ops')/name for name in ('bindings.json'
 binding=settings.bindings.bindings[0]
 assert binding.target.namespace=='ai-ops-lab' and binding.target.environment=='practice'
 assert settings.runtime.llm_enabled is False
-snapshot=collect_snapshot(settings,binding.target,route='/items/{item_id}',operation='select_one')
+route,operation=sys.argv[2:] if len(sys.argv)==4 else ('/items/{item_id}','select_one')
+assert (route,operation) in (('/items/{item_id}','select_one'),('/items','select_all'))
+snapshot=collect_snapshot(settings,binding.target,route=route,operation=operation)
 store=IncidentStore(Path('/data/incidents'))
 record=store.investigate_snapshot(snapshot=snapshot,settings=settings,question='현재 요청 처리와 캐시 관측을 확인하고 부족한 자료를 설명해 주세요.',request_id=sys.argv[1])
 record=store.show(record.incident_id,record.run_id)
@@ -192,6 +195,9 @@ print(json.dumps({'incident_id':record.incident_id,'run_id':record.run_id,'bundl
         for item in snapshot.bundle.evidence if item.status=='available' and item.kind=='event'],
     'evidence_statuses':dict(Counter(e.status for e in snapshot.bundle.evidence)),
     'collection_entries':[{'id':e.evidence_id,'status':e.status,'reason':e.reason} for e in snapshot.audit.entries],
+    'cache_configured_values':[item.payload['redis_url_configured'] for item in snapshot.bundle.evidence
+        if item.kind=='config_summary' and item.status=='available' and 'redis_url_configured' in item.payload],
+    'generic_cache_error_only':all(h.cause=='캐시 조회 또는 데이터 처리 중 오류가 있었을 가능성이 있다.' for h in report.hypotheses),
     'metric_samples':metrics,'external_model_blocked':True,'fact_citations_available':True}))
 '''
 
@@ -221,8 +227,8 @@ print(json.dumps(values))
 class LabClient:
     """고정 실습 Redis replicas와 실습 앱 이미지의 제한된 변경만 지원한다."""
 
-    def command(self, *args, timeout=45):
-        result = subprocess.run(["kubectl", "--context", CONTEXT, *args], capture_output=True, text=True, timeout=timeout)
+    def command(self, *args, timeout=45, payload=None):
+        result = subprocess.run(["kubectl", "--context", CONTEXT, *args], input=payload, capture_output=True, text=True, timeout=timeout)
         if result.returncode:
             raise ValueError("고정 실습 명령이 실패했습니다")
         return result.stdout
@@ -240,11 +246,14 @@ class LabClient:
 
     def guard(self, *, require_quality=True):
         namespace = self.get(NAMESPACE, "namespace", NAMESPACE)
+        require_manual_deployment(namespace)
         if any(namespace["metadata"].get("labels", {}).get(k) != v for k, v in PURPOSE.items()):
             raise ValueError("실습 소유 label이 다릅니다")
         identity = {}
         for name in ("lab-api", "lab-redis", "lab-postgres", "lab-collector"):
             obj = self.get(NAMESPACE, "deployment", name)
+            if name == "lab-api":
+                require_manual_deployment(obj)
             if (any(obj["metadata"].get("labels", {}).get(k) != v for k, v in PURPOSE.items())
                     or obj["spec"]["replicas"] != 1 or obj["status"].get("readyReplicas") != 1):
                 raise ValueError("실습 대상이 정상 기준선이 아닙니다")
@@ -252,6 +261,8 @@ class LabClient:
                               "image": obj["spec"]["template"]["spec"]["containers"][0]["image"]}
         if not hasattr(self, "redis_uid"):
             self.redis_uid = identity["lab-redis"]["uid"]
+        if self.command("-n", "argocd", "get", "application", "lab-target", "--ignore-not-found", "-o", "json").strip():
+            raise ValueError("실습 Application 등록 후에는 수동 실습 실행기를 사용하지 않습니다")
         # 기존 인가 검사와 동일하게 실제 Secret 조회나 쓰기는 실행하지 않는다.
         for verb, resource, namespace, expected in (
             ("get", "deployments.apps/lab-api", NAMESPACE, "yes"),
@@ -290,6 +301,7 @@ class LabClient:
             if not re.fullmatch(re.escape(repository) + r"(?:@sha256:[a-f0-9]{64}|:b6-missing-[a-f0-9]{32})", image):
                 raise ValueError("실습용 앱 저장소 밖의 이미지는 사용할 수 없습니다")
         obj = self.get(NAMESPACE, "deployment", "lab-api")
+        require_manual_deployment(obj)
         containers = obj["spec"]["template"]["spec"]["containers"]
         if (obj["metadata"]["uid"] != baseline["uid"] or len(containers) != 1 or containers[0]["name"] != "api"
                 or obj["spec"]["replicas"] != 1 or obj["spec"]["strategy"]["type"] != "Recreate"
@@ -362,6 +374,26 @@ class LabClient:
     def collect(self, run_id):
         return self.remote("lab-collector", "collector", COLLECT_PROGRAM, "lab-investigation-" + run_id)
 
+    def consistency(self, action, run_id):
+        from ai_ops.b6_consistency import CONSISTENCY_PROGRAM
+        return self.remote("lab-api", "api", CONSISTENCY_PROGRAM, action, run_id)
+
+    def collect_consistency(self, run_id):
+        return self.remote("lab-collector", "collector", COLLECT_PROGRAM, "lab-investigation-" + run_id,
+                           "/items", "select_all")
+
+    def cache_variant(self, action, run_id, variant):
+        from ai_ops.b6_cache_variants import CACHE_PROGRAM
+        return self.remote("lab-api", "api", CACHE_PROGRAM, action, run_id, variant)
+
+    def cache_setting(self):
+        from ai_ops.b6_cache_variants import cache_setting
+        return cache_setting(self)
+
+    def toggle_cache(self, baseline, *, disabled):
+        from ai_ops.b6_cache_variants import toggle_cache
+        return toggle_cache(self, baseline, disabled=disabled)
+
     def scale_redis(self, replicas):
         if type(replicas) is not int or replicas not in (0, 1):
             raise ValueError("Redis replicas는 0 또는 1만 허용합니다")
@@ -423,15 +455,25 @@ def check_delay(read, *, delayed, baseline=None):
     return seconds
 
 
-def execute(scenario, client, *, sleep=time.sleep, run_id=None, event=None, checkpoint=None, recovery_plan=None):
+def execute(scenario, client, *, sleep=time.sleep, run_id=None, event=None, checkpoint=None, recovery_plan=None, cache_variant=None):
     """관측·주입·복구를 구분하며 어떤 실패도 성공 결과로 바꾸지 않는다."""
-    if scenario not in {"S1", "S2", "S3", "S4"}:
-        raise ValueError("이번 실행기는 S1·S2·S3·S4만 지원합니다")
+    if scenario not in {"S1", "S2", "S3", "S4", "S9", "S11"}:
+        raise ValueError("이번 실행기는 S1·S2·S3·S4·S9·S11만 지원합니다")
+    if cache_variant not in (None,"unconfigured") or (cache_variant is not None and scenario!="S11"):
+        raise ValueError("미설정 단독 재확인은 S11에서만 지원합니다")
     run_id = run_id or uuid.uuid4().hex
     if not re.fullmatch(r"[a-f0-9]{32}", run_id):
         raise ValueError("실습 실행 ID 형식이 다릅니다")
     if scenario == "S3":
         return execute_image(client, run_id, event=event, checkpoint=checkpoint, recovery_plan=recovery_plan)
+    if scenario == "S9":
+        from ai_ops.b6_consistency import execute_consistency
+        return execute_consistency(client, run_id, sleep=sleep, event=event, checkpoint=checkpoint)
+    if scenario == "S11":
+        from ai_ops.b6_cache_variants import execute_cache_variants
+        variants=("unconfigured",) if cache_variant else ("bypass","json","unconfigured")
+        return execute_cache_variants(client, run_id, sleep=sleep, event=event, checkpoint=checkpoint,
+                                      recovery_plan=recovery_plan, variants=variants)
     notify = event or (lambda message: None)
     result = {"scenario": scenario, "run_id": run_id, "namespace": NAMESPACE, "status": "failed",
               "started_at": utc_now(), "observations": [], "http_calls": 0, "external_model_calls": 0,

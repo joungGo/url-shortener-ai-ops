@@ -1,0 +1,231 @@
+{
+  "scenario": "S9",
+  "run_id": "48d4283fe36942e3b7fa593ec74c2186",
+  "namespace": "ai-ops-lab",
+  "status": "observations_recorded",
+  "started_at": "2026-10-21T08:14:52.801721+00:00",
+  "rounds": [
+    {
+      "round": 0,
+      "write_started_at": "2026-10-21T08:15:02.620824+00:00",
+      "write_completed_at": "2026-10-21T08:15:02.682698+00:00",
+      "observations": [
+        {
+          "phase": "recent_write",
+          "at": "2026-10-21T08:15:02.683626+00:00",
+          "http_status": 200,
+          "marker_before_ms": 4941,
+          "marker_after_ms": 4930,
+          "cache_before_ms": -2,
+          "cache_after_ms": 59997,
+          "counters_before": {
+            "hit": 1.0
+          },
+          "counters_after": {
+            "hit": 1.0,
+            "consistency_primary": 1.0
+          },
+          "db_count_before": null,
+          "db_count_after": 1.0
+        },
+        {
+          "phase": "marker_expired_cache_hit",
+          "at": "2026-10-21T08:15:07.660191+00:00",
+          "http_status": 200,
+          "marker_before_ms": -2,
+          "marker_after_ms": -2,
+          "cache_before_ms": 55031,
+          "cache_after_ms": 55025,
+          "counters_before": {
+            "hit": 1.0,
+            "consistency_primary": 1.0
+          },
+          "counters_after": {
+            "hit": 2.0,
+            "consistency_primary": 1.0
+          },
+          "db_count_before": 1.0,
+          "db_count_after": 1.0
+        },
+        {
+          "phase": "cache_expired_read_session",
+          "at": "2026-10-21T08:16:02.788640+00:00",
+          "http_status": 200,
+          "marker_before_ms": -2,
+          "marker_after_ms": -2,
+          "cache_before_ms": -2,
+          "cache_after_ms": 59997,
+          "counters_before": {
+            "hit": 2.0,
+            "consistency_primary": 1.0
+          },
+          "counters_after": {
+            "hit": 2.0,
+            "consistency_primary": 1.0,
+            "miss": 1.0
+          },
+          "db_count_before": 1.0,
+          "db_count_after": 2.0
+        },
+        {
+          "phase": "warm_cache_hit",
+          "at": "2026-10-21T08:16:02.808617+00:00",
+          "http_status": 200,
+          "marker_before_ms": -2,
+          "marker_after_ms": -2,
+          "cache_before_ms": 59989,
+          "cache_after_ms": 59984,
+          "counters_before": {
+            "hit": 2.0,
+            "consistency_primary": 1.0,
+            "miss": 1.0
+          },
+          "counters_after": {
+            "hit": 3.0,
+            "consistency_primary": 1.0,
+            "miss": 1.0
+          },
+          "db_count_before": 2.0,
+          "db_count_after": 2.0
+        }
+      ],
+      "database_roles": {
+        "write_in_recovery": false,
+        "read_in_recovery": false,
+        "same_configured_database": true
+      },
+      "marker_ttl_seconds": 5,
+      "natural_list_cache_expiry": true,
+      "bypass_header_sent": false,
+      "delay_header_sent": false,
+      "redis_ping": true,
+      "http_calls": 11
+    },
+    {
+      "round": 1,
+      "write_started_at": "2026-10-21T08:16:05.617686+00:00",
+      "write_completed_at": "2026-10-21T08:16:05.627749+00:00",
+      "observations": [
+        {
+          "phase": "recent_write",
+          "at": "2026-10-21T08:16:05.628492+00:00",
+          "http_status": 200,
+          "marker_before_ms": 4992,
+          "marker_after_ms": 4986,
+          "cache_before_ms": -2,
+          "cache_after_ms": 59998,
+          "counters_before": {
+            "hit": 3.0,
+            "consistency_primary": 1.0,
+            "miss": 1.0
+          },
+          "counters_after": {
+            "hit": 3.0,
+            "consistency_primary": 2.0,
+            "miss": 1.0
+          },
+          "db_count_before": 2.0,
+          "db_count_after": 3.0
+        },
+        {
+          "phase": "marker_expired_cache_hit",
+          "at": "2026-10-21T08:16:10.647777+00:00",
+          "http_status": 200,
+          "marker_before_ms": -2,
+          "marker_after_ms": -2,
+          "cache_before_ms": 54985,
+          "cache_after_ms": 54978,
+          "counters_before": {
+            "hit": 3.0,
+            "consistency_primary": 2.0,
+            "miss": 1.0
+          },
+          "counters_after": {
+            "hit": 4.0,
+            "consistency_primary": 2.0,
+            "miss": 1.0
+          },
+          "db_count_before": 3.0,
+          "db_count_after": 3.0
+        },
+        {
+          "phase": "cache_expired_read_session",
+          "at": "2026-10-21T08:17:05.658633+00:00",
+          "http_status": 200,
+          "marker_before_ms": -2,
+          "marker_after_ms": -2,
+          "cache_before_ms": -2,
+          "cache_after_ms": 59998,
+          "counters_before": {
+            "hit": 4.0,
+            "consistency_primary": 2.0,
+            "miss": 1.0
+          },
+          "counters_after": {
+            "hit": 4.0,
+            "consistency_primary": 2.0,
+            "miss": 2.0
+          },
+          "db_count_before": 3.0,
+          "db_count_after": 4.0
+        },
+        {
+          "phase": "warm_cache_hit",
+          "at": "2026-10-21T08:17:05.674373+00:00",
+          "http_status": 200,
+          "marker_before_ms": -2,
+          "marker_after_ms": -2,
+          "cache_before_ms": 59990,
+          "cache_after_ms": 59985,
+          "counters_before": {
+            "hit": 4.0,
+            "consistency_primary": 2.0,
+            "miss": 2.0
+          },
+          "counters_after": {
+            "hit": 5.0,
+            "consistency_primary": 2.0,
+            "miss": 2.0
+          },
+          "db_count_before": 4.0,
+          "db_count_after": 4.0
+        }
+      ],
+      "database_roles": null,
+      "marker_ttl_seconds": 5,
+      "natural_list_cache_expiry": true,
+      "bypass_header_sent": false,
+      "delay_header_sent": false,
+      "redis_ping": true,
+      "http_calls": 10
+    }
+  ],
+  "http_calls": 21,
+  "http_call_limit": 28,
+  "scope": "list_consistency_single_primary_not_actual_replica",
+  "external_model_calls": 0,
+  "baseline": {
+    "lab-api": {
+      "uid": "b4d16b99-31af-4e15-8084-99b46b0056b0",
+      "generation": 5,
+      "image": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener@sha256:038046d5407d0c6843b31e26e32e8a6f4a812b1dc7e5710413b44207b696b699"
+    },
+    "lab-redis": {
+      "uid": "28b7adfb-8a1b-4040-a5e0-37d262c9360f",
+      "generation": 3,
+      "image": "docker.io/library/redis@sha256:ca0acbb137c1dc3339c8b147a58fd6f42775d4599327b50e7b116c23de501af2"
+    },
+    "lab-postgres": {
+      "uid": "34ffa79b-5b39-449f-90f8-877e4f11a740",
+      "generation": 1,
+      "image": "docker.io/library/postgres@sha256:da9ee8a31159116ea979e5018ce5e3fb19d1494f43115bfb5696ed398ed2ff5a"
+    },
+    "lab-collector": {
+      "uid": "5c1a3b42-0179-4614-8c1b-cab13c1b3bc9",
+      "generation": 2,
+      "image": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener-practice-ai-ops@sha256:50a8c699bee3270f2bf9ad905820e32be590e653363ad73c764cb5ce8cbfb99e"
+    }
+  },
+  "ground_truth_recorded_at": "2026-10-21T08:17:05.778312+00:00",
+  "execution_status_final": false
+}

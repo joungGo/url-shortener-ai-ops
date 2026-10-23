@@ -64,6 +64,8 @@ GitHub environment를 사용하면 OIDC subject는 브랜치가 아닌 environme
 
 **아직 B-02 자동 수집/분석 입력에는 연결하지 않았다.** worker에 GitHub/ECR 자격증명을 주지 않는다. 운영자가 artifact를 취득한 뒤 출처·run/attempt·target·시간·hash를 검토하는 import 계약과 누락/충돌 처리, 원격 취득 identity·통신 경로는 후속이다. 따라서 현재 B 수집기의 `missing_history`를 제거하지 않았으며 S10 롤백 진단의 실환경 성공도 주장하지 않는다.
 
+2026-10-21 후속: [S10 사전 점검](B6-ci-history-preflight.md)으로 운영자 `gh`의 고정 저장소 조회와 run/attempt·소스·ZIP 해시·관측 형식·시간 검사를 구현했다. 실제 기존 실행 두 건의 자료 누락을 확인했으며 유효 ZIP 취득은 아직 자동 시험 범위다. cluster/Deployment UID까지 결합하는 계약과 실습 전용 producer·조사 입력 연결은 미구현이므로 위 `missing_history` 상태를 유지한다.
+
 ## 5. 검증과 남은 작업
 
 - Python 3.12.14/Pydantic 2.13.5 전체 **142건** 통과. 새 release/관측 시험은 12건이다.

@@ -138,3 +138,7 @@ test "$(printf '%s' "$S3_DELETE_RESULT" | jq '(.Errors // []) | length')" -eq 0
 ```
 
 마지막에 `list-object-versions`에서 `Versions`와 `DeleteMarkers`가 모두 빈 배열인지, `list-objects-v2`도 비었는지 확인한다. 그때만 전용 bucket에 대해 `aws s3api delete-bucket --bucket "$STATE_BUCKET" --region ap-northeast-2`를 실행한다. 이 명령은 **모든 root 종료 이후 별도의 파괴적 단계**이며 자동으로 이어붙이지 않는다. 실패하면 bucket 상태를 재조회하고 임의로 `--force` 옵션을 사용하지 않는다. GitHub `ai-ops-image` environment 설정은 AWS 삭제와 별개로 남으므로, 재설치 시 output과 다시 대조한다.
+
+## 2026-10-22 S10 CI 연결 이후 주의
+
+PR #55로 S10 선택 CI 역할·inline policy·EKS access entry 3개를 기존 AI state에 추가했다. main의 terraform/ai-ops-registry/b6-ci.tf로 관리하며 같은 state를 다시 적용할 때 enable_ai_ops_registry=true와 enable_b6_lab_ci=true를 유지해야 한다. 플래그 누락으로 CI 자원 삭제 계획이 나오면 중단한다. 전체 정리는 여전히 AI root → production root 순서다. GitHub ai-ops-lab-ci 환경/Secret은 AWS 삭제로 사라지지 않으며 새 클러스터 설치 후 전용 Argo 토큰 재발급이 필요하다. 상세는 ../../ai-ops/docs/B6-ci-experiment.md를 따른다.

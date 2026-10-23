@@ -1,0 +1,36 @@
+{
+  "status": "passed",
+  "verified_at": "2026-10-21T09:03:24.888630+00:00",
+  "image_run_id": 39571993434,
+  "source_revision": "38b5d85db58507f02b84b158f612e385748b5f10",
+  "image_digest": "sha256:dc34cf5e5fd776aaadf2a14a8e9bb04a659b58fcc7c30e5cc67f2df14aa05f3f",
+  "helm_revision": 4,
+  "report_preservation": {
+    "ai-ops": {
+      "preserved_reports": 5,
+      "preserved_files": 15,
+      "all_old_hashes_unchanged": true,
+      "collector_source_sha256": "951a578284cd46bf242faf0f4a55127ab6747fd56085533d14784f0663e3f34d"
+    },
+    "ai-ops-lab": {
+      "preserved_reports": 11,
+      "preserved_files": 33,
+      "all_old_hashes_unchanged": true,
+      "collector_source_sha256": "951a578284cd46bf242faf0f4a55127ab6747fd56085533d14784f0663e3f34d"
+    }
+  },
+  "pvc_uid": "b0236f94-4395-4aaa-91ac-3b2bbe31a78d",
+  "same_pvc": true,
+  "app_identity_unchanged": true,
+  "staging_pod_deleted": true,
+  "external_model_calls": 0,
+  "lab_store_migration": {
+    "preserved_reports": 11,
+    "preserved_files": 68,
+    "all_file_hashes_unchanged": true,
+    "raw_local_files": false
+  },
+  "ecr_scan_complete_zero_findings_verified": true,
+  "unconfigured_retry_status": "passed",
+  "unconfigured_retry_record": "B6-s11-unconfigured-retry-validation.json"
+}

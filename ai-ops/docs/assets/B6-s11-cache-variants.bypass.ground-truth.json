@@ -1,0 +1,78 @@
+{
+  "variant": "bypass",
+  "observations": [
+    {
+      "at": "2026-10-21T08:32:06.610243+00:00",
+      "http_status": 200,
+      "counters_before": {
+        "miss": 3.0,
+        "consistency_primary": 2.0,
+        "hit": 1.0
+      },
+      "counters_after": {
+        "miss": 3.0,
+        "consistency_primary": 2.0,
+        "hit": 1.0,
+        "bypass": 1.0
+      },
+      "db_count_before": 5.0,
+      "db_count_after": 6.0,
+      "redis_configured": true,
+      "redis_ping": true,
+      "json_invalid_injected": false,
+      "bypass_header_sent": true,
+      "delay_header_sent": false,
+      "cached_value_unchanged": true,
+      "http_calls": 3
+    },
+    {
+      "at": "2026-10-21T08:32:44.214604+00:00",
+      "http_status": 200,
+      "counters_before": {
+        "miss": 3.0,
+        "consistency_primary": 2.0,
+        "hit": 1.0,
+        "bypass": 1.0
+      },
+      "counters_after": {
+        "miss": 3.0,
+        "consistency_primary": 2.0,
+        "hit": 1.0,
+        "bypass": 2.0
+      },
+      "db_count_before": 6.0,
+      "db_count_after": 7.0,
+      "redis_configured": true,
+      "redis_ping": true,
+      "json_invalid_injected": false,
+      "bypass_header_sent": true,
+      "delay_header_sent": false,
+      "cached_value_unchanged": true,
+      "http_calls": 3
+    }
+  ],
+  "started_at": "2026-10-21T08:32:01.750230+00:00",
+  "preparation": {
+    "created": true,
+    "redis_configured": true,
+    "database_roles": {
+      "write_in_recovery": false,
+      "read_in_recovery": false
+    },
+    "baseline": {
+      "cache": {
+        "miss": 3.0,
+        "consistency_primary": 2.0,
+        "hit": 1.0
+      },
+      "db_count": 5.0
+    },
+    "redis_ping": true,
+    "http_calls": 5
+  },
+  "ground_truth_recorded_at": "2026-10-21T08:33:19.219953+00:00",
+  "scenario": "S11",
+  "run_id": "c5f03fa99b8647a189f2bd67b2fb20eb",
+  "status": "observations_recorded",
+  "execution_status_final": false
+}

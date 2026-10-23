@@ -184,3 +184,11 @@ Helm 소유의 `ai-ops-read-target`·`ai-ops-read-argo` Role/RoleBinding이 각 
 수신기는 내부 ClusterIP TLS 9443이며 2개 컨테이너 모두 Ready여야 한다. 위 TLS Secret 사전 준비와 두 overlay가 필수다. Alertmanager의 인증 Secret 마운트·CA 호스트명·Bearer 인증과 실제 경보 접수를 확인한다. TCP Ready만으로 전달 완료라 판단하지 않는다. 새 설치에는 예전 중복/해제 장부와 보고서가 복원되지 않는다.
 
 정리 시 monitoring의 `ai-ops-alertmanager-auth`는 AI Helm 종료 직후가 아니라 기존 모니터링 종료·수동 Secret 삭제 단계에서 제거한다. AI namespace의 수신기 Secret은 전용 namespace 삭제로 제거된다. 추가 ECR·IAM·state·외부 LoadBalancer는 만들지 않는다. 외부 Slack 시험 전송이 필요하면 별도 승인한 범위에서 수행한다.
+
+## S10 상시 전달기·실습 worker 추가 구성
+
+`ai-ci` 별도 namespace·전용 1Gi 암호화 PVC·GitHub Secret·두 Deployment를 추가하는 경우 [상시 CI 서비스 절차](../../ai-ops/docs/B6-ci-service.md)를 따른다. 기본 replicas=0 정의 생성은 상시 설치 완료가 아니다. 현재 main 이미지에 기능이 포함되고 승인 이미지 검사·worker probe·relay 조회·실제 CI 자동 접수까지 검증한 범위만 완료로 기록한다.
+
+전체 삭제에서 `ai-ops-lab` 및 EBS CSI보다 **먼저** `ai-ci`의 relay/worker를 0개로 중지하고 실제 PV/Volume ID를 기록한다. `ci-queue` PVC를 삭제하고 EBS 실물 부재를 확인한 뒤 namespace를 제거한다. `ai-ops-lab`·`argocd`의 `ci-worker-read` RoleBinding도 제거한다. 새 namespace가 없더라도 기록한 PVC/EBS와 태그 소유권을 대조하며 이전 볼륨 ID를 재사용하지 않는다. 로컬 전용 토큰 파일·소스·GitHub 설정은 AWS 전체 삭제와 별도로 보존한다. 재설치에서는 운영 설치·실습 복원·GitOps 인계와 새 자격 검증 후 worker→relay 순으로 활성화한다.
+
+2026-10-23에는 ai-ci worker·relay를 실제 활성화하고 최신 실습 CI 자동 접수와 보고서 저장을 확인했다. 전체 정리에서 이 namespace의 **전용 1Gi PVC/EBS**를 누락하지 않는다. 실제 Volume ID는 항상 새 조회로 기록하며 [실측](../../ai-ops/docs/B6-ci-service-deployment.md)을 참고한다. 재설치 시 기존 Secret 값·Pod UID·API 주소를 그대로 재사용하지 않는다.

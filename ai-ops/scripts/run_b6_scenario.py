@@ -1,4 +1,4 @@
-"""실습 S1~S4의 단일 실행을 잠그고 이전 5분 창과 복구 기록을 확인한다."""
+"""실습 S1~S4·S9·S11의 단일 실행을 잠그고 이전 5분 창과 복구를 확인한다."""
 
 import argparse
 import fcntl
@@ -8,15 +8,19 @@ import time
 import uuid
 
 from ai_ops.b6_scenarios import LabClient, execute
+from ai_ops.b6_coordination import LabLease
 from ai_ops.path_policy import cli_paths, permitted_path, write_private_json
 
 
 def main():
-    parser = argparse.ArgumentParser(description="고정 실습 namespace의 캐시·이미지 실패·DB 세션 지연 재현·복구")
-    parser.add_argument("--scenario", choices=("S1", "S2", "S3", "S4"), required=True)
+    parser = argparse.ArgumentParser(description="고정 실습 namespace의 캐시·이미지·DB 지연·최근 쓰기 경로 재현·복구")
+    parser.add_argument("--scenario", choices=("S1", "S2", "S3", "S4", "S9", "S11"), required=True)
+    parser.add_argument("--cache-variant",choices=("unconfigured",),help="수정 후 S11 미설정 사례만 재확인")
     parser.add_argument("--state-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = cli_paths(parser, parser.parse_args(), {"state_dir": "store", "output": "output"})
+    if args.cache_variant is not None and args.scenario!="S11":
+        parser.error("--cache-variant는 S11에서만 사용할 수 있습니다")
     checkpoint = permitted_path(args.output.with_name(args.output.stem + ".ground-truth.json"), "output")
     recovery = permitted_path(args.output.with_name(args.output.stem + ".recovery-plan.json"), "output")
     args.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -47,15 +51,44 @@ def main():
                 stream.flush()
                 os.fsync(stream.fileno())
         run_id = uuid.uuid4().hex
+        def record_truth(value):
+            if args.scenario == "S11":
+                variant=value.get("variant")
+                if variant not in {"bypass","json","unconfigured"}:
+                    raise ValueError("정의하지 않은 캐시 하위 사례입니다")
+                destination=permitted_path(args.output.with_name(args.output.stem+"."+variant+".ground-truth.json"),"output")
+                write_private_json(destination,value)
+            else:
+                write_private_json(checkpoint,value)
+        client = LabClient()
+        lease = LabLease(client.command, "manual-" + run_id)
+        try:
+            lock_identity = lease.acquire()
+        except Exception:
+            parser.exit(1, "공유 실습 잠금을 취득하지 못했습니다. 기존 실행·복구·지표 창을 확인하세요.\n")
         save({"active": True, "recovery_complete": False, "scenario": args.scenario, "run_id": run_id,
+              "cluster_lock": lock_identity,
               "output": str(args.output), "checkpoint": str(checkpoint), "recovery_plan": str(recovery)})
-        result = execute(args.scenario, LabClient(), run_id=run_id,
-                         event=lambda message: print(message, flush=True),
-                         checkpoint=lambda value: write_private_json(checkpoint, value),
-                         recovery_plan=lambda value: write_private_json(recovery, value))
+        try:
+            result = execute(args.scenario, client, run_id=run_id,
+                             event=lambda message: print(message, flush=True),
+                             checkpoint=record_truth,
+                             recovery_plan=lambda value: write_private_json(recovery, value),cache_variant=args.cache_variant)
+        except Exception:
+            parser.exit(1, "실습이 중단되어 공유 잠금을 보존했습니다. 기존 실행의 복구를 확인하세요.\n")
         result["previous_window_guard"] = True
+        recovered = bool(result.get("cleanup")) and all(value is True for value in result["cleanup"].values())
+        if not recovered:
+            result["status"] = "recovery_failed"
+        result["cluster_lock"] = {**lock_identity, "retained_for_recovery": not recovered}
+        # 예외나 복구 실패 때는 자동 해제하지 않는다. 다음 실행이 남은 변경을 덮어쓰지 않게 한다.
+        if recovered:
+            try:
+                result["cluster_lock"].update(lease.release(recovery_verified=True))
+            except Exception:
+                parser.exit(1, "공유 잠금 해제를 확인하지 못했습니다. 기존 실행·복구·잠금 소유자를 확인하세요.\n")
         write_private_json(args.output, result)
-        save({"active": False, "recovery_complete": all(result["cleanup"].values()),
+        save({"active": False, "recovery_complete": recovered, "cluster_lock": result["cluster_lock"],
               "scenario": args.scenario, "not_before": time.time() + 305, "result": str(args.output)})
         print("실습 시나리오 결과: " + result["status"])
         return 0 if result["status"] == "passed" else 1

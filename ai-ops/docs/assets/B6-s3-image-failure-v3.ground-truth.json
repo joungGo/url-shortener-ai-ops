@@ -1,0 +1,56 @@
+{
+  "scenario": "S3",
+  "run_id": "6ebe5dafc7e247ab8b5f0b7369aafb43",
+  "namespace": "ai-ops-lab",
+  "status": "observations_recorded",
+  "started_at": "2026-10-21T07:54:37.826060+00:00",
+  "external_model_calls": 0,
+  "http_calls": 2,
+  "scope": "isolated_image_failure_manual_restore_not_ci_rollback",
+  "baseline": {
+    "lab-api": {
+      "uid": "b4d16b99-31af-4e15-8084-99b46b0056b0",
+      "generation": 3,
+      "image": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener@sha256:038046d5407d0c6843b31e26e32e8a6f4a812b1dc7e5710413b44207b696b699"
+    },
+    "lab-redis": {
+      "uid": "28b7adfb-8a1b-4040-a5e0-37d262c9360f",
+      "generation": 3,
+      "image": "docker.io/library/redis@sha256:ca0acbb137c1dc3339c8b147a58fd6f42775d4599327b50e7b116c23de501af2"
+    },
+    "lab-postgres": {
+      "uid": "34ffa79b-5b39-449f-90f8-877e4f11a740",
+      "generation": 1,
+      "image": "docker.io/library/postgres@sha256:da9ee8a31159116ea979e5018ce5e3fb19d1494f43115bfb5696ed398ed2ff5a"
+    },
+    "lab-collector": {
+      "uid": "5c1a3b42-0179-4614-8c1b-cab13c1b3bc9",
+      "generation": 2,
+      "image": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener-practice-ai-ops@sha256:50a8c699bee3270f2bf9ad905820e32be590e653363ad73c764cb5ce8cbfb99e"
+    }
+  },
+  "bad_image": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener:b6-missing-6ebe5dafc7e247ab8b5f0b7369aafb43",
+  "image_absence_confirmed": true,
+  "intervention_started_at": "2026-10-21T07:54:48.300692+00:00",
+  "failure_observation": {
+    "deployment_uid": "b4d16b99-31af-4e15-8084-99b46b0056b0",
+    "deployment_generation": 4,
+    "replicaset_uids": [
+      "1b6c9306-e745-45fb-a8c5-1a6e0405f0da",
+      "6e6003be-9369-40e2-8caf-43800e31fe59",
+      "d5931b6c-cff8-41f7-b1f7-f2226b5df54c"
+    ],
+    "pod_uid": "6ed166ac-3cb9-4834-a76d-27357f7c27e2",
+    "waiting_reason": "ErrImagePull",
+    "ready_replicas": 0,
+    "event_reasons": [
+      "BackOff",
+      "Failed",
+      "Pulling"
+    ],
+    "at": "2026-10-21T07:54:57.696558+00:00"
+  },
+  "intervention_verified": true,
+  "ground_truth_recorded_at": "2026-10-21T07:54:57.696689+00:00",
+  "execution_status_final": false
+}

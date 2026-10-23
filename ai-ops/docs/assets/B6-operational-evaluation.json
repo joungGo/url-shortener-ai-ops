@@ -3,27 +3,27 @@
   "status": "in_progress",
   "b_stage_completion": "held",
   "c_stage_ready": false,
-  "scope": "production read-only operational evaluation",
-  "measured_at": "2026-10-21T04:30:18.817932+00:00",
-  "live_demo": "B6-operational-demo-v2.json",
+  "scope": "production read-only and isolated lab rules-based operational evaluation",
+  "measured_at": "2026-10-21T07:56:22.564254+00:00",
+  "live_demo": "B6-operational-demo-v3.json",
   "scenario_matrix": [
     {
       "id": "S1",
       "name": "Redis 접근 불가",
       "status": "observed_live_subcase",
-      "finding": "연결된 실습 Redis 중단·앱 error 3회·HTTP 200 DB fallback과 캐시 근거 원인 후보 1개를 확인했다. Redis·데이터 원복 통과. 미연결 unavailable 변형과 운영 Redis는 미검증이다."
+      "finding": "연결된 실습 Redis 중단·HTTP 200 DB fallback·캐시 근거 후보·원복 통과. 미설정 unavailable은 S11 별도 사례이며 초기 연결 실패 unavailable은 미검증이다."
     },
     {
       "id": "S2",
       "name": "정상 캐시 미스 증가",
       "status": "observed_live_subcase",
-      "finding": "실습 아이템 cold miss→hit 두 쌍·오류 증가 없음·허위 원인 후보 0을 확인했다. 보고서는 partial/unknown을 유지했다. 자연 TTL 만료 변형은 미검증이다."
+      "finding": "cold-key miss→hit·오류 증가 없음·허위 후보 0을 확인했다. 목록 캐시 자연 TTL은 S9 별도 하위 사례에서 확인했다. 전체 정상 진단은 미검증이다."
     },
     {
       "id": "S3",
       "name": "잘못된 이미지 태그",
-      "status": "needs_review",
-      "finding": "실습 앱 이미지 부재·ErrImagePull·Ready 0·원래 digest/HTTP 복구 확인. 실제 Failed 이벤트의 이미지 표식이 있지만 규칙 v2의 ImagePullBackOff reason+progressing 조건과 달라 후보 0·insufficient_evidence였다. 규칙 보완 필요. 후속 v3 후보는 같은 저장 입력에서 원인 후보 1개와 partial/unknown을 유지했다. 기존 6건/18개 파일 보존과 로컬 289개 시험 통과, 새 이미지 미배포다."
+      "status": "observed_live_subcase",
+      "finding": "최초 v2 needs_review를 보존하고 승인 v3 배포 후 S3 한 번을 재현했다. 실제 ErrImagePull·Ready 0·Failed 이미지 표식과 같은 Pod/Deployment를 인용한 원인 후보 1개·partial/suspected_cause/unknown·원래 digest/HTTP 복구 통과. 태그/인증/네트워크의 정확한 하위 원인이나 라이브 모델·자동 복구는 미검증이다."
     },
     {
       "id": "S4",
@@ -58,24 +58,24 @@
     {
       "id": "S9",
       "name": "쓰기 직후 정상 Primary 조회",
-      "status": "not_run",
-      "finding": "실습 marker 5초 설정을 준비했지만 쓰기 직후·만료 비교는 미실행이다. 단일 Primary이며 실제 Replica 전환은 검증할 수 없다."
+      "status": "observed_live_subcase",
+      "finding": "목록 표식 5초 구간 consistency_primary와 DB 조회 증가, 표식 만료 후 hit, 목록 캐시 60초 자연 만료 후 read 세션 miss→hit를 두 묶음으로 확인했다. 캐시 지표 근거·허위 후보 0·partial/unknown·자기 데이터/표식 정리 통과. write/read 모두 실제 Primary이며 실제 Replica·복제 지연은 미검증이다."
     },
     {
       "id": "S10",
       "name": "자동 복구 이후 배포 사건",
-      "status": "not_run",
-      "finding": "독립 실습 CI의 실패·자동 롤백과 전후 증거 보존 미검증. 현재 CI 이력이 없는 것을 사건 부재로 단정하지 않는다."
+      "status": "observed_live_automatic_ci_rules",
+      "finding": "CI 39848636802의 최초 실패·자동 원복·artifact/UID 검증·전달기 자동 접수·중복 방지·worker 보고서 저장/재조회를 확인했다. partial/suspected_cause/unknown·사실 4·후보 1이며 사용자 경로 복구 확정과 외부 모델 분석은 미검증이다."
     },
     {
       "id": "S11",
       "name": "캐시 의미·DB 경로 계약",
-      "status": "partial",
-      "finding": "재설치의 실제 DB 역할과 기존 합성 계약 검증 근거만 있다. 미설정·연결 오류·JSON 오류를 독립 실환경에서 분리하지 않았다."
+      "status": "observed_live_subcases",
+      "finding": "우회 후보 0·JSON 일반 캐시 처리 오류 후보 1을 재사용하고, 빈 env 수집/원복 수정 이미지를 승인 배포해 미설정만 재확인했다. 구성 false·unavailable·후보 0·partial/unknown·자동 설정 원복/자료 정리 통과. 최초 recovery_failed·미설정 needs_review는 보존한다. 초기 연결 실패 unavailable·실제 Replica·정확한 JSON 원인/라이브 모델 품질은 미검증이다."
     }
   ],
   "evidence_sources": {
-    "current_live_demo": "B6-operational-demo-v2.json",
+    "current_live_demo": "B6-operational-demo-v3.json",
     "current_slack_failure_paths": "B5-slack-delivery-validation.json",
     "historical_live_restart": "B4-worker-validation.json",
     "historical_synthetic_retention_in_live_process": "B4-retention-schedule-validation.json",
@@ -86,14 +86,32 @@
     "cache_scenarios": "B6-cache-scenarios-validation.json",
     "db_delay_scenario": "B6-db-delay-validation.json",
     "image_failure_scenario": "B6-image-failure-validation.json",
-    "image_rules_v3_saved_comparison": "B6-image-rules-v3-comparison.json"
+    "image_rules_v3_saved_comparison": "B6-image-rules-v3-comparison.json",
+    "rules_v3_deployment": "B6-rules-v3-deployment-validation.json",
+    "image_failure_scenario_v3": "B6-s3-image-failure-v3.json",
+    "primary_read_scenario": "B6-primary-read-validation.json",
+    "primary_read_live_result": "B6-s9-list-consistency.json",
+    "cache_variants_initial": "B6-s11-cache-variants-initial.json",
+    "cache_variants_recovery": "B6-s11-recovery-validation.json",
+    "cache_variants_deployment": "B6-s11-deployment-validation.json",
+    "cache_unconfigured_retry": "B6-s11-unconfigured-retry-validation.json",
+    "cache_variants_final_health": "B6-s11-final-health.json",
+    "ci_history_preflight": "B6-s10-ci-history-preflight.json",
+    "gitops_preparation": "B6-s10-gitops-preparation.json",
+    "s10_live_ci": "B6-s10-ci-validation.json",
+    "s10_history_import": "B6-s10-history-import-validation.json",
+    "s10_report": "B6-s10-report-validation.json",
+    "s10_automatic_ci_service": "B6-ci-service-deployment.json",
+    "current_installation": "../../../docs/runbooks/installation-execution-2026-10-23-r2.json",
+    "model_projection_policy": "../B6-model-data-policy.md",
+    "model_projection_implementation": "B6-model-projection-validation.json"
   },
   "quality": {
-    "captured_items": 30,
+    "captured_items": 17,
     "available": 7,
     "invalid": 0,
-    "stale": 15,
-    "missing": 8,
+    "stale": 1,
+    "missing": 9,
     "report_facts": 3,
     "report_hypotheses": 0,
     "diagnosis_accuracy": null,
@@ -116,18 +134,31 @@
     "external_production_data": "blocked",
     "normal_diagnosis_quality": "not_demonstrated",
     "live_model_quality": "not_tested",
-    "isolated_fault_scenarios": "partial_S1_S2_S4_passed_S3_report_needs_review",
+    "isolated_fault_scenarios": "partial_S1_S2_S3_v3_S4_subcases_passed",
     "isolated_lab_preparation": "passed_single_db_scope",
     "cache_cold_key_false_cause": "passed_one_live_case",
     "connected_redis_failure_and_recovery": "passed_one_live_case",
     "app_db_session_delay_and_recovery": "passed_one_live_case",
     "image_failure_and_manual_restore": "passed_one_live_case",
-    "image_failure_report_quality": "v2_needs_review_v3_candidate_passed_deployment_pending",
-    "image_rules_v3_saved_comparison": "passed_candidate_no_deployment"
+    "image_failure_report_quality": "passed_one_deployed_v3_live_subcase_v2_needs_review_preserved",
+    "image_rules_v3_saved_comparison": "passed_candidate_no_deployment",
+    "rules_v3_deployment": "passed_same_pvc_old_reports_preserved",
+    "list_primary_marker_and_natural_cache_expiry": "passed_single_primary_live_subcase",
+    "actual_replica_after_marker_expiry": "not_tested_single_primary_topology",
+    "cache_bypass": "passed_one_live_subcase",
+    "cache_json": "passed_generic_error_scope_only",
+    "cache_unconfigured": "passed_deployed_fix_targeted_live_retry",
+    "cache_setting_restoration": "passed_automatic_retry_initial_failure_preserved",
+    "initial_connection_failure_unavailable": "not_tested",
+    "s10_automatic_ci_discovery_queue_report": "passed_one_live_ci_case_before_reinstall",
+    "s10_duplicate_submission": "passed_one_live_ci_case",
+    "current_reinstallation": "passed_no_new_fault_experiment",
+    "model_projection_policy_design": "completed_not_implemented",
+    "model_projection_implementation": "passed_local_mock_not_live"
   },
   "next_actions": [
-    "규칙 v3 변경을 원격 CI와 이미지 등록으로 검증한 후 기존 v1/v2 재조회·새 v3 저장/조회·필요 범위의 S3 실환경 설명을 확인한다. 현재 후보 비교는 배포 성공이 아니다.",
-    "captured 외부 전송 정책과 승인 범위를 별도 설계한 뒤 모델 비교를 검증한다. 현재 차단을 제거하지 않는다."
+    "B-06-M3: 실제 실습 한 건의 exporter 호환성과 정제 미리보기를 확인한 뒤 실제 HTTP transport·계정/보관/최신 단가·실사용 장부·새 전송 승인을 준비해 제한 비교한다.",
+    "B-06-E1: 필수 검증과 후속 확장 범위를 구분해 평가표·데모·포트폴리오 및 B/C 진입 조건을 확정한다."
   ],
   "initial_live_demo": "B6-operational-demo.json",
   "initial_quality": {
@@ -144,6 +175,39 @@
   },
   "completed_quality_actions": [
     "진단 표식 없는 유효 로그를 no_diagnostic_fields로 구분해 실제 수집에서 확인했다.",
-    "v2 관측 사실 3개·available 근거 인용·partial/unknown 유지와 기존 v1 3건 보존을 실제 배포에서 확인했다."
-  ]
+    "v2 관측 사실 3개·available 근거 인용·partial/unknown 유지와 기존 v1 3건 보존을 실제 배포에서 확인했다.",
+    "승인 v3 이미지를 같은 운영 PVC와 보존 이관한 실습 수집기에 배포했다. 기존 운영 4건·실습 6건을 보존하고 새 운영 조사와 S3 실습의 원인 후보·원복을 검증했다.",
+    "S9 단일 Primary 목록 표식 5초·캐시 60초 자연 만료와 보고서 후보 0·자기 데이터 정리를 실제 확인했다. 실제 Replica를 검증한 것으로 표시하지 않는다.",
+    "S11 우회/JSON 결과를 재사용하고, 빈 env 처리 수정 승인 이미지에서 미설정만 재확인해 구성 false·후보 0·자동 원복을 확인했다. 최초 실패는 보존했다.",
+    "S10 출처 사전 점검의 신규 시험 13개와 실제 GitHub 실행 2건의 메타데이터 조회를 확인했다. 파일 누락·미결합 상태를 보존하고 증거 자동 import는 활성화하지 않았다.",
+    "S10-02 고정 앱 경로·수동 Argo/권한/대상 제한 정의와 공유 Lease를 구현했다. 관련 79개 시험·서버 dry-run·앱 spec/운영 식별자 불변과 실제 Lease 경쟁 거부/해제를 확인했다. 실제 등록·인계·자동 롤백은 미실행이다.",
+    "S3 v3 배포·S9 단일 Primary·S11 세 변형·S10 상시 자동 조사 실측을 근거별로 대조하고, 재설치 상태와 과거 성과를 구분했다."
+  ],
+  "reviewed_at": "2026-10-23",
+  "review_timezone": "Asia/Seoul",
+  "current_reinstallation": {
+    "verified_at": "2026-10-23T16:33:49.657674+09:00",
+    "applications_healthy": 8,
+    "new_fault_experiment": false,
+    "old_reports_restored": false,
+    "relay_scans": {
+      "inspected": 2,
+      "submitted": 0,
+      "duplicates": 0,
+      "skipped": 2,
+      "rejected": 0
+    },
+    "new_automatic_report_verified": false
+  },
+  "model_projection_design": {
+    "phase": "B-06-M1",
+    "status": "design_complete",
+    "implementation_status": "local_mock_validated",
+    "policy_version": "captured-practice-projection-v1",
+    "first_scope": "one_read_only_isolated_lab_observation",
+    "production_allowed": false,
+    "captured_gate_changed": false,
+    "new_model_calls": 0,
+    "next_phase": "B-06-M3"
+  }
 }

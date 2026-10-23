@@ -129,6 +129,9 @@ B-04 후속 [예약 보관 정리](docs/B4-retention-schedule.md)를 구현했�
 
 ## B-06 실환경 운영 평가·데모
 
+최신 후속(2026-10-23 KST): [S10 상시 CI 자동 조사](docs/B6-ci-service-deployment.md)와 재설치를 확인했고, [B-06-M1 실습 모델 비교 정책](docs/B6-model-data-policy.md) 설계를 완료했다. [M2 구현](docs/B6-model-projection-implementation.md)은 신규 24개/전체 398개 시험과 배포 경계 검사를 통과했다. 다음 M3는 실제 입력 준비와 제한 비교이며, M2 CLI는 run-mock만 제공한다. 실제 자료의 외부 모델 전송은 아직 비활성이다. 아래 날짜별 이력과 최신 [운영 평가](docs/B6-operational-evaluation.md)를 구분한다.
+
+
 [운영 평가와 남은 조건](docs/B6-operational-evaluation.md), [안전한 읽기 데모 절차](docs/B6-operational-demo.md), [검증 범위에 맞춘 포트폴리오 초안](docs/B6-portfolio.md)을 관리한다. 실제 큐·권한·중복·외부 전송 차단은 확인했으며, 자료 품질·독립 실습 시나리오·라이브 모델 평가는 미완료다. B 전체 완료나 C 실행 권한 부여로 해석하지 않는다.
 
 2026-10-21 [독립 실습 환경과 시나리오 준비](docs/B6-isolated-lab.md)를 완료했다. `ai-ops-lab`의 앱·Redis·단일 PostgreSQL·읽기 수집기 4개와 실제 수집·권한·Prometheus 표본 준비를 확인했다. 운영 연결값·PVC를 재사용하지 않으며 새 RDS·영구 볼륨·LB는 없다. 시나리오 정답 기준·복구 절차와 전체 253개 시험을 기록했지만 실제 장애 주입과 라이브 모델 비교는 후속이다.
@@ -140,3 +143,17 @@ B-04 후속 [예약 보관 정리](docs/B4-retention-schedule.md)를 구현했�
 [S3 이미지 취득 실패·복구](docs/B6-image-failure-scenario.md)는 실제 ErrImagePull·Ready 0·실패 이벤트 수집과 원래 digest 복구를 확인했다. 규칙 v2가 native Failed 이벤트의 이미지 오류 표식을 원인 후보로 설명하지 못해 needs_review로 남겼다. 다음은 저장 증거를 이용한 규칙 보완과 기존 보고서 호환성 검증이며 B-06 완료로 표시하지 않는다.
 
 [규칙 v3의 동일 저장 증거 비교](docs/B6-image-rules-v3.md)는 Pod 소유·같은 이미지·근접 이벤트를 대조해 후보 0→1과 partial/unknown 유지, 기존 보고서 보존을 확인했다. 로컬 289개 시험을 통과했으며 수정 이미지의 실제 배포·새 보고서 검증은 후속이다.
+
+[규칙 v3 실제 배포](docs/B6-image-rules-v3.md)는 PR #50·main 기준 290개 시험·사용자 승인 이미지·ECR 검사 0건 후 운영 Helm revision 3과 실습 수집기에 반영했다. 기존 운영 4건/실습 6건 보존, 새 운영 v3 저장/조회와 S3 실제 이미지 실패의 세 근거 후보 1개·원래 digest 복구를 확인했다. 최초 v2 needs_review는 보존하며 라이브 모델·자동 복구·B-06 전체 완료는 별도다.
+
+[S9 최근 쓰기 목록 경로·자연 만료](docs/B6-primary-read-scenario.md)는 표식 5초의 consistency_primary→표식 만료 후 hit→목록 캐시 60초 자연 만료 후 read 세션 miss→hit와 DB 표본을 실제 확인했다. 규칙 v3 후보 0·유효 캐시 근거·partial/unknown과 자기 데이터 정리·운영 불변을 유지했다. 전체 Python 299개 시험 통과. 실제 Replica/복제 지연·라이브 모델·전체 정상 진단은 미완료다.
+
+[S11 캐시 의미 구분](docs/B6-cache-variants.md)에서 우회/JSON 하위 사례와 미설정 unavailable을 실제 관측했다. API의 빈 value 생략으로 구성 근거 누락·최초 원복 실패를 발견해 기록을 보존하고 원래 설정/자료를 수동 복구했다. 로컬 전체 314개 시험·수집기 수정 PR #51 원격 CI 통과, 승인 이미지 배포와 미설정 단독 재확인은 대기한다. S11 전체·B 완료·C 진입은 보류한다.
+
+S11 후속: 사용자 승인 수정 이미지를 배포하고 기존 운영 5건/실습 11건과 같은 PVC를 보존했다. 미설정 한 사례만 재확인해 실제 구성 false·unavailable·후보 0·자동 원복과 HTTP/Redis·자료 정리를 확인했다. 최초 실패는 보존하며 세 하위 사례 묶음만 완료다. [후속 검증](docs/B6-cache-variants.md).
+
+[S10 CI 이력 준비](docs/B6-ci-history-preflight.md): 운영자용 출처 사전 점검 도구를 추가했다. 실행·재시도·소스·ZIP 해시·대상·시간을 검사한다. 기존 GitHub 실행 2건의 배포/롤백 관측 파일 누락을 그대로 기록했으며 새 시험 13개가 통과했다. 실습 CI/Argo·클러스터 결합 계약·조사 입력 연결·실제 자동 롤백은 후속이다. `missing_history`와 외부 모델 비활성 정책은 유지한다.
+
+[S10-02 실습 GitOps 준비](docs/B6-gitops-preparation.md): 앱 한 개의 Git 경로·수동 Argo 구성·최소 권한·서버 대상 제한 정책과 공유 Lease를 구현했다. 관련 79개 시험, 실제 서버 dry-run·spec 불변·Lease 경쟁/해제를 확인했다. 새 파일의 원격 반영과 검토 SHA 고정, 정책/권한 실제 적용·Argo 인계·CI 연결은 후속이다. 현재 앱·수집기·외부 모델 설정은 유지한다.
+
+2026-10-21 종료 정리: 사용자 요청으로 AI를 포함한 프로젝트 AWS 인프라를 제거했다. 현재 실행 클러스터는 없으며 기존 B-06 결과는 과거 실측이다. Route53·최종 스냅샷·state/버전·로그와 로컬 소스/키는 보존했다. 재설치에는 보존 로그 import와 새 이미지/실환경 검증이 필요하다. [정리 결과](../docs/runbooks/infrastructure-cleanup-2026-10-21.md).

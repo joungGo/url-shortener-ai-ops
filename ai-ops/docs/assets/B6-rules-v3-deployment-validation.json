@@ -1,0 +1,93 @@
+{
+  "status": "passed",
+  "verified_at": "2026-10-21T07:56:22.564254+00:00",
+  "production": {
+    "status": "passed",
+    "verified_at": "2026-10-21T07:54:18.349485+00:00",
+    "source_revision": "10a7ef68bfb338b5faa5ec75b94d8ea35c8ed917",
+    "image_run_id": 39562933098,
+    "image_digest": "sha256:50a8c699bee3270f2bf9ad905820e32be590e653363ad73c764cb5ce8cbfb99e",
+    "helm_revision": 3,
+    "pvc_uid": "b0236f94-4395-4aaa-91ac-3b2bbe31a78d",
+    "same_pvc": true,
+    "app_identity_unchanged": true,
+    "app_ready_replicas": 2,
+    "preserved_reports": 4,
+    "preserved_files": 12,
+    "all_old_report_input_audit_hashes_unchanged": true,
+    "new_report": {
+      "incident": "inc-15807c6dd5084d73aae0c194dfce096a",
+      "run": "run-b7bd946f14ed4bd1bd9833e29638898c",
+      "engine": "rules-captured-v3",
+      "analysis_status": "partial",
+      "diagnosis_status": "insufficient_evidence",
+      "current_state": "unknown",
+      "facts": 3,
+      "hypotheses": 0,
+      "all_fact_citations_available": true,
+      "captured_external_model_blocked": true
+    },
+    "metrics": {
+      "up": 1.0,
+      "retention_enabled": 1.0,
+      "retention_last_success": 1792569200.0084476,
+      "retention_overdue": 0.0,
+      "worker_progress_age_seconds": 17.221685886383057
+    },
+    "https": {
+      "readyz": {
+        "http_status": 200,
+        "tls_verify_result": 0
+      },
+      "items": {
+        "http_status": 200,
+        "tls_verify_result": 0
+      }
+    },
+    "external_model_calls": 0,
+    "external_model_cost_usd": 0,
+    "b_stage_completion": "held",
+    "c_stage_ready": false
+  },
+  "isolated_lab": {
+    "status": "passed",
+    "verified_at": "2026-10-21T07:56:22.564254+00:00",
+    "scope": "deployed_rules_v3_one_live_S3_subcase_manual_restore",
+    "source_revision": "10a7ef68bfb338b5faa5ec75b94d8ea35c8ed917",
+    "image_run_id": 39562933098,
+    "image_digest": "sha256:50a8c699bee3270f2bf9ad905820e32be590e653363ad73c764cb5ce8cbfb99e",
+    "ecr_scan_status": "COMPLETE",
+    "ecr_scan_finding_counts": {},
+    "preserved_legacy_reports": 6,
+    "preserved_all_store_files": 38,
+    "legacy_files_unchanged_after_S3": true,
+    "legacy_reports_reopened": true,
+    "new_report_engine": "rules-captured-v3",
+    "new_report_incident_id": "inc-a130620fe9624fa49b1ac94ecf44a768",
+    "new_report_run_id": "run-e8f5e702c14948ee84de41c05bc87f99",
+    "new_report_facts": 4,
+    "new_report_hypotheses": 1,
+    "report_check": "image_failure_supported",
+    "analysis_status": "partial",
+    "diagnosis_status": "suspected_cause",
+    "current_state": "unknown",
+    "cited_pod_matches_injected_pod": true,
+    "event_pod_lag_seconds": 7.388044,
+    "all_citations_available": true,
+    "all_actions_not_executed": true,
+    "rules_source_sha256": "5b492a7708d79578eaf38a8cede17b96971116e6db6ee91dd803606912aaf466",
+    "ready_lab_pods": 4,
+    "staging_pod_deleted": true,
+    "cleanup": {
+      "original_digest_ready_http_and_redis_restored": true,
+      "production_unchanged": true
+    },
+    "previous_v2_needs_review_record_preserved": true,
+    "external_model_calls": 0,
+    "external_model_cost_usd": 0,
+    "b_stage_completion": "held",
+    "c_stage_ready": false
+  },
+  "b_stage_completion": "held",
+  "c_stage_ready": false
+}

@@ -1,0 +1,14 @@
+{
+  "record_type": "pre_mutation_cache_setting_recovery_plan",
+  "scenario": "S11",
+  "run_id": "c5f03fa99b8647a189f2bd67b2fb20eb",
+  "baseline": {
+    "uid": "b4d16b99-31af-4e15-8084-99b46b0056b0",
+    "generation": 5,
+    "image": "716174522908.dkr.ecr.ap-northeast-2.amazonaws.com/urlshortener@sha256:038046d5407d0c6843b31e26e32e8a6f4a812b1dc7e5710413b44207b696b699",
+    "redis_configured": true,
+    "template_sha256": "2fc3e897f5e33afa48feff9e8eab79f706217a8a4ebfad0594cdd015026b6314"
+  },
+  "disabled_value": "",
+  "created_at": "2026-10-21T08:34:57.689896+00:00"
+}

@@ -1,0 +1,36 @@
+{
+  "status": "passed",
+  "verified_at": "2026-10-21T08:18:53.039483+00:00",
+  "scope": "list_consistency_single_primary_not_actual_replica",
+  "scenario": "S9",
+  "run_id": "48d4283fe36942e3b7fa593ec74c2186",
+  "app_checks": {
+    "owned_database_rows_remaining": 0,
+    "owner_file_removed": true,
+    "list_marker_expired": true,
+    "redis_ping": true
+  },
+  "report_checks": {
+    "engine": "rules-captured-v3",
+    "saved_report_reopened": true,
+    "all_fact_citations_available": true,
+    "consistency_metric_cited": true,
+    "hypotheses": 0,
+    "captured_external_model_blocked": true
+  },
+  "cleanup": {
+    "owned_data_removed": true,
+    "markers_expired": true,
+    "production_unchanged": true,
+    "lab_identity_unchanged": true
+  },
+  "ready_lab_pods": 4,
+  "http_calls": 28,
+  "http_call_limit": 28,
+  "local_tests": 299,
+  "actual_replica_tested": false,
+  "external_model_calls": 0,
+  "external_model_cost_usd": 0,
+  "b_stage_completion": "held",
+  "c_stage_ready": false
+}

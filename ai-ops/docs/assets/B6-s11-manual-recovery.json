@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "verified_at": "2026-10-21T08:44:32.269513+00:00",
+  "scope": "manual_recovery_after_empty_env_serialization_failure",
+  "run_id": "c5f03fa99b8647a189f2bd67b2fb20eb",
+  "deployment_uid": "b4d16b99-31af-4e15-8084-99b46b0056b0",
+  "original_template_hash_matches": true,
+  "redis_configured": true,
+  "recovery_http_calls": 2,
+  "health": {
+    "http": {
+      "/readyz": 200,
+      "/items": 200
+    },
+    "redis_ping": true,
+    "http_calls": 2
+  },
+  "original_failed_record_preserved": true,
+  "unconfigured_report_original_status": "needs_review",
+  "external_model_calls": 0
+}

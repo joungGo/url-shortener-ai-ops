@@ -13,7 +13,7 @@ kubectl -n ai-ops get secret ai-ops-webhook-identity --ignore-not-found -o name
 kubectl -n monitoring get secret ai-ops-alertmanager-auth --ignore-not-found -o name
 ```
 
-조회가 정상 완료되고 둘 다 없는 새 설치에만 실행한다. 전용 개인 폴더를 준비하고 셸 추적을 끈다. 인증값이나 Secret JSON을 로그·Git·artifact에 넣지 않는다. 서버 인증서는 90일, CA는 365일이며 실제 만료를 기록한다. 호스트 OpenSSL의 EC 명시 매개변수와 일부 TLS 클라이언트의 호환 문제가 있어 RSA를 명시한다. 검증 우회 옵션은 사용하지 않는다.
+조회가 정상 완료되고 둘 다 없는 새 설치에만 실행한다. 전용 개인 폴더를 준비하고 셸 추적을 끈다. 인증값이나 Secret JSON을 로그·Git·artifact에 넣지 않는다. 서버 인증서는 90일, CA는 365일이며 실제 만료를 기록한다. 호스트 OpenSSL의 EC 명시 매개변수와 일부 TLS 클라이언트의 호환 문제가 있어 RSA를 명시한다. 검증 우회 옵션은 사용하지 않는다. 아래 명령은 macOS Homebrew OpenSSL 3 경로를 사용한다. 다른 환경에서는 OpenSSL 3 실행 경로를 확인해 대체한다. CA·서버 키 식별자와 CA 용도를 명시하고 엄격한 검증을 수행해 Python 3.13 이상의 기본 검증도 통과하도록 한다.
 
 ```sh
 set +x
@@ -21,10 +21,13 @@ umask 077
 mkdir -p "$HOME/.local/share/url-shortener-ai-ops"
 AI_TLS_DIR=$(mktemp -d "$HOME/.local/share/url-shortener-ai-ops/b5-tls.XXXXXX")
 chmod 700 "$AI_TLS_DIR"
-openssl req -x509 -newkey rsa:3072 -nodes -days 365 \
+/opt/homebrew/bin/openssl req -x509 -newkey rsa:3072 -nodes -days 365 \
+  -addext basicConstraints=critical,CA:TRUE \
+  -addext keyUsage=critical,keyCertSign,cRLSign \
+  -addext subjectKeyIdentifier=hash \
   -subj /CN=urlshortener-ai-ops-internal-ca \
   -keyout "$AI_TLS_DIR/ca.key" -out "$AI_TLS_DIR/ca.crt"
-openssl req -newkey rsa:2048 -nodes \
+/opt/homebrew/bin/openssl req -newkey rsa:2048 -nodes \
   -subj /CN=ai-ops-webhook.ai-ops.svc \
   -keyout "$AI_TLS_DIR/tls.key" -out "$AI_TLS_DIR/server.csr"
 cat > "$AI_TLS_DIR/server.ext" <<'EOF'
@@ -32,12 +35,14 @@ subjectAltName=DNS:ai-ops-webhook.ai-ops.svc,DNS:ai-ops-webhook.ai-ops.svc.clust
 basicConstraints=critical,CA:FALSE
 keyUsage=critical,digitalSignature
 extendedKeyUsage=serverAuth
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
 EOF
-openssl x509 -req -in "$AI_TLS_DIR/server.csr" \
+/opt/homebrew/bin/openssl x509 -req -in "$AI_TLS_DIR/server.csr" \
   -CA "$AI_TLS_DIR/ca.crt" -CAkey "$AI_TLS_DIR/ca.key" -CAcreateserial \
   -days 90 -sha256 -extfile "$AI_TLS_DIR/server.ext" -out "$AI_TLS_DIR/tls.crt"
 openssl rand -hex 32 | tr -d '\n' > "$AI_TLS_DIR/token"
-openssl verify -CAfile "$AI_TLS_DIR/ca.crt" "$AI_TLS_DIR/tls.crt"
+/opt/homebrew/bin/openssl verify -x509_strict -CAfile "$AI_TLS_DIR/ca.crt" "$AI_TLS_DIR/tls.crt"
 openssl x509 -in "$AI_TLS_DIR/tls.crt" -noout -enddate
 kubectl -n ai-ops create secret generic ai-ops-webhook-identity \
   --from-file=token="$AI_TLS_DIR/token" \
