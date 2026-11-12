@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
+PLATFORM = ROOT / "ai-ops/tests/fixtures/platform"
 
 
 def load(name, filename):
@@ -157,7 +158,7 @@ class ReleaseObservationTest(unittest.TestCase):
             image_record.write_record(path, env, ROOT)
 
     def test_workflow_observation_cannot_hide_or_block_original_failure(self):
-        workflow = yaml_file(ROOT / ".github/workflows/ci-cd.yml")
+        workflow = yaml_file(PLATFORM / ".github/workflows/ci-cd.yml")
         steps = workflow["jobs"]["build-and-deploy"]["steps"]
         ids = {step["id"]: (index, step) for index, step in enumerate(steps) if "id" in step}
         self.assertTrue(ids["verify-deployment"][1]["continue-on-error"])
@@ -180,7 +181,7 @@ class ReleaseObservationTest(unittest.TestCase):
         self.assertIn("exit 1", final["run"])
 
     def test_image_registration_artifact_is_required_and_image_only_cannot_deploy(self):
-        workflow = yaml_file(ROOT / ".github/workflows/ci-cd.yml")
+        workflow = yaml_file(PLATFORM / ".github/workflows/ci-cd.yml")
         job = workflow["jobs"]["build-and-deploy"]
         self.assertEqual(job["if"], "github.ref == 'refs/heads/main'")
         steps = job["steps"]
@@ -194,7 +195,7 @@ class ReleaseObservationTest(unittest.TestCase):
                 self.assertIn("steps.execution.outputs.deploy == 'true'", step["if"])
 
     def test_actual_verify_wrapper_preserves_success_and_failure_exit_codes(self):
-        steps = yaml_file(ROOT / ".github/workflows/ci-cd.yml")["jobs"]["build-and-deploy"]["steps"]
+        steps = yaml_file(PLATFORM / ".github/workflows/ci-cd.yml")["jobs"]["build-and-deploy"]["steps"]
         verify = next(s for s in steps if s.get("id") == "verify-deployment")["run"]
         for phase, code in [("Succeeded", 0), ("Failed", 1)]:
             status = {"status": {"sync": {"revision": SHA, "status": "Synced"}, "health": {"status": "Healthy"},
@@ -202,7 +203,7 @@ class ReleaseObservationTest(unittest.TestCase):
             env = self.cli("print(" + repr(json.dumps(status)) + ")")
             output = self.root / "outputs"; output.write_text("")
             env.update(GITOPS_COMMIT=SHA, GITHUB_OUTPUT=str(output), ARGOCD_APPLICATION="url-shortener", ARGOCD_WAIT_TIMEOUT="1")
-            result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", verify], env=env, cwd=ROOT, capture_output=True, text=True)
+            result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", verify], env=env, cwd=PLATFORM, capture_output=True, text=True)
             self.assertEqual(result.returncode, code, result.stderr)
             self.assertRegex(output.read_text(), r"started_at=.*Z\nfinished_at=.*Z\n")
             self.assertNotIn(SECRET, result.stdout + result.stderr)
@@ -226,7 +227,7 @@ class ReleaseObservationTest(unittest.TestCase):
         self.assertIn('--format \'{{.Id}}\')" == "$IMAGE_ID"', scripts)
 
     def test_real_rollback_body_keeps_success_failure_and_early_push_failure(self):
-        steps = yaml_file(ROOT / ".github/workflows/ci-cd.yml")["jobs"]["build-and-deploy"]["steps"]
+        steps = yaml_file(PLATFORM / ".github/workflows/ci-cd.yml")["jobs"]["build-and-deploy"]["steps"]
         rollback = next(s for s in steps if s.get("id") == "rollback-deployment")["run"]
         final = steps[-1]["run"].replace("${{ steps.previous-image.outputs.available }}", "true")
         fake_bin = self.root / "bin"; fake_bin.mkdir()
@@ -243,14 +244,14 @@ class ReleaseObservationTest(unittest.TestCase):
                 env.update(PATH=str(fake_bin) + os.pathsep + env["PATH"], GITHUB_REF="refs/heads/main",
                     GITHUB_OUTPUT=str(output), PREVIOUS_TAG="sha-bbbbbbb", ARGOCD_APPLICATION="url-shortener",
                     ARGOCD_WAIT_TIMEOUT="1", PUSH_FAILURE=push_failure)
-                result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", rollback], env=env, cwd=ROOT, capture_output=True, text=True)
+                result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", rollback], env=env, cwd=PLATFORM, capture_output=True, text=True)
                 self.assertEqual(result.returncode, expected, result.stderr)
                 if push_failure == "0":
                     self.assertIn("commit=" + ROLLBACK, output.read_text())
                     self.assertIn("finished_at=", output.read_text())
                 else:
                     self.assertEqual(output.read_text(), "")
-                final_result = subprocess.run(["bash", "-e", "-c", final], env=env, cwd=ROOT, capture_output=True, text=True)
+                final_result = subprocess.run(["bash", "-e", "-c", final], env=env, cwd=PLATFORM, capture_output=True, text=True)
                 self.assertEqual(final_result.returncode, 1)
 
 

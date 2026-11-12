@@ -1,12 +1,13 @@
 """실제 chart 경보 label·기존 알림 분기 보존을 렌더링으로 검사한다."""
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import unittest
 from ai_ops.alert_routing import build_routing, verify_routing
 
-ROOT=Path(__file__).resolve().parents[2]
+ROOT=Path(os.environ.get('AI_OPS_PLATFORM_SOURCE_ROOT', str(Path(__file__).resolve().parents[2]/'.platform-source'))).resolve()
 
 
 def yaml_value(raw):

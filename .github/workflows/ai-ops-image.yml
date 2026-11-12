@@ -18,6 +18,8 @@ concurrency:
 
 jobs:
   image:
+    # OIDC/환경 검토 이전에는 새 저장소의 이미지를 등록하지 않는다.
+    if: ${{ !inputs.publish || github.repository == 'f-lab-edu/F-Lab-DevOps' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # 이 환경의 main 제한·검토자 설정과 전용 OIDC 역할은 실제 등록 전에 준비한다.

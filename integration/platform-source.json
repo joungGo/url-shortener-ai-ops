@@ -1,0 +1,15 @@
+{
+  "repository": "f-lab-edu/F-Lab-DevOps",
+  "revision": "9573b8c9f323a643e65bb58c323dc932c681a6b2",
+  "purpose": "read-only platform chart integration checks and legacy control identity",
+  "paths": [
+    "url-shortener/url-shortener-chart",
+    "cluster-addons/prometheus"
+  ],
+  "ai_code_repository": "joungGo/url-shortener-ai-ops",
+  "live_control_cutover": "pending_reinstallation_review",
+  "active_control_repository": "f-lab-edu/F-Lab-DevOps",
+  "isolated_recovery_repository": "joungGo/c03-execution-lab",
+  "state_backend_changed": false,
+  "secrets_copied": false
+}

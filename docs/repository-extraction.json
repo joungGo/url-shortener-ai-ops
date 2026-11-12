@@ -1,0 +1,38 @@
+{
+  "original_repository": "f-lab-edu/F-Lab-DevOps",
+  "new_repository": "joungGo/url-shortener-ai-ops",
+  "new_visibility": "private",
+  "source_main": "9573b8c9f323a643e65bb58c323dc932c681a6b2",
+  "source_pending_pr": 156,
+  "source_pending_head": "e32744c7710fcc5f0dbcc193fd93204eca47846b",
+  "source_root_head": "1de988313d62173d302d6e7e82c226ab17ae4a6d",
+  "filtered_refs": {
+    "main": "3f4e078d27747fbc6afa151e0b2babaa47500e35",
+    "codex/c04-request-time-20261112": "0a06e41009fb8266a9ff95bc6ef1350eac258e13",
+    "archive/pr156-filtered-head": "0a06e41009fb8266a9ff95bc6ef1350eac258e13",
+    "archive/root-working-copy-20261112": "87b97091a32b5c35cc4e9a6aa4b4fd1a1a436231"
+  },
+  "included_paths": [
+    "ai-ops/",
+    "terraform/ai-ops-registry/",
+    "cluster-addons/ai-ops/",
+    ".github/requirements-ci.txt",
+    ".github/scripts/capture-deployment-observation.py",
+    ".github/scripts/write-ai-ops-image-record.py",
+    ".github/scripts/verify-gitops-deployment.sh",
+    ".github/workflows/ci-cd.yml",
+    ".github/workflows/ai-ops-c2-rollback.yml",
+    ".github/workflows/ai-ops-c4-ready-rollback.yml",
+    ".github/workflows/ai-ops-ci.yml",
+    ".github/workflows/ai-ops-image.yml",
+    ".github/workflows/ai-ops-lab-ci.yml",
+    ".github/workflows/ai-ops-normal-ci.yml",
+    "docs/runbooks/ai-ops-cluster-lifecycle.md",
+    "docs/runbooks/ai-ops-registry-lifecycle.md",
+    "docs/runbooks/local-credential-preservation.md"
+  ],
+  "history_method": "git filter-repo path extraction; author/date/history retained with rewritten commit IDs",
+  "original_repo_history_rewritten": false,
+  "live_control_cutover": "not performed",
+  "original_pr156_status": "OPEN/unmerged; no exception approval"
+}

@@ -2,13 +2,14 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 
 from ai_ops.alert_routing import build_routing
 from ai_ops.path_policy import cli_paths, write_private_json
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get('AI_OPS_PLATFORM_SOURCE_ROOT', str(Path(__file__).resolve().parents[2]/'.platform-source'))).resolve()
 
 
 def main():
