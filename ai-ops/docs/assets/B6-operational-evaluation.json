@@ -102,9 +102,13 @@
     "s10_history_import": "B6-s10-history-import-validation.json",
     "s10_report": "B6-s10-report-validation.json",
     "s10_automatic_ci_service": "B6-ci-service-deployment.json",
-    "current_installation": "../../../docs/runbooks/installation-execution-2026-10-23-r2.json",
+    "current_installation": "../../../docs/runbooks/installation-execution-2026-10-24.json",
     "model_projection_policy": "../B6-model-data-policy.md",
-    "model_projection_implementation": "B6-model-projection-validation.json"
+    "model_projection_implementation": "B6-model-projection-validation.json",
+    "model_projection_live_preparation": "B6-model-projection-live-validation.json",
+    "scope_and_exit_review": "B6-scope-and-exit.json",
+    "previous_installation": "../../../docs/runbooks/installation-execution-2026-10-23-r2.json",
+    "continuous_model_design": "../B6-continuous-model-connection-design.md"
   },
   "quality": {
     "captured_items": 17,
@@ -133,7 +137,7 @@
     "data_minimization": "captured_projection_applied",
     "external_production_data": "blocked",
     "normal_diagnosis_quality": "not_demonstrated",
-    "live_model_quality": "not_tested",
+    "live_model_quality": "one_partial_observation_self_review_not_general_diagnosis",
     "isolated_fault_scenarios": "partial_S1_S2_S3_v3_S4_subcases_passed",
     "isolated_lab_preparation": "passed_single_db_scope",
     "cache_cold_key_false_cause": "passed_one_live_case",
@@ -153,12 +157,17 @@
     "s10_automatic_ci_discovery_queue_report": "passed_one_live_ci_case_before_reinstall",
     "s10_duplicate_submission": "passed_one_live_ci_case",
     "current_reinstallation": "passed_no_new_fault_experiment",
-    "model_projection_policy_design": "completed_not_implemented",
-    "model_projection_implementation": "passed_local_mock_not_live"
+    "model_projection_policy_design": "completed_not_transmission_authorization",
+    "model_projection_implementation": "passed_local_mock_not_live",
+    "model_projection_live_preparation": "passed",
+    "model_projection_live_comparison": "passed_one_approved_constrained_observation_self_review",
+    "scope_and_exit_review": "completed_b_held_c_not_ready",
+    "deployed_worker_model_integration": "not_implemented_rules_only",
+    "continuous_model_mock_implementation": "passed_local_mock_439_python_tests_no_external_calls"
   },
   "next_actions": [
-    "B-06-M3: 실제 실습 한 건의 exporter 호환성과 정제 미리보기를 확인한 뒤 실제 HTTP transport·계정/보관/최신 단가·실사용 장부·새 전송 승인을 준비해 제한 비교한다.",
-    "B-06-E1: 필수 검증과 후속 확장 범위를 구분해 평가표·데모·포트폴리오 및 B/C 진입 조건을 확정한다."
+    "B-06-M6: gateway/proxy와 전용 자격·네트워크·암호화 저장소를 비활성으로 배포하고 경계를 검증한다.",
+    "B-06-M7: 별도 승인한 실습 캠페인에서 최소 실제 비교와 실패·중단·비용 검증 후 B/C 판정을 다시 기록한다."
   ],
   "initial_live_demo": "B6-operational-demo.json",
   "initial_quality": {
@@ -183,31 +192,84 @@
     "S10-02 고정 앱 경로·수동 Argo/권한/대상 제한 정의와 공유 Lease를 구현했다. 관련 79개 시험·서버 dry-run·앱 spec/운영 식별자 불변과 실제 Lease 경쟁 거부/해제를 확인했다. 실제 등록·인계·자동 롤백은 미실행이다.",
     "S3 v3 배포·S9 단일 Primary·S11 세 변형·S10 상시 자동 조사 실측을 근거별로 대조하고, 재설치 상태와 과거 성과를 구분했다."
   ],
-  "reviewed_at": "2026-10-23",
+  "reviewed_at": "2026-10-24",
   "review_timezone": "Asia/Seoul",
   "current_reinstallation": {
-    "verified_at": "2026-10-23T16:33:49.657674+09:00",
+    "verified_at": "2026-10-24T15:02:07.827327+09:00",
     "applications_healthy": 8,
     "new_fault_experiment": false,
     "old_reports_restored": false,
     "relay_scans": {
       "inspected": 2,
       "submitted": 0,
-      "duplicates": 0,
       "skipped": 2,
-      "rejected": 0
+      "rejected": 0,
+      "duplicates": 0
     },
     "new_automatic_report_verified": false
   },
   "model_projection_design": {
     "phase": "B-06-M1",
     "status": "design_complete",
-    "implementation_status": "local_mock_validated",
+    "implementation_status": "one_approved_live_comparison_self_reviewed",
     "policy_version": "captured-practice-projection-v1",
     "first_scope": "one_read_only_isolated_lab_observation",
     "production_allowed": false,
     "captured_gate_changed": false,
-    "new_model_calls": 0,
-    "next_phase": "B-06-M3"
+    "new_model_calls": 1,
+    "next_phase": "B-06-E1"
+  },
+  "model_projection_live_comparison": {
+    "evidence": "B6-model-projection-live-validation.json",
+    "token_count_requests": 1,
+    "generation_requests": 1,
+    "estimated_cost_usd": 0.0090135,
+    "billing_verified": false,
+    "normal_diagnosis_demonstrated": false,
+    "b_stage_completion": "held",
+    "c_stage_ready": false
+  },
+  "scope_review": {
+    "phase": "B-06-E1",
+    "status": "complete",
+    "scope_document": "../B6-scope-and-exit.md",
+    "b_stage_completion": "held",
+    "c_stage_ready": false,
+    "next_phase": "B-06-M5"
+  },
+  "current_infrastructure": {
+    "status": "installed_and_verified",
+    "verified_at": "2026-10-24T15:02:07.827327+09:00",
+    "evidence": "../../../docs/runbooks/installation-execution-2026-10-24.json",
+    "runtime_reports_preserved": false,
+    "local_model_comparison_preserved": true,
+    "reinstall_required_for_live_work": false,
+    "b_stage_completion": "held",
+    "c_stage_ready": false
+  },
+  "continuous_model_design": {
+    "phase": "B-06-M4",
+    "status": "design_complete",
+    "document": "../B6-continuous-model-connection-design.md",
+    "first_target": "ai-ci worker -> ai-ops-lab/lab-api",
+    "deployment_enabled": false,
+    "continuous_transmission_approved": false,
+    "external_model_calls_in_phase": 0,
+    "next_phase": "B-06-M5",
+    "b_stage_completion": "held",
+    "c_stage_ready": false
+  },
+  "continuous_model_mock": {
+    "phase": "B-06-M5",
+    "status": "local_mock_complete",
+    "document": "../B6-continuous-model-mock-implementation.md",
+    "focused_tests_passed": 106,
+    "full_python_tests_passed": 439,
+    "actual_external_model_calls": 0,
+    "deployed": false,
+    "continuous_transmission_approved": false,
+    "next_phase": "B-06-M6",
+    "b_stage_completion": "held",
+    "c_stage_ready": false
   }
 }

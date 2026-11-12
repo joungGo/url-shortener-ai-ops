@@ -1,4 +1,4 @@
-"""승인된 정제 입력만 받는 단일 요청 어댑터다. 기본 네트워크 전송은 제공하지 않는다."""
+"""승인된 정제 입력만 받는 단일 요청 어댑터다. 기본 실행은 모의 모드다."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ Ready만으로 서비스 정상·복구를 확정하지 않는다. miss는 cold 
 scrape_quality가 not_retained_in_source_snapshot이면 표본 품질을 확인한 것처럼 말하지 않는다.
 설정 boolean은 실제 URL/자격이나 Redis 서버 장애 원인을 증명하지 않는다.
 현재 상태는 unknown, 분석 상태는 partial, 모든 조치는 not_executed다. 같은 관측의 한계를 설명한다.
+핵심 사실은 최대 6개로 간결하게 설명한다.
 입력 view_hash를 input_hash로 그대로 사용하고 제공된 스키마의 JSON만 반환한다."""
 DESTINATION = "https://api.openai.com:443"
 
@@ -47,6 +48,8 @@ class Price(StrictModel):
     source: Literal["https://developers.openai.com/api/docs/pricing"]
     input_per_million: Annotated[float, Field(gt=0, le=10000, allow_inf_nan=False)]
     output_per_million: Annotated[float, Field(gt=0, le=10000, allow_inf_nan=False)]
+    cache_write_per_million: Annotated[float, Field(gt=0, le=10000, allow_inf_nan=False)] | None = None
+    cached_input_per_million: Annotated[float, Field(gt=0, le=10000, allow_inf_nan=False)] | None = None
 
     @model_validator(mode="after")
     def valid_date(self):
@@ -55,7 +58,7 @@ class Price(StrictModel):
 
 
 class CallPlan(StrictModel):
-    execution_mode: Literal["mock"] = "mock"
+    execution_mode: Literal["mock", "live"] = "mock"
     model: Literal["gpt-6-sol"] = MODEL
     effort: Literal["low"] = "low"
     account_label: Annotated[StrictStr, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")]
@@ -67,6 +70,14 @@ class CallPlan(StrictModel):
     http_timeout_seconds: Literal[30] = 30
     total_timeout_seconds: Literal[60] = 60
     destination: Literal["https://api.openai.com:443"] = DESTINATION
+    credential_fingerprint: Sha256 | None = None
+
+    @model_validator(mode="after")
+    def live_binding(self):
+        if self.execution_mode == "live" and (self.credential_fingerprint is None or
+                self.price.cache_write_per_million is None or self.price.cached_input_per_million is None):
+            raise ValueError("live_credential_and_price_binding_required")
+        return self
 
 
 def _strict_schema():
@@ -74,6 +85,7 @@ def _strict_schema():
     schema = ProjectionAnalysisReport.model_json_schema()
     def visit(obj):
         if isinstance(obj, dict):
+            obj.pop("default", None)
             if obj.get("type") == "object":
                 obj["additionalProperties"] = False
                 obj["required"] = list(obj.get("properties", {}))
@@ -92,6 +104,7 @@ def request_templates(view: ModelView, plan: CallPlan) -> dict:
     payload = {"question": QUESTION, "view_hash": sha256_json(view.model_dump(mode="json")),
                "view": view.model_dump(mode="json")}
     body = {"model": plan.model, "store": False, "background": False,
+            "service_tier": "default",
             "reasoning": {"effort": plan.effort}, "instructions": INSTRUCTIONS,
             "input": [{"role": "user", "content": canonical_json_bytes(payload).decode()}],
             "text": {"format": {"type": "json_schema", "name": "projection_report_v1",
@@ -145,7 +158,8 @@ def generate_once(templates, plan: CallPlan, transport, *, clock):
     tokens = counted.get("input_tokens") if isinstance(counted, dict) else None
     if (type(tokens) is not int or tokens < 0 or counted.get("object") != "response.input_tokens"):
         raise ProjectionModelFailure("projection_token_count_invalid")
-    ceiling = (tokens * plan.price.input_per_million + plan.max_output_tokens * plan.price.output_per_million) / 1_000_000
+    upper_input_rate = max(plan.price.input_per_million, plan.price.cache_write_per_million or 0)
+    ceiling = (tokens * upper_input_rate + plan.max_output_tokens * plan.price.output_per_million) / 1_000_000
     if ceiling > plan.per_case_usd:
         raise ProjectionModelFailure("projection_case_budget_limit")
     try:
@@ -161,8 +175,17 @@ def generate_once(templates, plan: CallPlan, transport, *, clock):
             for k in ("input_tokens", "output_tokens"))):
         raise ProjectionModelFailure("projection_usage_unknown")
     used = {k: usage[k] for k in ("input_tokens", "output_tokens")}
-    used["estimated_cost_usd"] = (used["input_tokens"] * plan.price.input_per_million +
-                                   used["output_tokens"] * plan.price.output_per_million) / 1_000_000
+    details = usage.get("input_tokens_details", {})
+    cached = details.get("cached_tokens", 0) if isinstance(details, dict) else 0
+    writes = details.get("cache_write_tokens", 0) if isinstance(details, dict) else 0
+    if (type(cached) is not int or type(writes) is not int or min(cached, writes) < 0
+            or cached + writes > used["input_tokens"]):
+        raise ProjectionModelFailure("projection_usage_unknown")
+    used.update(cached_input_tokens=cached, cache_write_tokens=writes)
+    used["estimated_cost_usd"] = ((used["input_tokens"]-cached-writes) * plan.price.input_per_million +
+        cached * (plan.price.cached_input_per_million or plan.price.input_per_million) +
+        writes * (plan.price.cache_write_per_million or plan.price.input_per_million) +
+        used["output_tokens"] * plan.price.output_per_million) / 1_000_000
     if used["estimated_cost_usd"] > plan.per_case_usd:
         raise ProjectionModelFailure("projection_case_budget_exceeded", used)
     if (response.get("status") != "completed" or not isinstance(response.get("model"), str)

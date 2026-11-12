@@ -129,7 +129,7 @@ B-04 후속 [예약 보관 정리](docs/B4-retention-schedule.md)를 구현했�
 
 ## B-06 실환경 운영 평가·데모
 
-최신 후속(2026-10-23 KST): [S10 상시 CI 자동 조사](docs/B6-ci-service-deployment.md)와 재설치를 확인했고, [B-06-M1 실습 모델 비교 정책](docs/B6-model-data-policy.md) 설계를 완료했다. [M2 구현](docs/B6-model-projection-implementation.md)은 신규 24개/전체 398개 시험과 배포 경계 검사를 통과했다. 다음 M3는 실제 입력 준비와 제한 비교이며, M2 CLI는 run-mock만 제공한다. 실제 자료의 외부 모델 전송은 아직 비활성이다. 아래 날짜별 이력과 최신 [운영 평가](docs/B6-operational-evaluation.md)를 구분한다.
+최신 후속(2026-10-24 KST): [S10 상시 CI 자동 조사](docs/B6-ci-service-deployment.md)와 재설치를 확인했고, [B-06-M1 실습 모델 비교 정책](docs/B6-model-data-policy.md)·[M2 구현](docs/B6-model-projection-implementation.md)·[M3 한 건 실제 비교](docs/B6-model-projection-live-comparison.md)를 기록했다. M3는 입력별 승인·사용자 공유 꺼짐 확인 후 토큰 계산/모델 생성 각 1회와 같은 view 자체 검토를 완료했고 추정 비용은 $0.0090135다. [E1 평가 정리](docs/B6-scope-and-exit.md), [M4 연결 설계](docs/B6-continuous-model-connection-design.md), [M5 로컬 모의 연결](docs/B6-continuous-model-mock-implementation.md)을 완료했다. [M6 기본 비활성 배포](docs/B6-model-service-deployment.md)는 승인 이미지 등록·실제 클러스터 적용·임시 Pod 네트워크 실측을 완료했다. [M7 캠페인 사전 점검](docs/B6-model-campaign-preflight.md)은 현재 대상·허용 입력·비용·차단 조건을 기록했으며 승인이나 활성화는 하지 않았다. 두 Deployment는 0/0, Secret 0개, 모델 API 호출 0회다. 정상 진단 능력·상시 실제 모델 분석은 아직 검증하지 않았고 B 전체 완료·C 진입은 보류한다. 클러스터 worker의 외부 모델은 계속 비활성이다. 아래 날짜별 이력과 최신 [운영 평가](docs/B6-operational-evaluation.md)를 구분한다.
 
 
 [운영 평가와 남은 조건](docs/B6-operational-evaluation.md), [안전한 읽기 데모 절차](docs/B6-operational-demo.md), [검증 범위에 맞춘 포트폴리오 초안](docs/B6-portfolio.md)을 관리한다. 실제 큐·권한·중복·외부 전송 차단은 확인했으며, 자료 품질·독립 실습 시나리오·라이브 모델 평가는 미완료다. B 전체 완료나 C 실행 권한 부여로 해석하지 않는다.
@@ -157,3 +157,8 @@ S11 후속: 사용자 승인 수정 이미지를 배포하고 기존 운영 5건
 [S10-02 실습 GitOps 준비](docs/B6-gitops-preparation.md): 앱 한 개의 Git 경로·수동 Argo 구성·최소 권한·서버 대상 제한 정책과 공유 Lease를 구현했다. 관련 79개 시험, 실제 서버 dry-run·spec 불변·Lease 경쟁/해제를 확인했다. 새 파일의 원격 반영과 검토 SHA 고정, 정책/권한 실제 적용·Argo 인계·CI 연결은 후속이다. 현재 앱·수집기·외부 모델 설정은 유지한다.
 
 2026-10-21 종료 정리: 사용자 요청으로 AI를 포함한 프로젝트 AWS 인프라를 제거했다. 현재 실행 클러스터는 없으며 기존 B-06 결과는 과거 실측이다. Route53·최종 스냅샷·state/버전·로그와 로컬 소스/키는 보존했다. 재설치에는 보존 로그 import와 새 이미지/실환경 검증이 필요하다. [정리 결과](../docs/runbooks/infrastructure-cleanup-2026-10-21.md).
+
+
+2026-10-23 종료 정리: 사용자 요청으로 AI/실습/CI 서비스를 포함한 AWS 인프라 삭제와 두 state 0개·실물 부재를 확인했다. 위 실측은 삭제 전 기록이며 현재 실행 클러스터/과거 보고서가 유지된다는 뜻은 아니다. Route53·최종 스냅샷·state 이력·로그·로컬 소스/키는 보존했다. 재개 시 재설치와 현재 identity/자격 검증이 필요하다. [정리 결과](../docs/runbooks/infrastructure-cleanup-2026-10-23-r2.md). 다음 기능 작업은 B-06-M4 설계다.
+
+2026-10-24 재설치: 운영 앱·AI 조사 서비스·격리 실습·CI worker/전달기를 새 클러스터에 설치하고 현재 연결과 권한을 검증했다. 8개 Argo Application이 Synced/Healthy이고 운영 API·Argo HTTPS가 정상이다. CI 전달기의 GitHub 목록 조회는 성공했으나 새 장애 실험과 자동 보고서 생성은 이번 설치에서 재실행하지 않았다. 과거 큐·보고서·실습 데이터도 복원하지 않았다. [설치 기록](../docs/runbooks/installation-execution-2026-10-24.md). 이후 [B-06-M4 설계](docs/B6-continuous-model-connection-design.md)와 [M5 로컬 모의 구현](docs/B6-continuous-model-mock-implementation.md)을 완료했다. M6 기본 비활성 배포와 네트워크 실측을 완료했다. 다음 기능 작업은 별도 승인·구현이 필요한 M7 실습 캠페인이며 B 전체 완료·C 진입은 계속 보류한다.

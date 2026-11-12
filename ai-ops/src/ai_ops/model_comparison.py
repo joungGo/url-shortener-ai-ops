@@ -178,13 +178,21 @@ class ComparisonStore:
                     "view_hash": projection.view_hash, "plan": plan.model_dump(mode="json"),
                     "external_requests": templates,
                     "retention": {"local_days": 7, "budget_days": 90,
-                                  "provider_store_false_is_not_zero_retention": True}}
+                                  "provider_store_false_is_not_zero_retention": True,
+                                  "provider_abuse_monitoring_standard_days": 30,
+                                  "account_optional_data_sharing_checked_automatically": False,
+                                  "notice": "store=false는 공급자 보관 전체를 없애지 않습니다. 계정 선택적 데이터 공유 설정은 운영자가 확인해야 합니다."}}
 
-    def approve(self, identifier, *, binding_hash, actor):
+    def approve(self, identifier, *, binding_hash, actor, acknowledge_provider_retention=False,
+                confirm_optional_data_sharing_off=False):
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}", actor):
             raise ValueError("comparison_actor_rejected")
         with self.locked():
             record, _, plan, _ = self._validated(identifier)
+            if plan.execution_mode == "live" and acknowledge_provider_retention is not True:
+                raise ValueError("comparison_provider_retention_ack_required")
+            if plan.execution_mode == "live" and confirm_optional_data_sharing_off is not True:
+                raise ValueError("comparison_account_data_controls_confirmation_required")
             now = _utc_datetime(self.now())
             if (record["state"] != "prepared" or binding_hash != record["binding_hash"]
                     or not _utc_datetime(record["created_at"]) <= now < _utc_datetime(record["expires_at"])):
@@ -193,14 +201,43 @@ class ComparisonStore:
             if not 0 <= (now.date()-price_day).days <= 7:
                 raise ValueError("comparison_price_check_expired")
             record.update(state="approved", approval={"actor": actor, "binding_hash": binding_hash,
+                "provider_retention_acknowledged": acknowledge_provider_retention,
+                "optional_data_sharing_off_confirmed_by_operator": confirm_optional_data_sharing_off,
                 "approved_at": utc_text(now), "expires_at": utc_text(min(now+timedelta(minutes=30),
                                                       _utc_datetime(record["expires_at"])))})
             self._write(self._path(identifier), record)
 
-    def _reserve(self, now):
-        path = self.root / "budget.json"
-        ledger = self._read(path) if path.exists() else {"execution_mode": "mock", "days": {}, "last_at": utc_text(now)}
-        if ledger.get("execution_mode") != "mock":
+    def write_preview(self, identifier):
+        """실제 두 요청을 이스케이프한 비공개 HTML로 저장하고 본문 보관 기한에 연결한다."""
+        import html
+        preview = self.preview(identifier)
+        payload = html.escape(json.dumps(preview, ensure_ascii=False, indent=2))
+        content = ("<!doctype html><html lang='ko'><meta charset='utf-8'>"
+            "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'\">"
+            "<title>실습 모델 전송 미리보기</title><style>body{max-width:1100px;margin:32px auto;"
+            "font:16px/1.7 system-ui;padding:0 24px}pre{white-space:pre-wrap;word-break:break-word;"
+            "background:#f4f6f9;padding:20px;font:13px/1.6 monospace}</style>"
+            "<h1>실습 모델 전송 미리보기</h1><p>아직 승인·외부 전송하지 않았습니다. 아래 두 요청의 본문만 전송 대상입니다. "
+            "credential_fingerprint 등 plan 메타데이터는 본문에 포함되지 않습니다.</p>"
+            "<p>비용 상한 건당 $0.10·UTC 일일 $1, 생성 최대 1회. store=false여도 공급자의 "
+            "기본 abuse monitoring 보관은 최대 30일이며 예외가 있을 수 있습니다. 계정의 선택적 데이터 공유 설정은 "
+            "자동 확인하지 않았습니다. 로그·이벤트·배포/CI 원문은 제외했습니다.</p><pre>"+payload+"</pre></html>")
+        with self.locked():
+            record, _, _, _ = self._validated(identifier)
+            if record["binding_hash"] != preview["binding_hash"]:
+                raise ValueError("comparison_preview_changed")
+            path = self.root / ("preview-"+identifier+".html")
+            if path.is_symlink():
+                raise ValueError("comparison_symlink_rejected")
+            fd = os.open(path, os.O_CREAT | os.O_TRUNC | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, "w") as f:
+                os.fchmod(f.fileno(), 0o600); f.write(content); f.flush(); os.fsync(f.fileno())
+            return path
+
+    def _reserve(self, now, mode="mock"):
+        path = self.root / ("budget.json" if mode == "mock" else "budget-live.json")
+        ledger = self._read(path) if path.exists() else {"execution_mode": mode, "days": {}, "last_at": utc_text(now)}
+        if ledger.get("execution_mode") != mode:
             raise ValueError("comparison_budget_mode_rejected")
         if now < _utc_datetime(ledger["last_at"]):
             raise ValueError("comparison_clock_moved_backwards")
@@ -212,11 +249,14 @@ class ComparisonStore:
         self._write(path, ledger)
 
     def run(self, identifier, *, transport=None):
-        # M2에서는 외부 HTTP 구현을 연결하지 않는다. 실제 연결은 M3에서 승인 입력을 근거로 추가한다.
-        if transport is None or getattr(transport, "comparison_mode", None) != "mock":
+        # 모의 승인을 실제 전송에 사용할 수 없도록 실행 계획과 전송부를 함께 확인한다.
+        if transport is None or getattr(transport, "comparison_mode", None) not in {"mock", "live"}:
             raise ValueError("comparison_transport_not_enabled")
         with self.locked():
             record, projection, plan, templates = self._validated(identifier)
+            if (getattr(transport, "comparison_mode", None) != plan.execution_mode or
+                    (plan.execution_mode == "live" and getattr(transport, "expected_credential", None) != plan.credential_fingerprint)):
+                raise ValueError("comparison_transport_plan_mismatch")
             if record["state"] == "sending":
                 record.update(state="needs_review", reason="projection_interrupted_unknown")
                 self._write(self._path(identifier), record)
@@ -227,11 +267,15 @@ class ComparisonStore:
             if (record["state"] != "approved" or approval.get("binding_hash") != record["binding_hash"]
                     or not _utc_datetime(approval["approved_at"]) <= now < _utc_datetime(approval["expires_at"])):
                 raise ValueError("comparison_not_approved_or_expired")
+            if plan.execution_mode == "live" and approval.get("provider_retention_acknowledged") is not True:
+                raise ValueError("comparison_provider_retention_ack_required")
+            if plan.execution_mode == "live" and approval.get("optional_data_sharing_off_confirmed_by_operator") is not True:
+                raise ValueError("comparison_account_data_controls_confirmation_required")
             if not 0 <= (now.date()-datetime.fromisoformat(plan.price.checked_on).date()).days <= 7:
                 raise ValueError("comparison_price_check_expired")
-            self._reserve(now)
+            self._reserve(now, plan.execution_mode)
             record.update(state="sending", started_at=utc_text(now), reserved_usd=0.10,
-                          transport_kind="mock", external_model_calls=0)
+                          transport_kind=plan.execution_mode, external_model_calls=0)
             self._write(self._path(identifier), record)
             # 재실행은 같은 파일 잠금으로 배제한다. 전송 시작 기록 뒤 프로세스 종료는 재시도하지 않는다.
             try:
@@ -245,6 +289,9 @@ class ComparisonStore:
                 record.update(state="failed", reason="projection_report_contract_rejected",
                               usage=locals().get("usage"))
             record["finished_at"] = utc_text(self.now())
+            if plan.execution_mode == "live":
+                record["external_model_calls"] = getattr(transport, "attempts", {}).get("/v1/responses", 0)
+                record["external_request_attempts"] = dict(getattr(transport, "attempts", {}))
             self._write(self._path(identifier), record)
             return record
 
@@ -264,6 +311,10 @@ class ComparisonStore:
                 if _utc_datetime(record["expires_at"]) <= now:
                     expired.append(record["id"])
                     if apply:
+                        preview = self.root/("preview-"+record["id"]+".html")
+                        if preview.is_symlink():
+                            raise ValueError("comparison_symlink_rejected")
+                        preview.unlink(missing_ok=True)
                         self._write(path, {"id": record["id"], "binding_hash": record["binding_hash"],
                             "state": "purged", "purged_at": utc_text(now)})
             # 원자 저장 중 프로세스가 종료돼 남은 임시 본문도 7일 기한으로 정리한다.
@@ -275,14 +326,15 @@ class ComparisonStore:
                     orphans.append(temporary.name)
                     if apply:
                         temporary.unlink()
-            path = self.root / "budget.json"
-            if apply and path.exists():
-                ledger = self._read(path)
-                if now < _utc_datetime(ledger["last_at"]):
-                    raise ValueError("comparison_clock_moved_backwards")
-                ledger["days"] = {d: c for d, c in ledger["days"].items()
-                                  if (now.date()-datetime.fromisoformat(d).date()).days < 90}
-                self._write(path, ledger)
+            for name in ("budget.json", "budget-live.json"):
+                path = self.root / name
+                if apply and path.exists():
+                    ledger = self._read(path)
+                    if now < _utc_datetime(ledger["last_at"]):
+                        raise ValueError("comparison_clock_moved_backwards")
+                    ledger["days"] = {d: c for d, c in ledger["days"].items()
+                                      if (now.date()-datetime.fromisoformat(d).date()).days < 90}
+                    self._write(path, ledger)
             return {"mode": "apply" if apply else "preview", "expired": expired, "orphan_files": orphans}
 
 
@@ -290,4 +342,4 @@ def implementation_hash():
     """승인 후 전송·필드 정책 코드 교체도 새 승인이 필요하도록 결합한다."""
     base = Path(__file__).parent
     return sha256_json({n: hashlib.sha256((base/n).read_bytes()).hexdigest() for n in
-        ("model_projection.py", "model_comparison.py", "projected_model_engine.py")})
+        ("model_projection.py", "model_comparison.py", "projected_model_engine.py", "projected_model_transport.py")})

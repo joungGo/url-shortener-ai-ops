@@ -1,0 +1,101 @@
+{
+  "phase": "B-06-M3",
+  "date": "2026-10-23",
+  "timezone": "Asia/Seoul",
+  "status": "one_approved_live_comparison_self_reviewed",
+  "comparison_id": "cmp-2012af57000ee95a670135147fc4d3d2",
+  "view_hash": "2f0b1e957886f8b1b0e51eaeb093f116fd842fca6cca667df8968ef1c9e47581",
+  "collected_at": "2026-10-23T08:27:20.524834+00:00",
+  "source_statuses": {
+    "available": 5,
+    "missing": 9,
+    "stale": 1
+  },
+  "projection": {
+    "items": 8,
+    "available": 3,
+    "excluded_log_event_deployment_items": 7,
+    "generation_request_bytes": 6945,
+    "full_preview_private": true
+  },
+  "plan": {
+    "model": "gpt-6-sol",
+    "effort": "low",
+    "max_output_tokens": 1024,
+    "per_call_usd": 0.1,
+    "utc_daily_usd": 1.0,
+    "store": false,
+    "background": false,
+    "service_tier": "default",
+    "execution_mode": "live",
+    "price_checked_at": "2026-10-23"
+  },
+  "checks": {
+    "current_work_branch_tests": 380,
+    "new_transport_tests": 7,
+    "latest_main_m3_tested": false,
+    "syntax": "passed",
+    "deployment_static": "passed",
+    "actual_exporter": "passed",
+    "source_identity_preserved": true,
+    "key_value_recorded": false,
+    "credential_fingerprint_bound_locally": true,
+    "optional_data_sharing_verified": false,
+    "optional_data_sharing_operator_confirmed_off": true,
+    "post_comparison_original_projection_preserved": true,
+    "post_comparison_resource_identities_preserved": true
+  },
+  "live": {
+    "approval_issued": true,
+    "approval_source": "user_proceeded_after_preview_and_confirmed_sharing_off",
+    "account_setting_confirmation": "operator_statement_not_provider_api_verification",
+    "api_calls": 2,
+    "token_count_requests": 1,
+    "generation_requests": 1,
+    "automatic_retries": 0,
+    "budget_reserved_usd": 0.1,
+    "report_generated": true,
+    "report_contract_passed": true,
+    "record_state": "needs_review",
+    "record_reason": "semantic_review_required",
+    "started_at": "2026-10-23T09:02:48.423467Z",
+    "finished_at": "2026-10-23T09:03:01.055566Z",
+    "elapsed_seconds": 12.632099,
+    "usage": {
+      "input_tokens": 1518,
+      "output_tokens": 522,
+      "cached_input_tokens": 0,
+      "cache_write_tokens": 1515,
+      "estimated_cost_usd": 0.0090135
+    },
+    "billing_verified": false,
+    "response_model": "gpt-6-sol",
+    "quality_tested": "one_constrained_partial_observation_self_review_only",
+    "semantic_review": {
+      "reviewer": "implementing_agent_self_review",
+      "independent": false,
+      "result": "passed_limited_scope",
+      "rules_facts": 3,
+      "model_facts": 3,
+      "rules_hypotheses": 0,
+      "model_hypotheses": 0,
+      "suggested_actions": 2,
+      "actions_executed": 0,
+      "available_citations_only": true,
+      "missing_outcomes_not_assumed_zero": true,
+      "normal_or_recovery_completion_claim": false,
+      "partial_unknown_forced_by_contract": true
+    }
+  },
+  "cluster_model_enabled": false,
+  "new_fault_experiment": false,
+  "b_stage_completion": "held",
+  "c_stage_ready": false,
+  "private_artifacts_committed": false,
+  "sources": [
+    "https://developers.openai.com/api/docs/models/gpt-6-sol",
+    "https://developers.openai.com/api/docs/pricing",
+    "https://developers.openai.com/api/docs/guides/your-data"
+  ],
+  "next_phase": "B-06-E1"
+}

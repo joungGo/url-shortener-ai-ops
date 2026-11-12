@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-import json
 import os
 import stat
+import sys
 from pathlib import Path
 import sqlite3
 import threading
 
 from ai_ops.b_contracts import BSettings
+from ai_ops.ci_handoff import CIInputError, check_snapshot
 from ai_ops.collection import CapturedSnapshot, CollectionAudit
 from ai_ops.contracts import canonical_json_bytes, parse_evidence_bundle_json, sha256_json
 from ai_ops.data_policy import validate_snapshot
+from ai_ops.evidence import _json_object
 from ai_ops.incidents import _atomic_write, _read_json
 from ai_ops.job_queue import JobQueue, LeaseLost
 from ai_ops.live_collectors import collect_snapshot
@@ -25,21 +27,46 @@ def snapshot_value(snapshot: CapturedSnapshot) -> dict:
 
 
 class Worker:
-    """외부 모델 없이 신뢰 설정에 고정한 수동 요청만 처리한다."""
+    """외부 모델 없이 신뢰 설정에 고정한 수동·CI 요청만 처리한다."""
 
     def __init__(self, queue: JobQueue, settings: BSettings, *, collector=collect_snapshot,
-                 stopped: threading.Event | None = None):
+                 stopped: threading.Event | None = None, model_bridge=None):
+        if model_bridge is not None:
+            from ai_ops.model_projection import TARGET
+            if (len(settings.bindings.bindings) != 1 or
+                    settings.bindings.bindings[0].target.model_dump(mode="json") != TARGET):
+                raise ValueError("실습 CI 모델 연결은 격리된 한 대상에서만 허용합니다")
         self.queue = queue
         self.settings = settings
         self.collector = collector
         self.stopped = stopped or threading.Event()
+        self.model_bridge = model_bridge
+
+    def _sync_model(self, job=None, record=None):
+        if self.model_bridge is None:
+            return
+        try:
+            if job is None:
+                self.model_bridge.reconcile(self)
+            else:
+                self.model_bridge.capture(self, job, record)
+        except Exception:
+            # 보조 모델 경로의 실패가 확정된 규칙 보고서를 실패로 바꾸지 않는다.
+            print("model_outbox_sync_failed", file=sys.stderr)
 
     def _payload(self, job: dict) -> dict:
-        payload = json.loads(job["payload"])
-        if not isinstance(payload, dict) or set(payload) != {"target", "question", "config_hash", "route", "operation", "mode"} or payload["mode"] != "rules":
+        raw = job["payload"].encode("utf-8")
+        if len(raw) > 65536:
+            raise ValueError("큐 입력 크기를 초과했습니다")
+        payload = _json_object(raw)
+        base = {"target", "question", "config_hash", "route", "operation", "mode"}
+        if (not isinstance(payload, dict) or set(payload) not in (base, base | {"source", "ci_history"})
+                or payload["mode"] != "rules"):
             raise ValueError("큐 입력 구조가 유효하지 않습니다")
         if payload["config_hash"] != self.settings.config_hash:
             raise ValueError("config_changed")
+        if "ci_history" in payload:
+            self.queue.verify_ci_payload(job, payload)
         return payload
 
     def _snapshot_path(self, job: dict) -> Path:
@@ -62,6 +89,8 @@ class Worker:
         binding = next((b for b in self.settings.bindings.bindings if b.alias == payload["target"]), None)
         if binding is None or snapshot.bundle.target != binding.target:
             raise ValueError("수집 대상과 큐 대상이 일치하지 않습니다")
+        if "ci_history" in payload:
+            check_snapshot(snapshot, self.queue.verify_ci_payload(job, payload))
         return snapshot
 
     def _check_record(self, job: dict, record):
@@ -124,6 +153,7 @@ class Worker:
     def _run_once(self) -> dict | None:
         # 호출자는 저장소 전체 worker 잠금을 소유해야 한다.
         self.recover()
+        self._sync_model()
         if self.stopped.is_set():
             return None
         job = self.queue.claim()
@@ -141,9 +171,13 @@ class Worker:
                 else:
                     phase = "collection"
                     with observe(self.queue.root, "collection") as observation:
-                        snapshot = self.collector(self.settings, binding.target,
-                                                  route=payload["route"], operation=payload["operation"])
+                        options = {"route": payload["route"], "operation": payload["operation"]}
+                        if "ci_history" in payload:
+                            options["ci_history"] = self.queue.verify_ci_payload(job, payload)
+                        snapshot = self.collector(self.settings, binding.target, **options)
                         snapshot = validate_snapshot(snapshot, self.settings)
+                        if "ci_history" in payload:
+                            check_snapshot(snapshot, options["ci_history"])
                         if snapshot.bundle.target != binding.target:
                             raise ValueError("수집 대상과 큐 대상이 일치하지 않습니다")
                         observation["result"] = {"complete": "success", "partial": "partial", "unavailable": "failure"}[snapshot.audit.collection_status]
@@ -171,6 +205,7 @@ class Worker:
                     self._check_record(job, record)
                     self.queue.assert_owner(db, job)
                     self.queue.finish(db, job, record)
+                self._sync_model(job, record)
         except LeaseLost:
             # 소유권을 잃은 시도는 큐 상태·완료 참조를 덮어쓰지 않는다.
             pass
@@ -192,7 +227,7 @@ class Worker:
                 except (ValueError, OSError, KeyError, TypeError):
                     self.queue.fail(job, "integrity_error", review=True)
                     return self.queue.show(job["job_id"])
-            reason = "config_changed" if str(error) == "config_changed" else "integrity_error" if phase == "validation" or isinstance(error, ValueError) and phase == "report" else "collection_error" if phase == "collection" else "analysis_error"
+            reason = "config_changed" if str(error) == "config_changed" else "integrity_error" if phase == "validation" or isinstance(error, CIInputError) or isinstance(error, ValueError) and phase == "report" else "collection_error" if phase == "collection" else "analysis_error"
             try:
                 self.queue.fail(job, reason, review=reason in ("config_changed", "integrity_error"))
             except LeaseLost:

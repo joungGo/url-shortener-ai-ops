@@ -9,6 +9,7 @@ from ai_ops.model_comparison import ComparisonStore, rules_projection
 from ai_ops.model_projection import ModelView, parse_projection
 from ai_ops.path_policy import cli_paths
 from ai_ops.projected_model_engine import CallPlan
+from ai_ops.projected_model_transport import LiveOpenAITransport
 
 
 def mock_transport(path, body, *, timeout):
@@ -25,15 +26,17 @@ mock_transport.comparison_mode = "mock"
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="B-06-M2 운영자 비교 도구. 실제 HTTP·API 키 입력 기능 없음")
+    parser = argparse.ArgumentParser(description="정제 입력 비교. 실제 전송은 live 계획·일회 승인·보관 조건 확인 필요")
     sub = parser.add_subparsers(dest="action", required=True)
     prep = sub.add_parser("prepare")
     prep.add_argument("--projection", type=Path, required=True)
     prep.add_argument("--plan", type=Path, required=True)
-    for action in ("preview", "approve", "run-mock", "show"):
+    for action in ("preview", "preview-html", "approve", "run-mock", "run-live", "show"):
         child = sub.add_parser(action); child.add_argument("--id", required=True)
         if action == "approve":
             child.add_argument("--binding-hash", required=True); child.add_argument("--actor", required=True)
+            child.add_argument("--acknowledge-provider-retention", action="store_true")
+            child.add_argument("--confirm-optional-data-sharing-off", action="store_true")
     sub.add_parser("purge").add_argument("--apply", action="store_true")
     args = cli_paths(parser, parser.parse_args(argv), {"projection": "input", "plan": "input"})
     try:
@@ -46,11 +49,20 @@ def main(argv=None):
             result = {"id": identifier, "state": "prepared_or_existing"}
         elif args.action == "preview":
             result = store.preview(args.id)
+        elif args.action == "preview-html":
+            result = {"path": str(store.write_preview(args.id))}
         elif args.action == "approve":
-            store.approve(args.id, binding_hash=args.binding_hash, actor=args.actor)
+            store.approve(args.id, binding_hash=args.binding_hash, actor=args.actor,
+                          acknowledge_provider_retention=args.acknowledge_provider_retention,
+                          confirm_optional_data_sharing_off=args.confirm_optional_data_sharing_off)
             result = {"id": args.id, "state": "approved"}
         elif args.action == "run-mock":
             result = store.run(args.id, transport=mock_transport)
+        elif args.action == "run-live":
+            record = store.show(args.id)
+            if record["plan"]["execution_mode"] != "live":
+                raise ValueError("comparison_live_plan_required")
+            result = store.run(args.id, transport=LiveOpenAITransport(record["plan"]["credential_fingerprint"]))
         elif args.action == "show":
             result = store.show(args.id)
         else:
