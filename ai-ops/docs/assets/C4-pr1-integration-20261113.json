@@ -1,0 +1,58 @@
+{
+  "verified_at": "2026-11-12T16:24:17.669836+00:00",
+  "repository": "joungGo/url-shortener-ai-ops",
+  "pr_url": "https://github.com/joungGo/url-shortener-ai-ops/pull/1",
+  "pr_state": "MERGED",
+  "tested_pr_head": "0997a96142ca37e8195b9574c7766b095ac81753",
+  "merged_main": "69f99a08d25242b5d7774aacdc2844bb471f0997",
+  "merged_at": "2026-11-12T16:21:31Z",
+  "merge_method": "normal_squash",
+  "pr_ready_ci": {
+    "id": 43257307388,
+    "url": "https://github.com/joungGo/url-shortener-ai-ops/actions/runs/43257307388",
+    "success_jobs": [
+      "scope",
+      "terraform",
+      "contracts",
+      "image",
+      "C03 Main PR Gate"
+    ]
+  },
+  "main_ci": {
+    "id": 43257778832,
+    "url": "https://github.com/joungGo/url-shortener-ai-ops/actions/runs/43257778832",
+    "status": "success",
+    "jobs": {
+      "scope": "success",
+      "terraform": "success",
+      "contracts": "success",
+      "image": "success",
+      "C03 Main PR Gate": "skipped"
+    }
+  },
+  "review_requirements": {
+    "branch_protected_before": false,
+    "branch_protected_after": false,
+    "protection_rules_api": "403 feature unavailable for current private repository plan",
+    "requested_reviewers_before": [],
+    "review_records": 0,
+    "enforced_separate_review_requirement": false,
+    "user_explicitly_requested_integration": true,
+    "admin_bypass_used": false,
+    "protection_or_visibility_changes": false
+  },
+  "local_main": {
+    "local_branch": "main",
+    "local_head": "69f99a08d25242b5d7774aacdc2844bb471f0997",
+    "merged_tree_equals_tested_pr_head": true,
+    "validated_file_hashes_match": true,
+    "local_uncommitted_handoff_preserved": true,
+    "feature_branch_preserved": true
+  },
+  "aws_or_infrastructure_changes": false,
+  "paid_model_calls": false,
+  "live_control_cutover": "pending_reinstallation_review",
+  "live_c04_success": false,
+  "c05_final_complete": false,
+  "next_step": "Plan image publishing/OIDC/private chart and control repository/CI/rollback/collector cutover before fresh installation"
+}

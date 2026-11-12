@@ -1,0 +1,93 @@
+{
+  "verified_at": "2026-11-12T16:14:42.435829+00:00",
+  "source_head": "0997a96142ca37e8195b9574c7766b095ac81753",
+  "branch": "codex/c04-request-time-20261112",
+  "platform_contract_revision": "9573b8c9f323a643e65bb58c323dc932c681a6b2",
+  "scope": "offline_local_validation_only",
+  "code_changes_made": false,
+  "cloud_or_paid_model_calls": false,
+  "runtime_or_infrastructure_actions": false,
+  "python_version": "3.13.12",
+  "dependency_versions": {
+    "annotated-types": "0.8.0",
+    "pydantic": "2.13.5",
+    "pydantic-core": "2.46.5",
+    "typing-extensions": "4.16.0",
+    "typing-inspection": "0.4.4"
+  },
+  "checks": [
+    {
+      "name": "repository-boundary",
+      "exit_code": 0,
+      "log_sha256": "b095a9487bd273e70b124e6c312f0dbbf44aac2007212f1cfbe57d8ca37b093d"
+    },
+    {
+      "name": "build_dev_fixtures",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "build_holdout_fixtures",
+      "exit_code": 0,
+      "log_sha256": "31cc6515a29ec9eb472190a0c5300046a6a423535ae88ec265323cd111540489"
+    },
+    {
+      "name": "build_holdout_v2_fixtures",
+      "exit_code": 0,
+      "log_sha256": "9ae0140ea28a360137050cf31840ea6cfb917e67bd7ed5997c4358c102daed89"
+    },
+    {
+      "name": "build_holdout_v3_fixtures",
+      "exit_code": 0,
+      "log_sha256": "768533a2a0b262d993a040d4294413762d6466ed49528c80ddb9b81b0d52e191"
+    },
+    {
+      "name": "deployment-static",
+      "exit_code": 0,
+      "log_sha256": "580ea64e7d643245f2e0c1d367119a965d02f92913f78474fa0781a0fcaf39e6"
+    },
+    {
+      "name": "focused-tests",
+      "passed": 15,
+      "seconds": 0.059,
+      "skip_count": 0,
+      "log_sha256": "96010754b9812fdae47fee9aa1d120ab41f66f1c3f3a6fc24ced9ade4a388f1c"
+    },
+    {
+      "name": "full-tests",
+      "passed": 880,
+      "seconds": 28.337,
+      "skip_count": 0,
+      "log_sha256": "f857bb0ef4fdb95662521dca297eb36ab8099695d40cb95e715bb88e1db62c65"
+    }
+  ],
+  "ast_files_parsed": 287,
+  "schemas_matching": 14,
+  "validated_pr_diff_files": {
+    "ai-ops/README.md": "269d93fd0c5d24da0e027bfdc32fbbc0d850fd005ea41be07c852aed4ac56da0",
+    "ai-ops/docs/C5-execution-controls.md": "c656d609e3e1a5d520a587e02b977d8498c9530c99e682f054f576fea3695a3e",
+    "ai-ops/docs/C5-final-validation-20261112.md": "a433dfcec83f569c0fe4e06c81db010f28608577d79c8163bab8dd9112b91c06",
+    "ai-ops/docs/assets/C5-local-controls-validation-20261112.json": "17c82101ed5f3255e64783da0b14c2acf8d65b9c62e09cfa181e79325d498f84",
+    "ai-ops/scripts/prepare_c4_recovery_pr.py": "f1d8ffc444f06791e07ece8759873bc8131ec345bce4b71c260cb32818fa19bc",
+    "ai-ops/src/ai_ops/c_recovery.py": "33355c2a941533c2daafb13b66635844851b27475c4a9b0e15cdd22cfed668c2",
+    "ai-ops/src/ai_ops/c_trial_request_time.py": "04cc5a21ee1ddcd44162d34122ad05814af9bf412ee1bde28a2a06ee8189927d",
+    "ai-ops/tests/test_c_trial_request_time.py": "d7892f192451eb3b85ed72efe3a7c834aa5184cbd145198966e720866bcb872b"
+  },
+  "historical_012": {
+    "diagnosis_sha256": "fc781293347b96f093353fce060158c44debdc3224ce14b44b9a8777f45e0de6",
+    "observed_after_requested_seconds": 2.009996,
+    "all_other_recorded_binding_checks_passed": true,
+    "host_clock_root_cause": "not_measured"
+  },
+  "request_time_safeguards": [
+    "future observation request refused before database write",
+    "bounded real waiting max 5 seconds without changing existing deadline",
+    "second authenticated projection must equal initial projection",
+    "clock changes, read failures, changed projection and expired deadlines fail closed"
+  ],
+  "setup_note": "Deployment static check initially lacked pinned external platform source; fixed validation setup using local git archive of reviewed revision, no network or source change",
+  "live_c04_success": false,
+  "c05_final_complete": false,
+  "next_step": "Review and integrate draft PR1 exact head, then plan live control cutover; fresh installation and approvals required before live verification",
+  "ai_main_revision": "fb4ecb22c2c39ce5852a69c39f7c1776964f899f"
+}
