@@ -13,6 +13,7 @@ import time
 
 from ai_ops.c_verification_transport import CONTEXT, LIMIT, RESOURCES
 from ai_ops.c_recovery_snapshot import same_recovery_resources
+from ai_ops.c_trial_startup_trace import stage
 
 
 TRIAL_RESOURCES = {
@@ -66,7 +67,8 @@ class C4TrialTransport:
 
     def get(self, resource):
         namespace, *target = TRIAL_RESOURCES[resource]
-        result = json.loads(self._kube("-n", namespace, "get", *target, "-o", "json"))
+        with stage(self, 'kube.'+resource):
+            result = json.loads(self._kube("-n", namespace, "get", *target, "-o", "json"))
         if result.get("metadata", {}).get("continue"):
             raise ValueError("잘린 Kubernetes 원본은 사용할 수 없습니다")
         return result
