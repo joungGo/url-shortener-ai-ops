@@ -176,6 +176,9 @@ def main():
             try:probe.close()
             except ValueError:
                 evidence.update(status='stopped',probe_threads_stopped=False)
+    executor_for_timing = executor
+    if executor_for_timing is not None and hasattr(executor_for_timing, 'recovery_timing'):
+        evidence['recovery_read_timing'] = executor_for_timing.recovery_timing.report()
     write_private_json(args.output, evidence)
     print(json.dumps({"status": evidence["status"], "fault_injected": evidence["fault_injected"]}))
     return 0 if evidence["status"] == "resolved" else 1

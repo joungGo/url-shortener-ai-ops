@@ -16,12 +16,14 @@ def recovery_github_reader(deadline, *, repository, clock):
     seconds = min(180, int((_utc_datetime(deadline)-_utc_datetime(clock())).total_seconds()))
     if seconds < 8:
         raise ApprovalRejected('github_recovery_read_window_too_short')
-    return ApprovalGitHubReader(max_read_seconds=seconds, repository=repository)
+    from ai_ops.c_trial_read_cache import ImmutableGitReader
+    return ImmutableGitReader(ApprovalGitHubReader(max_read_seconds=seconds, repository=repository),
+                              enforce_deadline=True)
 
 
 # 예외 원문/API 응답/자격을 결과에 복사하지 않는다. 알려진 고정 코드만 허용한다.
 _SAFE_CODES = frozenset({
-    'github_recovery_read_window_too_short', 'github_read_timeout', 'github_read_failed',
+    'recovery_read_deadline_exceeded', 'github_recovery_read_window_too_short', 'github_read_timeout', 'github_read_failed',
     'github_read_path_rejected', 'github_response_too_large',
     'fresh_live_proof_unavailable', 'live_proof_changed_or_stale', 'live_snapshot_stale',
     'live_proof_snapshot_time_mismatch', 'under_lock_proof_not_fresh',

@@ -1,5 +1,7 @@
 """실제 C-02 인증된 조사/요청 조회를 주입 소유권 아래 C-03에 연결한다."""
 
+from ai_ops.c_recovery_read_timing import phase
+
 import importlib.util
 from pathlib import Path
 
@@ -32,7 +34,8 @@ class TrialSource:
 
     def collect(self, expected_lease=None):
         record = self.handoff
-        before = self.transport.snapshot()
+        with phase('source.before', read=True):
+            before = self.transport.snapshot()
         current_holder = before["lease"]["spec"].get("holderIdentity")
         expected_holder = record.owner_holder if expected_lease is None else record.executor_holder
         if (current_holder != expected_holder or (expected_lease is not None and expected_lease != {
@@ -43,10 +46,12 @@ class TrialSource:
             failure_image=record.failure_image, application_uid=record.application_uid,
             deployment_uid=record.deployment_uid, now=self.clock(),
             source_repository=record.repository, failure_handoff=record)
-        result, _, _, _, raw = self.audit._collect(self.context, expected_lease_holder=expected_holder,
-            include_snapshot=True, read_values=lambda revision:self.audit._github_values(
-                revision, reader=self.git_reader, repository=self.context.recovery_repository))
-        after = self.transport.snapshot()
+        with phase('source.audit', read=True):
+            result, _, _, _, raw = self.audit._collect(self.context, expected_lease_holder=expected_holder,
+                include_snapshot=True, read_values=lambda revision:self.audit._github_values(
+                    revision, reader=self.git_reader, repository=self.context.recovery_repository))
+        with phase('source.after', read=True):
+            after = self.transport.snapshot()
         require_same_recovery_resources(before, raw, now=self.clock(), phase='trial_source.before_to_raw')
         require_same_recovery_resources(raw, after, now=self.clock(), phase='trial_source.raw_to_after')
         validate_active_failure(after["application"], after["deployment"], after["replica_set"],

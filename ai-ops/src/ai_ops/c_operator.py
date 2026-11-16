@@ -113,13 +113,24 @@ def _proposal_client(path: Path, action: str, proposal_id: str) -> dict:
 
 
 def _send(path: Path, body: dict) -> dict:
+    from ai_ops.c_recovery_read_timing import read_timeout
     data = canonical_json_bytes(body) + b"\n"
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-        connection.settimeout(10)
+        connection.settimeout(read_timeout(10) if body.get('action') == 'show' else 10)
         connection.connect(str(path))
         connection.sendall(data)
-        with connection.makefile("rb") as reader:
-            raw = reader.readline(MAX_RESPONSE + 1)
+        if body.get('action') == 'show':
+            # 작은 조각이 계속 와도 전체 읽기 기한을 새로 시작하지 않는다.
+            raw = bytearray()
+            while len(raw) <= MAX_RESPONSE and b'\n' not in raw:
+                connection.settimeout(read_timeout(10))
+                chunk = connection.recv(min(8192, MAX_RESPONSE + 1 - len(raw)))
+                if not chunk: break
+                raw.extend(chunk)
+            raw = bytes(raw).split(b'\n', 1)[0] + (b'\n' if b'\n' in raw else b'')
+        else:
+            with connection.makefile("rb") as reader:
+                raw = reader.readline(MAX_RESPONSE + 1)
     if len(raw) > MAX_RESPONSE or not raw.endswith(b"\n"):
         raise ValueError("C 응답이 유효하지 않습니다")
     return json.loads(raw)

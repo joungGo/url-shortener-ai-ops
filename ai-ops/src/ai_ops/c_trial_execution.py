@@ -1,5 +1,6 @@
 """실제 격리 주입·조사 Job·C-03 복구 adapter를 한 소유권으로 연결한다."""
 
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 from typing import Annotated, Literal
@@ -15,6 +16,7 @@ from ai_ops.c_failure_handoff import (
 )
 from ai_ops.contracts import Sha256, StrictModel, UTCDateTime, _utc_datetime, sha256_json
 from ai_ops.c_trial_startup_trace import stage
+from ai_ops.c_recovery_read_timing import RecoveryReadTiming, phase
 
 
 class TrialPlan(StrictModel):
@@ -302,6 +304,12 @@ class C4TrialExecutor:
         return self.transport.create_capture_job(job)
 
     def recover(self, **preflight_args):
+        self.recovery_timing = RecoveryReadTiming(self.plan.manual_recovery_at, clock=self.clock,
+            read_deadline=getattr(preflight_args.get('reader'),'deadline',None))
+        with self.recovery_timing.activate(), phase('recovery.total'):
+            return self._recover(**preflight_args)
+
+    def _recover(self, **preflight_args):
         from ai_ops.c_approval import verify_review
         from ai_ops.c_merge_guard import verify_merged_commit
         from ai_ops.c_sync_guard import plan_exact_sync
@@ -315,7 +323,8 @@ class C4TrialExecutor:
         preflight_args.pop("clock", None)
         review_args = {key: preflight_args[key] for key in (
             "drafts", "proposal_id", "pull_number", "allowed_github_id", "pr_author_id", "pr_link", "reader")}
-        review_record=verify_review(**review_args, clock=self.clock)
+        with phase('review.initial'):
+            review_record=verify_review(**review_args, clock=self.clock)
         if self.plan.schema_version==2:
             from ai_ops.c_trial_review_window import require_review_notice
             require_review_notice(self.plan,preflight_args.pop('review_notice'),
@@ -323,18 +332,22 @@ class C4TrialExecutor:
             if not self.plan.planned_at <= _utc_datetime(review_record['approved_at']) <= self.plan.review_cutoff():
                 raise ValueError('실제 리뷰가 현재 계획의 승인 마감을 벗어났습니다')
         # 병합 자격의 실제 발급/출처 검증과 폐기는 transport의 한 세션으로 제한한다.
-        with self.transport.merge_session() as merge:
+        with phase('merge.session'), ExitStack() as session:
+            with phase('merge.open', read=True):
+                merge = session.enter_context(self.transport.merge_session())
             preflight_args["executor_identity"] = merge.identity
             bound = FailureHandoffReader(self.handoff, preflight_args["live_reader"],
                                          self.transport.snapshot, clock=self.clock)
             preflight_args["live_reader"] = bound
-            locked, self.lease = acquire_failure_preflight(owner=self.lease, handoff=self.handoff,
-                read_failure=self.transport.snapshot, **preflight_args)
+            with phase('preflight.locked'):
+                locked, self.lease = acquire_failure_preflight(owner=self.lease, handoff=self.handoff,
+                    read_failure=self.transport.snapshot, **preflight_args)
             proposal = preflight_args["drafts"].read(preflight_args["proposal_id"],
                 actor_github_id=preflight_args["allowed_github_id"], now=self._moment())
             link = preflight_args["pr_link"]
-            request = plan_failure_merge(handoff=self.handoff, live_reader=bound,
-                                         locked=locked, proposal=proposal, pr_link=link)
+            with phase('merge.plan'):
+                request = plan_failure_merge(handoff=self.handoff, live_reader=bound,
+                                             locked=locked, proposal=proposal, pr_link=link)
             # 승인·CI는 직전 잠금 아래 preflight에서 확인했고, 쓰기 직전에는 원본과 짧은 기한을 대조한다.
             self._require_write_window()
             if not 0 <= (self._moment()-_utc_datetime(locked["checked_at"])).total_seconds() < 15:
@@ -344,13 +357,15 @@ class C4TrialExecutor:
                 raise ValueError('execution_journal_crossed_merge_preflight_window')
             response = merge.merge(request)
             # API 성공 뒤 읽기 검증 실패를 병합 실패로 해석해 재시도하지 않는다.
-            verified = verify_merged_commit(reader=preflight_args["reader"], locked=locked,
-                proposal=proposal, pr_link=link, merge_response=response)
+            with phase('merge.verify', read=True):
+                verified = verify_merged_commit(reader=preflight_args["reader"], locked=locked,
+                    proposal=proposal, pr_link=link, merge_response=response)
             self.merge_sha = verified["merge_sha"]
             if self.control is not None:
                 self.control.merged(locked, proposal, link, response)
-            sync = plan_exact_sync(reader=preflight_args["reader"], live_reader=bound,
-                locked=locked, proposal=proposal, pr_link=link, merge_response=response, now=self._moment())
+            with phase('sync.plan', read=True):
+                sync = plan_exact_sync(reader=preflight_args["reader"], live_reader=bound,
+                    locked=locked, proposal=proposal, pr_link=link, merge_response=response, now=self._moment())
             for command in sync["commands"]:
                 # set 이후 source가 달라지므로 두 번째 호출은 UID/소유권/기한을 대조한다.
                 self._require_write_window(allowed_revision=verified["merge_sha"])
@@ -358,10 +373,12 @@ class C4TrialExecutor:
                 self._before_write(operation, revision=verified['merge_sha'])
                 self.transport.argo("sync", command)
                 self._confirm_write(operation, verified['merge_sha'])
-            snapshot = self.transport.wait_healthy(verified["merge_sha"], self.plan.normal_image)
+            with phase('sync.wait'):
+                snapshot = self.transport.wait_healthy(verified['merge_sha'], self.plan.normal_image)
             self.check_cancellation()
-            receipt = verify_c03_handoff(reader=preflight_args["reader"], snapshot=snapshot,
-                locked=locked, proposal=proposal, pr_link=link, merge_response=response, clock=self.clock)
+            with phase('handoff.verify', read=True):
+                receipt = verify_c03_handoff(reader=preflight_args["reader"], snapshot=snapshot,
+                    locked=locked, proposal=proposal, pr_link=link, merge_response=response, clock=self.clock)
             self._confirm_write('c03', verified['merge_sha'])
             self.lease.release(recovery_verified=True)
             self.finished = True

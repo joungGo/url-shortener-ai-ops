@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from ai_ops.c_recovery_read_timing import phase, read_timeout, read_map, submit
 
 from ai_ops.c_approval import (ApprovalGitHubReader, _blob, _entry, _lab_tree, _tree,
                                prepare_pr_link)
@@ -24,7 +25,7 @@ from ai_ops.path_policy import cli_paths, permitted_path, write_private_json
 
 
 def _run(*args: str) -> str:
-    output = subprocess.run(args, capture_output=True, text=True, timeout=15, check=True).stdout
+    output = subprocess.run(args, capture_output=True, text=True, timeout=read_timeout(15), check=True).stdout
     if len(output.encode()) > 2 * 1024 * 1024:
         raise ValueError("복구 근거 조회 응답이 너무 큽니다")
     return output
@@ -42,8 +43,8 @@ def _collect(args, *, expected_lease_holder=None, include_snapshot=False,
     targets = (("argocd", "application", "lab-target"),
                ("ai-ops-lab", "deployment", "lab-api"),
                ("ai-ops-lab", "lease", "b6-scenario-lock"))
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        app, deployment, lease = list(pool.map(lambda target: get(*target), targets))
+    with phase('audit.initial', read=True), ThreadPoolExecutor(max_workers=3) as pool:
+        app, deployment, lease = read_map(pool, lambda target: get(*target), targets)
     if repository not in RECOVERY_REPOSITORIES or (
             app["spec"]["source"].get("repoURL") != f"https://github.com/{repository}.git"):
         raise ValueError("선택한 복구 저장소와 Argo 원본이 다릅니다")
@@ -52,20 +53,21 @@ def _collect(args, *, expected_lease_holder=None, include_snapshot=False,
         raise ValueError("실습 Argo revision이 전체 SHA가 아닙니다")
     if read_values is None and repository != REPOSITORY:
         read_values = lambda revision: _github_values(revision, repository=repository)
-    values = (read_values(revision) if read_values is not None else
-              _run("git", "show", revision + ":ai-ops/lab/values.yaml").encode())
+    with phase('audit.values', read=True):
+        values = (read_values(revision) if read_values is not None else
+                  _run("git", "show", revision + ":ai-ops/lab/values.yaml").encode())
     result = assess_live_preflight(app, deployment, lease, values,
                                    expected_lease_holder=expected_lease_holder, repository=repository)
     if args.normal_binding is not None and result["blockers"] == ["prior_digest_and_failure_proof_required"]:
         if args.normal_binding.stat().st_size > 8192:
             raise ValueError("정상 CI 결합값 파일이 너무 큽니다")
         binding = NormalCIBinding.model_validate_json(args.normal_binding.read_bytes())
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            history_read = pool.submit(verify_normal_ci_history, args.normal_run_id, args.normal_head, binding)
-            cluster_read = pool.submit(_run, "aws", "eks", "describe-cluster", "--region", "ap-northeast-2",
+        with phase('audit.identity_history', read=True), ThreadPoolExecutor(max_workers=4) as pool:
+            history_read = submit(pool, verify_normal_ci_history, args.normal_run_id, args.normal_head, binding)
+            cluster_read = submit(pool, _run, "aws", "eks", "describe-cluster", "--region", "ap-northeast-2",
                                        "--name", "urlshortener", "--output", "json")
-            account_read = pool.submit(_run, "aws", "sts", "get-caller-identity", "--output", "json")
-            kube_read = pool.submit(_run, "kubectl", "--kubeconfig", kubeconfig, "config", "view",
+            account_read = submit(pool, _run, "aws", "sts", "get-caller-identity", "--output", "json")
+            kube_read = submit(pool, _run, "kubectl", "--kubeconfig", kubeconfig, "config", "view",
                                     "--minify", "--raw", "-o", "json")
             history = history_read.result()
             cluster = json.loads(cluster_read.result())["cluster"]
@@ -83,7 +85,7 @@ def _collect(args, *, expected_lease_holder=None, include_snapshot=False,
             command = ("aws", "ecr", "describe-images", "--region", "ap-northeast-2",
                        "--repository-name", "urlshortener", "--image-ids",
                        "imageDigest=" + digest, "--output", "json")
-            response = subprocess.run(command, capture_output=True, text=True, timeout=15)
+            response = subprocess.run(command, capture_output=True, text=True, timeout=read_timeout(15))
             if response.returncode and "ImageNotFoundException" in response.stderr:
                 return {"imageDetails": []}, True
             if response.returncode or len(response.stdout.encode()) > 65536:
@@ -91,36 +93,38 @@ def _collect(args, *, expected_lease_holder=None, include_snapshot=False,
             return json.loads(response.stdout), False
         old_digest = binding.app.image.removeprefix(IMAGE_REPOSITORY + "@")
         bad_digest = _values(values)["api"]["image"]["digest"]
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            normal_read = pool.submit(ecr_lookup, old_digest)
-            failure_read = pool.submit(ecr_lookup, bad_digest)
-            pods_read = pool.submit(_run, "kubectl", "--kubeconfig", kubeconfig, "-n", "ai-ops-lab",
+        with phase('audit.images_pods', read=True), ThreadPoolExecutor(max_workers=3) as pool:
+            normal_read = submit(pool, ecr_lookup, old_digest)
+            failure_read = submit(pool, ecr_lookup, bad_digest)
+            pods_read = submit(pool, _run, "kubectl", "--kubeconfig", kubeconfig, "-n", "ai-ops-lab",
                                     "get", "pods", "-l", "app=lab-api", "-o", "json")
             ecr, _ = normal_read.result()
             _, bad_absent = failure_read.result()
             pods = json.loads(pods_read.result())["items"]
         owners = pods[0].get("metadata", {}).get("ownerReferences", []) if len(pods) == 1 else []
-        replica_set = get("ai-ops-lab", "replicaset", owners[0]["name"]) if len(owners) == 1 \
-            and owners[0].get("kind") == "ReplicaSet" else {}
+        with phase('audit.replicaset', read=True):
+            replica_set = get("ai-ops-lab", "replicaset", owners[0]["name"]) if len(owners) == 1 \
+                and owners[0].get("kind") == "ReplicaSet" else {}
         result = assess_recovery_proof(app, deployment, lease, values, replica_set, pods,
                                        binding, history, ecr, bad_absent,
                                        expected_lease_holder=expected_lease_holder, repository=repository)
         if args.operator_state_root is not None and result["proof_ready"]:
-            shown = _client(args.operator_state_root / "operator.sock", "show",
-                            args.incident_id, args.incident_run_id)
-            if shown.get("status") != "ok":
-                raise ValueError("인증된 사건 조회가 거부됐습니다")
-            projection = IncidentProjection.model_validate(shown["projection"])
-            request = read_existing_request(args.operator_state_root, args.request_id)
-            github_id = _run("gh", "api", "user", "--jq", ".id").strip()
-            if not github_id.isdecimal() or request.requester_github_id != int(github_id):
-                raise ValueError("현재 운영자와 해결 요청의 GitHub ID가 다릅니다")
-            result = assess_incident_request(result, projection, request)
+            with phase('audit.incident', read=True):
+                shown = _client(args.operator_state_root / "operator.sock", "show",
+                                args.incident_id, args.incident_run_id)
+                if shown.get("status") != "ok":
+                    raise ValueError("인증된 사건 조회가 거부됐습니다")
+                projection = IncidentProjection.model_validate(shown["projection"])
+                request = read_existing_request(args.operator_state_root, args.request_id)
+                github_id = _run("gh", "api", "user", "--jq", ".id").strip()
+                if not github_id.isdecimal() or request.requester_github_id != int(github_id):
+                    raise ValueError("현재 운영자와 해결 요청의 GitHub ID가 다릅니다")
+                result = assess_incident_request(result, projection, request)
     if include_snapshot:
         # C-03은 이 자료로 실행 경계를 판단한다. 긴 CI/ECR 조회 중 대상이나
         # 공유 잠금이 바뀌었다면 한 번의 수집 안에서도 닫힌 상태로 끝낸다.
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            final = list(pool.map(lambda target: get(*target), targets))
+        with phase('audit.final', read=True), ThreadPoolExecutor(max_workers=3) as pool:
+            final = read_map(pool, lambda target: get(*target), targets)
         if not same_recovery_resources(
                 {"application": app, "deployment": deployment, "lease": lease},
                 dict(zip(("application", "deployment", "lease"), final))):

@@ -18,6 +18,7 @@ from typing import Annotated, Literal
 from pydantic import Field, StrictInt, StrictStr, model_validator
 
 from ai_ops.contracts import StrictModel, UTCDateTime, _utc_datetime
+from ai_ops.c_recovery_read_timing import read_timeout
 from ai_ops.evidence import _json_object
 
 
@@ -89,11 +90,12 @@ class GitHubReader:
         # 기존 호스트 설정과 무관하게 접속할 GitHub 호스트와 경로를 고정한다.
         if path not in (LAB_RUNS_PATH, NORMAL_RUNS_PATH) and not re.fullmatch(re.escape(PREFIX) + r"/(?:runs/[1-9][0-9]*(?:/artifacts\?per_page=100)?|artifacts/[1-9][0-9]*/zip)", path):
             raise ValueError("CI API path rejected")
+        timeout = read_timeout(READ_TIMEOUT_SECONDS)
         process = subprocess.Popen(["gh", "api", "--hostname", "github.com", path],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True)
         try:
             data = bytearray()
-            deadline = time.monotonic() + READ_TIMEOUT_SECONDS
+            deadline = time.monotonic() + read_timeout(timeout)
             with selectors.DefaultSelector() as selector:
                 selector.register(process.stdout, selectors.EVENT_READ)
                 while True:
