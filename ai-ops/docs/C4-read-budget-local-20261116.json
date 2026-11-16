@@ -1,0 +1,129 @@
+{
+  "record_type": "c04_recovery_read_budget_local",
+  "base_sha": "2b669263473218cad03fa5ea1147b6578aaa678f",
+  "status": "local_implemented_and_verified",
+  "local_only": true,
+  "committed": false,
+  "pushed": false,
+  "remote_ci_run": false,
+  "deployed": false,
+  "live_trial_run": false,
+  "full_tests": {
+    "passed": 1076,
+    "skipped": 0,
+    "seconds": 47.523,
+    "preexisting_resource_warnings": 1
+  },
+  "focused_tests_passed": 64,
+  "new_regression_tests": 15,
+  "fixture_checks_passed": 4,
+  "schemas_unchanged": 14,
+  "ast_files": 310,
+  "repository_boundary_passed": true,
+  "conditions_ast_unchanged": [
+    "TrialPlan",
+    "TrialAuthorization",
+    "C4TrialExecutor._inject",
+    "C4TrialExecutor._require_write_window",
+    "C4TrialExecutor.restore"
+  ],
+  "outbound_read_counts": {
+    "before": {
+      "outbound_github_reads": 96,
+      "immutable_reads": 62,
+      "mutable_reads": 34,
+      "live_reader_reads": 4,
+      "simulated_github_elapsed_seconds": 38.4
+    },
+    "after": {
+      "outbound_github_reads": 45,
+      "immutable_reads": 11,
+      "mutable_reads": 34,
+      "live_reader_reads": 4,
+      "simulated_github_elapsed_seconds": 18.0
+    }
+  },
+  "simulated_get_latency_seconds": 0.4,
+  "live_latency_measured": false,
+  "actual_006_slow_substep_unknown": true,
+  "external_service_calls": 0,
+  "actual_slack_connected": false,
+  "terraform_executed": false,
+  "external_model_calls": 0,
+  "c04_c05_live_complete": false,
+  "a5_a7_measured": false,
+  "evidence_root": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/c04-read-budget-local-20261116",
+  "working_copy": "/private/tmp/c04-recovery-budget-local-20261116",
+  "scoped_files": {
+    "ai-ops/scripts/audit_c2_live_preflight.py": {
+      "sha256": "578d1c5967e6e99288acc7cd71bbb91064ae90e3ae88d2dba948236ae4014716",
+      "old_sha256": "95a93252a3f924e9b84bdb86041645b66af1e79303dd22b3b9c55c720702e5f0"
+    },
+    "ai-ops/scripts/run_c4_ready_trial.py": {
+      "sha256": "a24c1a5df0fe9beb12ea6e5a93806547eff36962f97f1fdfbc950573a12d3719",
+      "old_sha256": "85e0049a3ce07c1f1c8cb82e56cc39dbc31ddbb39abec896fc31fd7d60111e5b"
+    },
+    "ai-ops/scripts/run_c4_trial.py": {
+      "sha256": "28230372849aa2b05909e965fd9873f485801ef58bd0ba7250c44162455ed973",
+      "old_sha256": "f2cf505ecd0b58428c71b9f9136d25225122e887c333ebc5f5410a4b915548fd"
+    },
+    "ai-ops/src/ai_ops/c_execution_live.py": {
+      "sha256": "6df7bff7a2f766613b68b73c676624443bc72cb05439ed55d53ad33d2959cab2",
+      "old_sha256": "932b51826fa0585314ea489706a4f3c1eea972a3e580ff2b998f4ecb4a388767"
+    },
+    "ai-ops/src/ai_ops/c_operator.py": {
+      "sha256": "049cdc076e687a08c089787e160189cceff2a0843dd0a3cafd558433539ae6e0",
+      "old_sha256": "85731549ef26a3a08e1a038853aae388a5945b1bdf5f6ca31cee3f808f34a0dc"
+    },
+    "ai-ops/src/ai_ops/c_trial_execution.py": {
+      "sha256": "d770c8227ca91c1a32dc502c139dcc4576a268c07d58bde88e86cfcd60d2f1ef",
+      "old_sha256": "36b824fb1eb9fc9c6fb3d47f82ecb8ae61f2f039189ab2604a57db028124282f"
+    },
+    "ai-ops/src/ai_ops/c_trial_github.py": {
+      "sha256": "d23b9466bc1bae354359a34ef23504a222beb9687bf8c78b5da206db44ea2b8a",
+      "old_sha256": "1bef7f478f17acd2d1664ffba42c25b1af5c41b2bfb17733342a559ea8ae60af"
+    },
+    "ai-ops/src/ai_ops/c_trial_read_budget.py": {
+      "sha256": "852341d7167fe1f9035e94237abdaae279d3bbef5df6ffe4991d0d1a8a7ec1af",
+      "old_sha256": "1834f62cd21cc4c378cfb732da303c8604c2d81e5fb35516c6f6b7bd0fc0a0d5"
+    },
+    "ai-ops/src/ai_ops/c_trial_read_cache.py": {
+      "sha256": "30358cba7582d0425535a067724cc8738c95db76b32e8336dd80624d8b19ec3f",
+      "old_sha256": "028bb8fa216a1956b363c7870f1c375992e3f6086f144876f924709f9c42758e"
+    },
+    "ai-ops/src/ai_ops/c_trial_source.py": {
+      "sha256": "839be907bc40dae5b7c7a5d01903251c4899db90ac21a44327c05abbe3168feb",
+      "old_sha256": "a18ce62e71f91aa047e50dac63baa653a01f7baffbf652af895bbbea3f9d83c0"
+    },
+    "ai-ops/src/ai_ops/c_trial_transport.py": {
+      "sha256": "b7b0f6d1b04a982b742d419f0acca03b4f472ed73e43eaea60a632b6b9d35cf8",
+      "old_sha256": "e9b47ed156e64b9af14cb8b01e945c5a51d685e3fe8411a228f602379446bebc"
+    },
+    "ai-ops/src/ai_ops/ci_history.py": {
+      "sha256": "488a60cf0e0e90e12a59c1fe2c450b56a2c5060ca9f7de9ef724c39aeb8ec496",
+      "old_sha256": "7948095ddbf9617501293d7ec288ac08a86586c8eaf46e379d981b82ba7fe34f"
+    },
+    "ai-ops/src/ai_ops/c_recovery_read_timing.py": {
+      "sha256": "1a8977731e3d079e3926331e2c8a969d06898d270f9f885d031a6cae2b796519",
+      "old_sha256": null
+    },
+    "ai-ops/tests/test_c_recovery_read_timing.py": {
+      "sha256": "2e5a19fbe4479cb4115911c0d623be8771ce94e04acbb0cd22e15f50463a3567",
+      "old_sha256": null
+    }
+  },
+  "updated_at": "2026-11-16T12:40:17.567612+00:00",
+  "review_supplement": {
+    "full_tests": 1076,
+    "focused_tests": 64,
+    "additional_regressions": 5,
+    "schemas_unchanged": 14,
+    "ast_files": 310,
+    "status": "local_review_complete_remote_ci_pending",
+    "existing_reader_deadline_inherited": true,
+    "slow_app_get_headers_body_bounded": true,
+    "no_policy_weakening": true,
+    "live_trial_executed": false,
+    "response_close_failure_still_closes_connection": true
+  }
+}

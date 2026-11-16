@@ -2,21 +2,35 @@
 
 from copy import deepcopy
 import re
+import time
+
+from ai_ops.c_recovery_read_timing import phase, github_phase
 
 
 class ImmutableGitReader:
-    def __init__(self, reader):
+    def __init__(self, reader, *, enforce_deadline=False):
+        self.enforce_deadline = enforce_deadline
         self.reader, self.cache = reader, {}
         self.hits = 0
 
+    @property
+    def deadline(self):
+        return self.reader.deadline
+
     def get(self, path):
+        if self.enforce_deadline and time.monotonic() >= self.deadline:
+            from ai_ops.c_approval import ApprovalRejected
+            raise ApprovalRejected('github_read_timeout')
         immutable = re.fullmatch(r"repos/joungGo/c03-execution-lab/git/(?:commits|trees|blobs)/([0-9a-f]{40})", path)
         if not immutable:
-            return self.reader.get(path)
+            with phase(github_phase(path), read=True):
+                return self.reader.get(path)
         if path in self.cache:
-            self.hits += 1
-            return deepcopy(self.cache[path])
-        value = self.reader.get(path)
+            with phase('github.immutable.cache', read=True):
+                self.hits += 1
+                return deepcopy(self.cache[path])
+        with phase('github.immutable.fetch', read=True):
+            value = self.reader.get(path)
         if not isinstance(value, dict) or value.get('sha') != immutable[1]:
             raise ValueError('immutable_git_object_identity_mismatch')
         if len(self.cache) < 32:
@@ -32,6 +46,10 @@ class ArchiveBytesReader:
         self.hits = 0
 
     def get(self, path, **kwargs):
+        with phase('history.archive' if path.endswith('/zip') else 'history.metadata', read=True):
+            return self._get(path, **kwargs)
+
+    def _get(self, path, **kwargs):
         immutable = re.fullmatch(r"repos/f-lab-edu/F-Lab-DevOps/actions/artifacts/[1-9][0-9]*/zip", path)
         if not immutable:
             return self.reader.get(path, **kwargs)

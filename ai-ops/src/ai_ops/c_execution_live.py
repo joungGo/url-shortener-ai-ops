@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import subprocess
 
 from ai_ops.c_approval import ApprovalRejected
+from ai_ops.c_recovery_read_timing import phase
 from ai_ops.c_recovery_proof import assess_proposal_recheck
 from ai_ops.contracts import _utc_datetime
 
@@ -29,8 +30,10 @@ class C3LiveReader:
                 raise ValueError("invalid_c3_lease_holder")
             first = self._previous.get(holder)
             if first is None:
-                first, _ = self.collect(expected_lease)
-            second, snapshot = self.collect(expected_lease)
+                with phase('live.collect', read=True):
+                    first, _ = self.collect(expected_lease)
+            with phase('live.collect', read=True):
+                second, snapshot = self.collect(expected_lease)
             proof = assess_proposal_recheck(first, second, now=_utc_datetime(self.clock()))
             if proof.get("proposal_ready") is not True:
                 raise ValueError("live_proof_not_ready")

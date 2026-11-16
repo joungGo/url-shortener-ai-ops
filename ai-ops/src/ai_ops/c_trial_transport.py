@@ -14,6 +14,7 @@ import time
 from ai_ops.c_verification_transport import CONTEXT, LIMIT, RESOURCES
 from ai_ops.c_recovery_snapshot import same_recovery_resources, RecoveryResourcesChanged
 from ai_ops.c_trial_startup_trace import stage
+from ai_ops.c_recovery_read_timing import phase, read_timeout, read_map
 
 
 TRIAL_RESOURCES = {
@@ -62,8 +63,14 @@ class C4TrialTransport:
         return result.stdout
 
     def _kube(self, *args, payload=None, timeout=20):
-        return self._call(["kubectl", "--kubeconfig", str(self.kubeconfig), "--context", CONTEXT,
-                          "--request-timeout=15s", *args], payload=payload, timeout=timeout)
+        command = ["kubectl", "--kubeconfig", str(self.kubeconfig), "--context", CONTEXT,
+                   "--request-timeout=15s", *args]
+        reading = args[:2] == ('config', 'view') or args[:1] == ('get',) or (
+            len(args) > 2 and args[0] == '-n' and args[2] == 'get')
+        if reading:
+            with phase('transport.command', read=True):
+                return self._call(command, payload=payload, timeout=read_timeout(timeout))
+        return self._call(command, payload=payload, timeout=timeout)
 
     def get(self, resource):
         namespace, *target = TRIAL_RESOURCES[resource]
@@ -79,9 +86,9 @@ class C4TrialTransport:
         started = self.clock()
         # 같은 읽기 단계만 병렬화하며 전후 대조 단계 사이에는 barrier를 둔다.
         with ThreadPoolExecutor(max_workers=5) as pool:
-            app, dep, lease, pod_list, set_list = list(pool.map(self.get,
-                ("application", "deployment", "lease", "pods", "replicasets")))
-            after = list(pool.map(self.get, ("application", "deployment", "lease")))
+            app, dep, lease, pod_list, set_list = read_map(pool, self.get,
+                ("application", "deployment", "lease", "pods", "replicasets"))
+            after = read_map(pool, self.get, ("application", "deployment", "lease"))
         pods, sets = pod_list["items"], set_list["items"]
         owners = pods[0].get("metadata", {}).get("ownerReferences", []) if len(pods) == 1 else []
         matching = [item for item in sets if len(owners) == 1 and owners[0].get("kind") == "ReplicaSet"

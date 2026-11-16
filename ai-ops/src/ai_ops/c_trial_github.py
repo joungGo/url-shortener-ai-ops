@@ -9,7 +9,11 @@ from pathlib import Path
 import re
 import stat
 import subprocess
+import socket
+import threading
 import time
+
+from ai_ops.c_recovery_read_timing import phase, read_timeout
 
 
 REPOSITORY = "joungGo/c03-execution-lab"
@@ -26,19 +30,65 @@ class GitHubMergeSession:
         self.identity = None
 
     def _api(self, method, path, credential, payload=None):
-        connection = http.client.HTTPSConnection("api.github.com", timeout=12)
+        # GET 기한과 자격 발급 전 대기를 제한한다. 회수 DELETE는 기한 후에도 수행한다.
+        with phase('github.app', read=method == 'GET'):
+            return self._request(method, path, credential, payload)
+
+    def _request(self, method, path, credential, payload):
+        limited = method == 'GET' or (method == 'POST' and path.endswith('/access_tokens'))
+        timeout = read_timeout(12) if limited else 12
+        deadline = time.monotonic()+timeout
+        connection = http.client.HTTPSConnection("api.github.com", timeout=timeout)
+        watchdog = None
+        response = None
         try:
             connection.request(method, path, body=None if payload is None else json.dumps(payload).encode(),
                 headers={"Authorization": "Bearer "+credential, "Accept": "application/vnd.github+json",
                     "User-Agent": "c04-isolated-executor", "X-GitHub-Api-Version": "2026-03-10",
                     "Content-Type": "application/json"})
-            response = connection.getresponse()
-            raw = response.read(2*1024*1024+1)
+            if method == 'GET':
+                def remaining():
+                    left = deadline-time.monotonic()
+                    if left <= 0: raise TimeoutError('fixed_github_get_timeout')
+                    return read_timeout(left)
+                stream = connection.sock
+                if stream is None: raise ValueError('fixed_github_get_socket_unavailable')
+                def stop_read():
+                    try: stream.shutdown(socket.SHUT_RDWR)
+                    except OSError: pass
+                stream.settimeout(remaining())
+                # 헤더/본문의 작은 조각마다 socket timeout이 다시 시작돼도 GET 기한은 고정한다.
+                watchdog = threading.Timer(remaining(),stop_read)
+                watchdog.daemon = True
+                watchdog.start()
+                response = connection.getresponse()
+                raw = bytearray()
+                while len(raw) <= 2*1024*1024:
+                    stream.settimeout(remaining())
+                    chunk = response.read1(min(8192,2*1024*1024+1-len(raw)))
+                    if not chunk: break
+                    raw.extend(chunk)
+                raw = bytes(raw)
+            else:
+                response = connection.getresponse()
+                raw = response.read(2*1024*1024+1)
             if not 200 <= response.status < 300 or len(raw) > 2*1024*1024:
                 raise ValueError("고정 GitHub App 요청을 확인하지 못했습니다")
             return json.loads(raw) if raw else {}
+        except http.client.HTTPException as exc:
+            raise ValueError('고정 GitHub App 응답을 확인하지 못했습니다') from exc
         finally:
-            connection.close()
+            try:
+                if watchdog is not None:
+                    watchdog.cancel()
+                    if watchdog.ident is not None:
+                        watchdog.join()
+            finally:
+                try:
+                    if response is not None:
+                        response.close()
+                finally:
+                    connection.close()
 
     def _jwt(self):
         info = self.key.lstat()
@@ -52,7 +102,7 @@ class GitHubMergeSession:
                                separators=(",", ":")).encode())))
         signature = subprocess.run(["openssl", "dgst", "-sha256", "-sign", str(self.key)],
             input=message, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            timeout=10, check=True).stdout
+            timeout=read_timeout(10), check=True).stdout
         return (message+b"."+encoded(signature)).decode()
 
     def verify_registration(self):

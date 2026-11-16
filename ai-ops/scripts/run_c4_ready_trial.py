@@ -250,6 +250,9 @@ def main(argv=None):
         write_private_json(args.run_dir/'startup-timing.json', evidence['startup_timing'])
     except (ValueError, OSError):
         evidence['startup_timing_write_failed'] = True
+    executor_for_timing = controller.executor
+    if executor_for_timing is not None and hasattr(executor_for_timing, 'recovery_timing'):
+        evidence['recovery_read_timing'] = executor_for_timing.recovery_timing.report()
     write_private_json(args.output, evidence)
     print(json.dumps({'status': evidence['status'], 'fault_injected': evidence['fault_injected']}), flush=True)
     return 0 if evidence['status'] == 'resolved' else 1
