@@ -131,38 +131,35 @@ def main():
         perms={'contents':'write','pull_requests':'write','metadata':'read'}
         assert reg['id']==5696038 and reg['slug']=='c03-execution-lab-writer' and reg['permissions']==perms
         assert install['app_id']==5696038 and install['repository_selection']=='selected' and install.get('suspended_at') is None and install['permissions']==perms
-        token=None
-        try:
-            access=api.api('POST','/app/installations/180499782/access_tokens',assertion,{'repository_ids':[1452572723],'permissions':perms})
-            token=access['token'];assert access['permissions']==perms
-            expiry=datetime.fromisoformat(access['expires_at'].replace('Z','+00:00'));assert 0<(expiry-datetime.now(timezone.utc)).total_seconds()<=3600
-            repos=api.api('GET','/installation/repositories?per_page=100',token);assert repos['total_count']==1 and repos['repositories'][0]['id']==1452572723
+        def report_token_time(value):
+            state['writer_token_time'] = value
+            save('post-state.json',state)
+        with api.installation_token(assertion,report=report_token_time) as grant:
+            repos=grant.api('GET','/installation/repositories?per_page=100');assert repos['total_count']==1 and repos['repositories'][0]['id']==1452572723
             prefix='/repos/joungGo/c03-execution-lab'
-            assert api.api('GET',prefix+'/git/ref/heads/main',token)['object']['sha']==link.pr_base_sha
+            assert grant.api('GET',prefix+'/git/ref/heads/main')['object']['sha']==link.pr_base_sha
             branch='codex/c04-recovery-'+str(plan.trial_id)+'-'+proposal.proposal_id[-8:]
             review_window()
-            api.api('POST',prefix+'/git/refs',token,{'ref':'refs/heads/'+branch,'sha':link.pr_base_sha})
-            before=api.api('GET',prefix+'/contents/ai-ops/lab/values.yaml?ref='+link.pr_base_sha,token)
+            grant.api('POST',prefix+'/git/refs',{'ref':'refs/heads/'+branch,'sha':link.pr_base_sha})
+            before=grant.api('GET',prefix+'/contents/ai-ops/lab/values.yaml?ref='+link.pr_base_sha)
             assert base64.b64decode(before['content'])==_encoded_values(proposal.current_digest).encode()
             review_window()
-            created=api.api('PUT',prefix+'/contents/ai-ops/lab/values.yaml',token,{
+            created=grant.api('PUT',prefix+'/contents/ai-ops/lab/values.yaml',{
               'message':'C-04 격리 실습 이미지 복구\n\nRecovery-Proposal-SHA256: '+link.link_hash,
               'content':base64.b64encode(_encoded_values(proposal.desired_digest).encode()).decode(),
               'sha':before['sha'],'branch':branch})
-            head=created['commit']['sha'];commit=api.api('GET',prefix+'/commits/'+head,token)
+            head=created['commit']['sha'];commit=grant.api('GET',prefix+'/commits/'+head)
             assert commit['author']['id']==354870297 and [p['sha'] for p in commit['parents']]==[link.pr_base_sha]
-            comp=api.api('GET',prefix+'/compare/'+link.pr_base_sha+'...'+head,token)
+            comp=grant.api('GET',prefix+'/compare/'+link.pr_base_sha+'...'+head)
             assert comp['total_commits']==1 and len(comp['files'])==1 and comp['files'][0]['filename']=='ai-ops/lab/values.yaml'
             assert comp['files'][0]['additions']==comp['files'][0]['deletions']==1
             review_window()
-            pr=api.api('POST',prefix+'/pulls',token,{'title':'C-04 격리 실습 이미지 복구 '+str(plan.trial_id),'head':branch,'base':'main',
+            pr=grant.api('POST',prefix+'/pulls',{'title':'C-04 격리 실습 이미지 복구 '+str(plan.trial_id),'head':branch,'base':'main',
               'body':'격리 실습 lab-api의 이미지 digest 한 필드를 정상 이미지로 복구합니다.\n\nRecovery-Proposal-SHA256: '+link.link_hash+'\n\nReview deadline '+deadline.isoformat()+'.'})
-            pull=api.api('GET',prefix+'/pulls/'+str(pr['number']),token)
+            pull=grant.api('GET',prefix+'/pulls/'+str(pr['number']))
             assert pull['user']['id']==354870297 and pull['head']['sha']==head and pull['base']['sha']==link.pr_base_sha and pull['state']=='open'
             state.update(stage='pr_created_waiting_notice',pull_number=pr['number'],url=pr['html_url'],head_sha=head,review_deadline_utc=deadline.isoformat(),minimum_review_seconds=plan.minimum_review_seconds)
             save('pr-ready.json',state);save('post-state.json',state)
-        finally:
-            if token is not None:api.api('DELETE','/installation/token',token)
         from ai_ops.c_trial_notice import deliver_review_notice
         deliver_review_notice(plan,state,args.review_notifier_socket,P/'review-notified.json')
         state['stage']='waiting_exact_head_review_and_ci';save('post-state.json',state)
