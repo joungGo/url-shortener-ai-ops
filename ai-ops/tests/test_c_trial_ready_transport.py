@@ -14,7 +14,25 @@ from unittest.mock import patch, Mock
 from ai_ops.c_trial_ready_transport import ReadyTrialTransport, StandbyGuardReader, GUARD_SOURCES, READY_WORKFLOW, READY_STEP, MissingGuardAck
 from ai_ops.c_trial_ready import ACTIVATION_KEY, ACK_KEYS
 import test_c_trial_ready as fixtures
+import test_c_trial_lease_client as lease_fixtures
+from ai_ops.c_trial_startup_trace import StartupTrace
 from test_c2_active_capture import NOW
+
+
+class ReadyLeaseClientTest(unittest.TestCase):
+    def test_ready_transport_uses_same_cas_client_and_records_each_lease_read(self):
+        fixture = lease_fixtures.LeaseHTTPTest(); fixture.setUp(); self.addCleanup(fixture.doCleanups)
+        port = object.__new__(ReadyTrialTransport); port.lease_client = fixture.client
+        port.startup_trace = StartupTrace(); port.startup_trace.begin()
+        value = port.get('lease'); value['spec']['holderIdentity'] = 'owner'
+        response = port.lease_command('replace', '-f', '-', '-o', 'json', payload=json.dumps(value))
+        self.assertEqual(json.loads(response)['spec']['holderIdentity'], 'owner')
+        latest = json.loads(port.lease_command('-n', 'ai-ops-lab', 'get', 'lease', 'b6-scenario-lock',
+                                              '--ignore-not-found', '-o', 'json'))
+        self.assertEqual(latest['metadata']['resourceVersion'], '2')
+        for args in [('create', '-f', '-', '-o', 'json'), ('delete', 'lease', 'b6-scenario-lock')]:
+            with self.assertRaises(ValueError): port.lease_command(*args, payload=json.dumps(value))
+        self.assertEqual(port.startup_trace.report()['events'][0]['stage'], 'kube.lease')
 
 
 class ReadyTransportTest(unittest.TestCase):
