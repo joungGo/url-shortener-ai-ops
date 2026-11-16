@@ -1,0 +1,53 @@
+name: AI 설치용 OCI 이미지 산출
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-ops-oci-bundle-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bundle:
+    if: github.repository == 'joungGo/url-shortener-ai-ops' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310
+        with:
+          version: v4.1.3
+      - name: 계약 시험과 실행 이미지 검증
+        run: |
+          python3 -m venv /tmp/ai-ops-venv
+          /tmp/ai-ops-venv/bin/python -m pip install --require-hashes --only-binary=:all: -r ai-ops/requirements.lock
+          PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python -m unittest discover -s ai-ops/tests -p 'test_*.py' -v
+          docker build --platform linux/amd64 --label "org.opencontainers.image.revision=$GITHUB_SHA" --tag ai-ops:bootstrap ai-ops
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m ai-ops:bootstrap --help
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m --entrypoint python ai-ops:bootstrap -c \
+            'import os; from ai_ops.replay_tools import _runbook; assert os.getuid() == 10001; [_runbook(name) for name in ("cache", "database", "deployment")]'
+          echo "IMAGE_ID=$(docker image inspect ai-ops:bootstrap --format '{{.Id}}')" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=sha-${GITHUB_SHA}-r${GITHUB_RUN_ID}-a${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+      - name: 미등록 이미지와 출처 보존
+        env:
+          IMAGE_PUBLISHED: 'false'
+          IMAGE_RECORD_PATH: ${{ runner.temp }}/ai-ops-oci-bundle/image-registration.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/ai-ops-oci-bundle"
+          docker save --output "$RUNNER_TEMP/ai-ops-oci-bundle/image.tar" ai-ops:bootstrap
+          python3 .github/scripts/write-ai-ops-image-record.py
+          cd "$RUNNER_TEMP/ai-ops-oci-bundle"
+          sha256sum image.tar image-registration.json > SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ai-ops-oci-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ai-ops-oci-bundle/
+          if-no-files-found: error
+          retention-days: 7
