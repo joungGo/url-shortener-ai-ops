@@ -1,6 +1,7 @@
 """실제 격리 주입·조사 Job·C-03 복구 adapter를 한 소유권으로 연결한다."""
 
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from typing import Annotated, Literal
 import uuid
 
@@ -13,6 +14,7 @@ from ai_ops.c_failure_handoff import (
     offer_failure_handoff, plan_failure_merge,
 )
 from ai_ops.contracts import Sha256, StrictModel, UTCDateTime, _utc_datetime, sha256_json
+from ai_ops.c_trial_startup_trace import stage
 
 
 class TrialPlan(StrictModel):
@@ -119,7 +121,7 @@ def verify_normal_trial(plan, snapshot, *, now, held=None):
 class C4TrialExecutor:
     """한 프로세스가 주입 소유권을 보유하고 지정 C-03 실행자로 넘긴다."""
 
-    def __init__(self, plan: TrialPlan, transport, *, clock=None):
+    def __init__(self, plan: TrialPlan, transport, *, clock=None, startup_trace=None):
         self.plan = plan
         self.transport = transport
         self.clock = clock or (lambda: datetime.now(timezone.utc))
@@ -132,6 +134,21 @@ class C4TrialExecutor:
         self.prepared_at = None
         self.last_step='initial'
         self.control = None
+        self.startup_trace = startup_trace
+
+    def _ready_reads(self, label):
+        """한 읽기 구간의 독립 검사만 병렬화한다. 전후 snapshot 구간은 합치지 않는다."""
+        def read(name, operation):
+            with stage(self, label+'.'+name):
+                return operation()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            futures = [pool.submit(read, name, operation) for name, operation in (
+                ('guards', lambda: self.transport.require_guards(self.plan)),
+                ('images', lambda: self.transport.require_images(self.plan)),
+                ('snapshot', self.transport.snapshot))]
+            # 실패한 검사를 건너뛰지 않으며, 남은 읽기 종료 뒤 예외를 전파한다.
+            values = [future.result() for future in futures]
+        return values[2]
 
     def check_cancellation(self):
         if self.control is not None:
@@ -182,7 +199,8 @@ class C4TrialExecutor:
         if (activation.execution != self.plan or activation.owner_holder != self.lease.holder
                 or self.lease.uid != self.plan.lease_uid or self.prepared_at is not None):
             raise ValueError('ready_executor_binding_rejected')
-        self.transport.require_ready_guard_acks(activation)
+        with stage(self, 'inject.binding_acks'):
+            self.transport.require_ready_guard_acks(activation)
         self.prepared_at = activation.readiness.prepared_at
         return self._inject(activation.authorization(), activation=activation)
 
@@ -203,28 +221,48 @@ class C4TrialExecutor:
                 or not in_window
                 or (plan.rollback_deadline-now).total_seconds() < 240):
             raise ValueError("새 실행별 승인·예정 시각이 필요합니다")
-        self.transport.require_guards(plan)
-        self.transport.require_images(plan)
-        verify_normal_trial(plan, self.transport.snapshot(), now=self._moment(),
-                            held=self.lease if ready else None)
+        if ready:
+            first = self._ready_reads('inject.first')
+        else:
+            self.transport.require_guards(plan)
+            self.transport.require_images(plan)
+            first = self.transport.snapshot()
+        with stage(self, 'inject.first_validate'):
+            verify_normal_trial(plan, first, now=self._moment(), held=self.lease if ready else None)
         held = {'uid': self.lease.uid} if ready else self.lease.acquire()
         if held["uid"] != plan.lease_uid:
             raise ValueError("잠금 취득 뒤 UID가 달라졌습니다")
         if not ready:
             self.transport.wait_until(plan.planned_at)
-        verify_normal_trial(plan, self.transport.snapshot(), now=self._moment(), held=self.lease)
-        self.transport.require_guards(plan)
-        self.transport.require_images(plan)
         if ready:
-            self.transport.require_ready_guard_acks(activation)
+            second = self._ready_reads('inject.second')
+            with stage(self, 'inject.second_validate'):
+                verify_normal_trial(plan, second, now=self._moment(), held=self.lease)
+        else:
+            verify_normal_trial(plan, self.transport.snapshot(), now=self._moment(), held=self.lease)
+            self.transport.require_guards(plan)
+            self.transport.require_images(plan)
+        if ready:
+            # 마지막 snapshot·이미지 검사 이후 소유권과 양쪽 ACK를 새로 읽는다.
+            with stage(self, 'inject.final_acks'):
+                self.transport.require_ready_guard_acks(activation)
         budget = activation.intent.start_write_budget_seconds if ready else 5
-        if not 0 <= (self._moment()-plan.planned_at).total_seconds() <= budget:
-            raise ValueError("잠금 아래 검사 중 예정 주입 시각을 지났습니다")
+        with stage(self, 'inject.write_budget'):
+            if not 0 <= (self._moment()-plan.planned_at).total_seconds() <= budget:
+                raise ValueError("잠금 아래 검사 중 예정 주입 시각을 지났습니다")
         injected_at = self._moment()
         # 첫 외부 쓰기의 응답을 잃어도 다시 주입하지 않는다.
-        self._before_write('inject_set', revision=plan.failure_revision)
-        if not 0 <= (self._moment()-plan.planned_at).total_seconds() <= budget:
-            raise ValueError('execution_journal_crossed_injection_budget')
+        with stage(self, 'inject.journal'):
+            self._before_write('inject_set', revision=plan.failure_revision)
+        with stage(self, 'inject.journal_budget'):
+            if not 0 <= (self._moment()-plan.planned_at).total_seconds() <= budget:
+                raise ValueError('execution_journal_crossed_injection_budget')
+        if self.startup_trace is not None:
+            self.startup_trace.finish('first_write_ready')
+            # 계측의 lock/시계 읽기까지 끝낸 뒤에도 기존 시작 예산을 지켜야 한다.
+            if not 0 <= (self._moment()-plan.planned_at).total_seconds() <= budget:
+                self.startup_trace.reject_before_write()
+                raise ValueError('startup_timing_crossed_injection_budget')
         self.injected = True
         self.transport.argo("sync", ["app", "set", "lab-target", "--revision", plan.failure_revision])
         self._confirm_write('inject_set', plan.failure_revision)

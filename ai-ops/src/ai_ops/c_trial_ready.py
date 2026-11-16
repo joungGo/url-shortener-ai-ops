@@ -11,6 +11,7 @@ from pydantic import Field, model_validator
 
 from ai_ops.c_trial_execution import TrialPlan, TrialAuthorization, C4TrialExecutor, verify_normal_trial
 from ai_ops.contracts import StrictModel, Sha256, UTCDateTime, sha256_json, _utc_datetime
+from ai_ops.c_trial_startup_trace import StartupTrace, stage
 
 
 TIMING_FIELDS = {'schema_version', 'planned_at', 'approval_cutoff', 'manual_recovery_at',
@@ -160,6 +161,7 @@ class ReadyTrialController:
         self.receipt = self.executor = self.activation = None
         self.fallback_attempted = False
         self._origin = self._tick = None
+        self.startup_trace = StartupTrace()
 
     def moment(self):
         now = _utc_datetime(self.clock())
@@ -189,6 +191,8 @@ class ReadyTrialController:
         """새 실제 승인을 소비하고 감시의 동일 기한 ACK 뒤 바로 주입한다."""
         if self.receipt is None or self.executor is not None or self.journal.exists():
             raise ValueError('fresh_ready_receipt_required')
+        self.startup_trace.begin()
+        self.transport.startup_trace = self.startup_trace
         approval = ReadyApproval.model_validate(approval.model_dump(mode='json')
                                                if isinstance(approval, ReadyApproval) else approval)
         r, intent = self.receipt, self.intent
@@ -198,37 +202,51 @@ class ReadyTrialController:
                 or not r.prepared_at <= approval.approved_at <= now < r.expires_at):
             raise ValueError('fresh_ready_approval_required')
         source = intent.source_plan()
-        self.transport.require_ready_inputs(intent)
-        if self.transport.require_standby_guards(intent) != r.guards:
-            raise ValueError('ready_guards_changed')
-        self.transport.require_images(source)
-        snapshot = self.transport.snapshot()
+        with stage(self, 'approval.inputs'):
+            self.transport.require_ready_inputs(intent)
+        with stage(self, 'approval.guards'):
+            if self.transport.require_standby_guards(intent) != r.guards:
+                raise ValueError('ready_guards_changed')
+        with stage(self, 'approval.images'):
+            self.transport.require_images(source)
+        with stage(self, 'approval.snapshot'):
+            snapshot = self.transport.snapshot()
         verify_normal_trial(source, snapshot, now=self.moment())
         if baseline_hash(snapshot) != r.baseline_sha256 or self.moment() >= r.expires_at:
             raise ValueError('ready_baseline_changed_or_expired')
         # 디스크의 소비 표식은 취득/쓰기보다 먼저 O_EXCL로 게시한다. 오류/재기동도 재사용 불가.
         payload = dict(intent_hash=intent.digest(), readiness_hash=r.digest(),
                        approval=approval.model_dump(mode='json'), state='consumed')
-        fd = os.open(self.journal, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-        with os.fdopen(fd, 'w') as f:
-            json.dump(payload, f); f.flush(); os.fsync(f.fileno())
+        with stage(self, 'approval.consume'):
+            fd = os.open(self.journal, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, 'w') as f:
+                json.dump(payload, f); f.flush(); os.fsync(f.fileno())
         # 마지막 현재 상태 재검증 뒤 한 번만 시작/리뷰/원복 기한을 고정한다.
         at = self.moment()
         if not approval.approved_at < at < r.expires_at:
             raise ValueError('ready_start_timestamp_rejected')
+        self.startup_trace.critical_start()
         plan = intent.bind(at)
-        executor = self.executor = C4TrialExecutor(plan, self.transport, clock=self.moment)
+        executor = self.executor = C4TrialExecutor(plan, self.transport, clock=self.moment,
+                                                  startup_trace=self.startup_trace)
         activation = self.activation = ReadyActivation(intent=intent, readiness=r,
             approval=approval, execution=plan, owner_holder=executor.lease.holder)
         try:
-            held = executor.lease.acquire()
+            with stage(self, 'start.lease'):
+                held = executor.lease.acquire()
             if held['uid'] != plan.lease_uid:
                 raise ValueError('ready_lease_uid_changed')
-            self.transport.arm_ready_guards(activation, executor.lease)
-            self.transport.require_ready_guard_acks(activation)
+            with stage(self, 'start.arm'):
+                self.transport.arm_ready_guards(activation, executor.lease)
+            with stage(self, 'start.acks'):
+                self.transport.require_ready_guard_acks(activation)
             handoff = executor.inject_ready(activation)
             return executor, handoff
         except BaseException:
+            if not executor.injected:
+                self.startup_trace.reject_before_write()
+            else:
+                self.startup_trace.finish('rejected')
             # 외부 쓰기의 응답을 잃어도 재시도하지 않는다. 원복 실패 시 소유 잠금은 보존한다.
             if not executor.finished:
                 self.fallback_attempted = True

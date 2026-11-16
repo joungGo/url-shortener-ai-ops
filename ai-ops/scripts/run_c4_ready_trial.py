@@ -200,6 +200,8 @@ def main(argv=None):
             except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError):
                 evidence['fallback'] = 'lock_retained_inspect_current_owner'
     finally:
+        controller.startup_trace.finish('rejected')
+        evidence['startup_timing'] = controller.startup_trace.report()
         if controller.executor is not None and controller.executor.control is not None:
             evidence['execution_control'] = controller.executor.control.summary()
         if post is not None:
@@ -233,6 +235,11 @@ def main(argv=None):
                     evidence['capture_job_removed'] = True
             except (ValueError, KeyError, OSError, subprocess.SubprocessError):
                 evidence.update(status='stopped', ready_cleanup_needs_check=True)
+    # 진단 파일 오류가 감시/자격/포워드 정리를 건너뛰게 하지 않는다.
+    try:
+        write_private_json(args.run_dir/'startup-timing.json', evidence['startup_timing'])
+    except (ValueError, OSError):
+        evidence['startup_timing_write_failed'] = True
     write_private_json(args.output, evidence)
     print(json.dumps({'status': evidence['status'], 'fault_injected': evidence['fault_injected']}), flush=True)
     return 0 if evidence['status'] == 'resolved' else 1

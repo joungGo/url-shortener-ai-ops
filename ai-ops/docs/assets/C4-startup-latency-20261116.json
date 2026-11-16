@@ -1,0 +1,583 @@
+{
+  "status": "local_and_read_only_validation_passed",
+  "base_revision": "a35899bf1ed0a841b19fcc57ad24f9bb2583325d",
+  "tests": {
+    "full": 889,
+    "new_startup": 9,
+    "skipped": 0,
+    "result": "passed"
+  },
+  "checks": [
+    "fixture4",
+    "schema_no_changes",
+    "repository_boundary",
+    "deployment_contract",
+    "diff_check",
+    "python_syntax"
+  ],
+  "source_sha256": {
+    "ai-ops/scripts/run_c4_ready_trial.py": "75d20cad73c4e90746ea8b15622540783899dcf9f6f8e8bb6dd496610d7303f2",
+    "ai-ops/src/ai_ops/c_trial_execution.py": "36b824fb1eb9fc9c6fb3d47f82ecb8ae61f2f039189ab2604a57db028124282f",
+    "ai-ops/src/ai_ops/c_trial_ready.py": "37b0edc8ef2ac98e6421b66044dcaf80e908ae5373f8247cf82b1050cfd7a4c0",
+    "ai-ops/src/ai_ops/c_trial_transport.py": "df9da59b09b42d096465777a926c04dd14c7c9b64f8471dabafd8d20092f9922",
+    "ai-ops/src/ai_ops/c_trial_startup_trace.py": "0fe35e403b68414482e1be11951bbcb5abe6fadac567147d51990ca5e2370181",
+    "ai-ops/tests/test_c_trial_startup.py": "e95be8b688553cb7fcd08110601171178d9adb3051bb48ccb30084876ff79105"
+  },
+  "independent_read_cost": {
+    "mode": "read_only_independent_read_cost_sample",
+    "no_activation_or_guard_credentials": true,
+    "faults_injected": 0,
+    "writes": 0,
+    "actual_guard_readiness_validated": false,
+    "full_start_budget_verified": false,
+    "note": "Lease/image/snapshot reads only. Active guards, approval consumption, CAS, journal and ACK handshake are excluded. This does not establish the cause or full budget of a live start.",
+    "median_seconds": {
+      "serial": 2.5744,
+      "parallel": 1.3849
+    },
+    "samples": [
+      {
+        "mode": "serial",
+        "index": 1,
+        "elapsed_seconds": 2.9995,
+        "trace": {
+          "record_type": "c04_startup_timing",
+          "schema_version": 1,
+          "outcome": "read_only_probe",
+          "started": true,
+          "elapsed_ms": 2999.501,
+          "critical_elapsed_ms": null,
+          "events": [
+            {
+              "stage": "sample.lease_read",
+              "status": "ok",
+              "started_ms": 0.077,
+              "duration_ms": 646.069
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 0.092,
+              "duration_ms": 645.991
+            },
+            {
+              "stage": "sample.image_read",
+              "status": "ok",
+              "started_ms": 646.189,
+              "duration_ms": 933.004
+            },
+            {
+              "stage": "sample.snapshot",
+              "status": "ok",
+              "started_ms": 1579.219,
+              "duration_ms": 1420.256
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 1579.342,
+              "duration_ms": 754.927
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 1579.456,
+              "duration_ms": 721.408
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 1579.557,
+              "duration_ms": 703.024
+            },
+            {
+              "stage": "kube.pods",
+              "status": "ok",
+              "started_ms": 1585.813,
+              "duration_ms": 696.587
+            },
+            {
+              "stage": "kube.replicasets",
+              "status": "ok",
+              "started_ms": 1586.265,
+              "duration_ms": 721.551
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 2334.494,
+              "duration_ms": 664.535
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 2334.611,
+              "duration_ms": 642.429
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 2334.7,
+              "duration_ms": 644.616
+            }
+          ],
+          "dropped_events": 0
+        }
+      },
+      {
+        "mode": "parallel",
+        "index": 1,
+        "elapsed_seconds": 1.463,
+        "trace": {
+          "record_type": "c04_startup_timing",
+          "schema_version": 1,
+          "outcome": "read_only_probe",
+          "started": true,
+          "elapsed_ms": 1463.058,
+          "critical_elapsed_ms": null,
+          "events": [
+            {
+              "stage": "sample.lease_read",
+              "status": "ok",
+              "started_ms": 0.139,
+              "duration_ms": 844.684
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 0.146,
+              "duration_ms": 844.659
+            },
+            {
+              "stage": "sample.image_read",
+              "status": "ok",
+              "started_ms": 0.232,
+              "duration_ms": 1123.241
+            },
+            {
+              "stage": "sample.snapshot",
+              "status": "ok",
+              "started_ms": 5.071,
+              "duration_ms": 1457.845
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 5.624,
+              "duration_ms": 862.795
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 7.165,
+              "duration_ms": 825.335
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 9.259,
+              "duration_ms": 803.011
+            },
+            {
+              "stage": "kube.pods",
+              "status": "ok",
+              "started_ms": 9.645,
+              "duration_ms": 832.04
+            },
+            {
+              "stage": "kube.replicasets",
+              "status": "ok",
+              "started_ms": 11.934,
+              "duration_ms": 817.329
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 868.56,
+              "duration_ms": 594.074
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 868.621,
+              "duration_ms": 565.05
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 870.462,
+              "duration_ms": 566.551
+            }
+          ],
+          "dropped_events": 0
+        }
+      },
+      {
+        "mode": "serial",
+        "index": 2,
+        "elapsed_seconds": 2.5744,
+        "trace": {
+          "record_type": "c04_startup_timing",
+          "schema_version": 1,
+          "outcome": "read_only_probe",
+          "started": true,
+          "elapsed_ms": 2574.416,
+          "critical_elapsed_ms": null,
+          "events": [
+            {
+              "stage": "sample.lease_read",
+              "status": "ok",
+              "started_ms": 0.024,
+              "duration_ms": 479.435
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 0.032,
+              "duration_ms": 479.37
+            },
+            {
+              "stage": "sample.image_read",
+              "status": "ok",
+              "started_ms": 479.497,
+              "duration_ms": 846.187
+            },
+            {
+              "stage": "sample.snapshot",
+              "status": "ok",
+              "started_ms": 1325.711,
+              "duration_ms": 1248.677
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 1325.804,
+              "duration_ms": 657.401
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 1327.862,
+              "duration_ms": 631.176
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 1330.473,
+              "duration_ms": 643.621
+            },
+            {
+              "stage": "kube.pods",
+              "status": "ok",
+              "started_ms": 1330.929,
+              "duration_ms": 642.218
+            },
+            {
+              "stage": "kube.replicasets",
+              "status": "ok",
+              "started_ms": 1332.876,
+              "duration_ms": 648.321
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 1983.417,
+              "duration_ms": 563.29
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 1983.48,
+              "duration_ms": 590.423
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 1983.531,
+              "duration_ms": 562.368
+            }
+          ],
+          "dropped_events": 0
+        }
+      },
+      {
+        "mode": "parallel",
+        "index": 2,
+        "elapsed_seconds": 1.3849,
+        "trace": {
+          "record_type": "c04_startup_timing",
+          "schema_version": 1,
+          "outcome": "read_only_probe",
+          "started": true,
+          "elapsed_ms": 1384.873,
+          "critical_elapsed_ms": null,
+          "events": [
+            {
+              "stage": "sample.lease_read",
+              "status": "ok",
+              "started_ms": 0.165,
+              "duration_ms": 761.278
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 0.174,
+              "duration_ms": 761.239
+            },
+            {
+              "stage": "sample.image_read",
+              "status": "ok",
+              "started_ms": 0.331,
+              "duration_ms": 1016.473
+            },
+            {
+              "stage": "sample.snapshot",
+              "status": "ok",
+              "started_ms": 1.233,
+              "duration_ms": 1383.489
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 5.114,
+              "duration_ms": 789.789
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 7.705,
+              "duration_ms": 765.819
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 10.365,
+              "duration_ms": 764.698
+            },
+            {
+              "stage": "kube.pods",
+              "status": "ok",
+              "started_ms": 10.594,
+              "duration_ms": 767.162
+            },
+            {
+              "stage": "kube.replicasets",
+              "status": "ok",
+              "started_ms": 14.035,
+              "duration_ms": 765.732
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 795.025,
+              "duration_ms": 589.372
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 795.085,
+              "duration_ms": 558.915
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 795.153,
+              "duration_ms": 555.35
+            }
+          ],
+          "dropped_events": 0
+        }
+      },
+      {
+        "mode": "serial",
+        "index": 3,
+        "elapsed_seconds": 2.5452,
+        "trace": {
+          "record_type": "c04_startup_timing",
+          "schema_version": 1,
+          "outcome": "read_only_probe",
+          "started": true,
+          "elapsed_ms": 2545.184,
+          "critical_elapsed_ms": null,
+          "events": [
+            {
+              "stage": "sample.lease_read",
+              "status": "ok",
+              "started_ms": 0.017,
+              "duration_ms": 481.727
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 0.026,
+              "duration_ms": 481.686
+            },
+            {
+              "stage": "sample.image_read",
+              "status": "ok",
+              "started_ms": 481.778,
+              "duration_ms": 818.716
+            },
+            {
+              "stage": "sample.snapshot",
+              "status": "ok",
+              "started_ms": 1300.525,
+              "duration_ms": 1244.633
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 1300.656,
+              "duration_ms": 670.13
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 1302.56,
+              "duration_ms": 645.376
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 1302.755,
+              "duration_ms": 643.809
+            },
+            {
+              "stage": "kube.pods",
+              "status": "ok",
+              "started_ms": 1302.9,
+              "duration_ms": 647.87
+            },
+            {
+              "stage": "kube.replicasets",
+              "status": "ok",
+              "started_ms": 1307.27,
+              "duration_ms": 637.306
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 1970.99,
+              "duration_ms": 573.753
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 1971.071,
+              "duration_ms": 549.198
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 1972.635,
+              "duration_ms": 548.702
+            }
+          ],
+          "dropped_events": 0
+        }
+      },
+      {
+        "mode": "parallel",
+        "index": 3,
+        "elapsed_seconds": 1.3533,
+        "trace": {
+          "record_type": "c04_startup_timing",
+          "schema_version": 1,
+          "outcome": "read_only_probe",
+          "started": true,
+          "elapsed_ms": 1353.33,
+          "critical_elapsed_ms": null,
+          "events": [
+            {
+              "stage": "sample.lease_read",
+              "status": "ok",
+              "started_ms": 0.144,
+              "duration_ms": 730.547
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 0.151,
+              "duration_ms": 730.507
+            },
+            {
+              "stage": "sample.image_read",
+              "status": "ok",
+              "started_ms": 2.109,
+              "duration_ms": 1049.707
+            },
+            {
+              "stage": "sample.snapshot",
+              "status": "ok",
+              "started_ms": 3.912,
+              "duration_ms": 1349.259
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 5.538,
+              "duration_ms": 750.018
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 7.964,
+              "duration_ms": 735.903
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 10.246,
+              "duration_ms": 725.068
+            },
+            {
+              "stage": "kube.pods",
+              "status": "ok",
+              "started_ms": 10.437,
+              "duration_ms": 731.659
+            },
+            {
+              "stage": "kube.replicasets",
+              "status": "ok",
+              "started_ms": 15.587,
+              "duration_ms": 730.595
+            },
+            {
+              "stage": "kube.lease",
+              "status": "ok",
+              "started_ms": 755.709,
+              "duration_ms": 565.766
+            },
+            {
+              "stage": "kube.deployment",
+              "status": "ok",
+              "started_ms": 755.832,
+              "duration_ms": 571.22
+            },
+            {
+              "stage": "kube.application",
+              "status": "ok",
+              "started_ms": 757.854,
+              "duration_ms": 594.977
+            }
+          ],
+          "dropped_events": 0
+        }
+      }
+    ]
+  },
+  "live_start_budget_verified": false,
+  "new_faults_injected": 0,
+  "new_workflows_dispatched": 0,
+  "new_guard_credentials_issued": 0,
+  "external_model_calls": 0,
+  "constraints_preserved": {
+    "start_seconds": 15,
+    "review_min_seconds": 120,
+    "review_deadline_seconds": 210,
+    "owner_restore_seconds": 240,
+    "independent_restore_seconds": 300,
+    "observe_seconds": 120
+  },
+  "recorded_at": "2026-11-16T05:58:06.925968+00:00"
+}
