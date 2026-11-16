@@ -12,7 +12,7 @@ import tempfile
 import time
 
 from ai_ops.c_verification_transport import CONTEXT, LIMIT, RESOURCES
-from ai_ops.c_recovery_snapshot import same_recovery_resources
+from ai_ops.c_recovery_snapshot import same_recovery_resources, RecoveryResourcesChanged
 from ai_ops.c_trial_startup_trace import stage
 
 
@@ -68,7 +68,9 @@ class C4TrialTransport:
     def get(self, resource):
         namespace, *target = TRIAL_RESOURCES[resource]
         with stage(self, 'kube.'+resource):
-            result = json.loads(self._kube("-n", namespace, "get", *target, "-o", "json"))
+            # proxy의 API 원본과 같은 형식으로 읽는다. 관리 필드도 비교에서 보존한다.
+            result = json.loads(self._kube("-n", namespace, "get", *target, "-o", "json",
+                                          "--show-managed-fields=true"))
         if result.get("metadata", {}).get("continue"):
             raise ValueError("잘린 Kubernetes 원본은 사용할 수 없습니다")
         return result
@@ -87,7 +89,10 @@ class C4TrialTransport:
         if not same_recovery_resources(
                 {"application": app, "deployment": dep, "lease": lease},
                 dict(zip(("application", "deployment", "lease"), after)), now=self.clock()):
-            raise SnapshotChanged("조회 도중 실습 원본이 바뀌었습니다")
+            raise SnapshotChanged("조회 도중 실습 원본이 바뀌었습니다") from RecoveryResourcesChanged(
+                'transport.first_to_final',
+                {"application": app, "deployment": dep, "lease": lease},
+                dict(zip(("application", "deployment", "lease"), after)), now=self.clock())
         return {"application": app, "deployment": dep, "lease": lease, "pods": pods,
                 "replica_set": matching[0] if len(matching) == 1 else {}, "checked_at": started.isoformat()}
 

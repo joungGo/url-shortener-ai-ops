@@ -11,7 +11,7 @@ from ai_ops.c_live_preflight import assess_live_preflight
 from ai_ops.c_pr_link import RecoveryPRLink, require_matching_recheck
 from ai_ops.c_recovery import IMAGE_REPOSITORY, ISOLATED_REPOSITORY, REPOSITORY, RecoveryProposal, _encoded_values
 from ai_ops.contracts import _utc_datetime
-from ai_ops.c_recovery_snapshot import same_recovery_resources
+from ai_ops.c_recovery_snapshot import require_same_recovery_resources, RecoveryResourcesChanged
 
 
 REQUIRED_CHECK = "C03 Main PR Gate"
@@ -192,9 +192,11 @@ def verify_execution_preflight(*, drafts, proposal_id, pull_number, allowed_gith
         finished = _utc_datetime(clock())
         _require_recheck(draft, original_recheck, second["proof"], finished)
         _check_live(second, draft, pr_link, finished, expected_lease)
-        _require(same_recovery_resources(first, second, now=finished)
-                 and first["values_bytes"] == second["values_bytes"],
-            "live_state_changed_during_preflight")
+        try:
+            require_same_recovery_resources(first, second, now=finished, phase='preflight.first_to_second')
+        except RecoveryResourcesChanged as exc:
+            raise ApprovalRejected('live_state_changed_during_preflight') from exc
+        _require(first["values_bytes"] == second["values_bytes"], 'live_state_changed_during_preflight')
         _require(_main_sha(reader, repository) == review["base_sha"], "base_sha_changed")
         final_pr = reader.get(f"{api}/pulls/{pull_number}")
         head, _ = _pr(final_pr, pull_number, review["base_sha"], pr_author_id, repository)

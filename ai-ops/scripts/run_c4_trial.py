@@ -17,7 +17,7 @@ from ai_ops.c_trial_bundle import verify_runtime_bundle
 from ai_ops.c_trial_guards import GuardReader, private_json
 from ai_ops.c_trial_schedule import RefreshingProbe, schedule_trial
 from ai_ops.c_trial_read_budget import (recovery_github_reader, approval_rejection_codes,
-                                      rejection_source_frames)
+                                      rejection_source_frames, resource_change_diagnostics)
 from ai_ops.path_policy import cli_paths, permitted_path, write_private_json
 
 
@@ -155,6 +155,7 @@ def main():
                         guard_probe_error=guard_cache.error_type)
         evidence['approval_rejection_codes'] = approval_rejection_codes(exc)
         evidence['rejection_source_frames'] = rejection_source_frames(exc)
+        evidence['resource_change_diagnostics'] = resource_change_diagnostics(exc)
         if executor.injected and executor.handoff is None:
             evidence["fault_injected"] = None
             evidence["fault_observation"] = "unconfirmed_inspect_runtime"

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ai_ops.c2_active_capture import validate_active_failure
 from ai_ops.c_trial_read_cache import ArchiveBytesReader, ImmutableGitReader
-from ai_ops.c_recovery_snapshot import same_recovery_resources
+from ai_ops.c_recovery_snapshot import require_same_recovery_resources
 
 
 class TrialSource:
@@ -47,9 +47,8 @@ class TrialSource:
             include_snapshot=True, read_values=lambda revision:self.audit._github_values(
                 revision, reader=self.git_reader, repository=self.context.recovery_repository))
         after = self.transport.snapshot()
-        if (not same_recovery_resources(before, raw, now=self.clock())
-                or not same_recovery_resources(raw, after, now=self.clock())):
-            raise ValueError("인증된 사건 원본 조회 중 대상이 바뀌었습니다")
+        require_same_recovery_resources(before, raw, now=self.clock(), phase='trial_source.before_to_raw')
+        require_same_recovery_resources(raw, after, now=self.clock(), phase='trial_source.raw_to_after')
         validate_active_failure(after["application"], after["deployment"], after["replica_set"],
             after["pods"], after["lease"], failure_revision=record.failure_revision,
             failure_image=record.failure_image, application_uid=record.application_uid,
