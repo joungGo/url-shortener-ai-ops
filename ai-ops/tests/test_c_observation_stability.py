@@ -12,13 +12,14 @@ from ai_ops.c_trial_transport import C4TrialTransport, SnapshotChanged
 
 
 class ObservationStabilityTest(unittest.TestCase):
-    def bound_preflight(self, mutate=lambda snapshot: None):
+    def bound_preflight(self, mutate=lambda snapshot: None, prepare=lambda snapshot: None):
         from test_c_failure_handoff_runtime import FailureHandoffRuntimeTest
         f=FailureHandoffRuntimeTest();f.setUp();self.addCleanup(f.doCleanups)
         app=f.fixture.live.value['application']
         app['metadata']['generation']=1
         app['metadata']['resourceVersion']='1'
         app['status']['reconciledAt']=(f.now-timedelta(seconds=20)).isoformat()
+        prepare(f.fixture.live.value)
         transfer_failure_handoff(f.owner,f.record,read_failure=f.read)
         original=f.fixture.live.read
         def read(**kwargs):
