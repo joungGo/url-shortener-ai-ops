@@ -5,6 +5,44 @@ from datetime import datetime, timezone
 from ai_ops.contracts import _utc_datetime
 
 
+def _same_controller_observation_time(left, right, old_time, new_time):
+    """동일 controller의 동일 소유권에서 관측 시각에 결합된 time 한 개만 구분한다.
+
+    인자는 비교용 deepcopy다. managedFields를 제외하지 않으며, 다른 관리자/
+    소유권/필드 값/순서/항목 수와 복수 갱신은 기존 전체 비교로 계속 거절한다.
+    """
+    before, after = left.get('managedFields'), right.get('managedFields')
+    if (not isinstance(before, list) or not isinstance(after, list)
+            or len(before) != len(after)
+            or type(left.get('generation')) is not int
+            or type(right.get('generation')) is not int
+            or left['generation'] < 1 or right['generation'] != left['generation'] + 1):
+        return False
+    changed = [(a, b) for a, b in zip(before, after) if a != b]
+    if len(changed) != 1:
+        return False
+    old, new = changed[0]
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        return False
+    required = {'manager': 'argocd-application-controller', 'operation': 'Update',
+                'apiVersion': 'argoproj.io/v1alpha1', 'fieldsType': 'FieldsV1'}
+    if (sum(isinstance(entry, dict) and entry.get('manager') == required['manager']
+            for entry in before) != 1
+            or any(old.get(key) != value for key, value in required.items())
+            or old.get('subresource', '') != ''
+            or old.get('fieldsV1', {}).get('f:status', {}).get('f:reconciledAt') != {}
+            or not isinstance(old.get('time'), str) or not isinstance(new.get('time'), str)
+            or _utc_datetime(old['time']) != _utc_datetime(old_time)
+            or _utc_datetime(new['time']) != _utc_datetime(new_time)
+            or {k: v for k, v in old.items() if k != 'time'} != {
+                k: v for k, v in new.items() if k != 'time'}):
+        return False
+    # 정확히 검증한 time만 비교용 사본에서 분리한다. 나머지 원본 전체를 대조한다.
+    old.pop('time')
+    new.pop('time')
+    return True
+
+
 def same_application_observation(before, after, *, now):
     if before == after:
         return True
@@ -14,6 +52,12 @@ def same_application_observation(before, after, *, now):
         new_version = right["metadata"].pop("resourceVersion")
         old_time = left["status"].pop("reconciledAt")
         new_time = right["status"].pop("reconciledAt")
+        if left['metadata'].get('managedFields') != right['metadata'].get('managedFields'):
+            if (left.get('apiVersion') != 'argoproj.io/v1alpha1' or left.get('kind') != 'Application'
+                    or right.get('apiVersion') != left['apiVersion'] or right.get('kind') != left['kind']):
+                return False
+            if not _same_controller_observation_time(left['metadata'], right['metadata'], old_time, new_time):
+                return False
         if "generation" in left["metadata"] or "generation" in right["metadata"]:
             old_generation = left["metadata"]["generation"]
             new_generation = right["metadata"]["generation"]
@@ -42,8 +86,9 @@ def same_recovery_resources(before, after, *, now=None):
     """Application 관측 갱신 외에는 전체 원본의 동일성을 요구한다.
 
     resourceVersion은 불투명 문자열이다. 수치 순서를 추정하지 않으며,
-    generation은 같은 원본의 단일 상태 갱신만 허용한다. managedFields/
-    spec/status와 Deployment/Lease는 제외하지 않는다.
+    generation은 같은 원본의 단일 상태 갱신만 허용한다. managedFields는 동일
+    controller 소유권의 관측 시각에 결합된 time 한 개만 구분하며 나머지 원본과
+    spec/status 및 Deployment/Lease는 제외하지 않는다.
     """
     if now is None:
         now = datetime.now(timezone.utc)

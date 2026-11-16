@@ -1,0 +1,137 @@
+{
+  "status": "normal_application_refresh_reproduced_local_fix_verified_not_integrated",
+  "verified_at": "2026-11-16T09:04:11.238116+00:00",
+  "base_ai_sha": "a002dee1efe5b5983a804d2844a3ae714b6765c7",
+  "branch": "codex/c04-application-observation-20261116",
+  "worktree": "/private/tmp/c04-application-observation-20261116",
+  "private_evidence": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/c04-application-observation-local-20261116",
+  "root_cause": "Normal controller update changes reconciledAt and exactly its existing managedFields.time together; previous comparator accepted the first but rejected the coupled management time.",
+  "read_only_reproduction": {
+    "status": "normal_refresh_reproduced_read_only",
+    "started_at": "2026-11-16T08:54:37.245554+00:00",
+    "observed_at": "2026-11-16T08:55:27.774430+00:00",
+    "polls": 10,
+    "normal_target_spec_and_uid_unchanged": true,
+    "changed_paths": [
+      "/metadata/generation",
+      "/metadata/managedFields/2/time",
+      "/metadata/resourceVersion",
+      "/status/reconciledAt"
+    ],
+    "generation_delta": 1,
+    "changed_management_entries": [
+      {
+        "index": 2,
+        "manager": "argocd-application-controller",
+        "operation": "Update",
+        "apiVersion": "argoproj.io/v1alpha1",
+        "subresource": null,
+        "time_before": "2026-11-16T08:52:07Z",
+        "time_after": "2026-11-16T08:55:27Z",
+        "only_time_changed": true
+      }
+    ],
+    "cloud_mutations": 0,
+    "fault_injections": 0,
+    "model_calls": 0,
+    "read_command_scope": "GET argocd/Application lab-target only",
+    "prior_trial004_raw_values_available": false
+  },
+  "exact_pair_replay": {
+    "replayed_at": "2026-11-16T09:04:10.963096+00:00",
+    "baseline_sha": "a002dee1efe5b5983a804d2844a3ae714b6765c7",
+    "baseline_accepted": false,
+    "fixed_accepted": true,
+    "same_real_snapshot_pair": true,
+    "originals_preserved": true,
+    "fault_injections": 0
+  },
+  "exception_requirements": [
+    "argoproj.io/v1alpha1 Application",
+    "one unique existing argocd-application-controller Update entry",
+    "FieldsV1 ownership includes status.reconciledAt",
+    "same entry shape and ownership except time",
+    "management time exactly equals corresponding before/after reconciledAt",
+    "one positive integer generation advance",
+    "distinct nonempty opaque resourceVersions",
+    "strictly increasing nonfuture observation time",
+    "all other Application fields and full Deployment/Lease unchanged"
+  ],
+  "timing_and_approval_control_files_byte_unchanged": [
+    "ai-ops/src/ai_ops/c_trial_ready.py",
+    "ai-ops/src/ai_ops/c_trial_execution.py",
+    "ai-ops/src/ai_ops/c_trial_ready_guard.py",
+    "ai-ops/src/ai_ops/c2_rollback_guard.py",
+    "ai-ops/src/ai_ops/c_execution_control.py",
+    "ai-ops/src/ai_ops/c_execution_preflight.py",
+    "ai-ops/src/ai_ops/c_failure_handoff.py",
+    "ai-ops/src/ai_ops/c_approval.py",
+    "ai-ops/src/ai_ops/c_trial_notice.py"
+  ],
+  "full_deployment_and_lease_comparison_body_unchanged": true,
+  "tests": {
+    "full_passed": 922,
+    "focused_passed": 47,
+    "new_tests": 10,
+    "skipped": 0,
+    "known_warning": "existing SQLite ResourceWarning"
+  },
+  "local_tls_fixture": {
+    "status": "passed",
+    "upstream": "local_tls_fixture_only",
+    "cloud_calls": 0,
+    "model_calls": 0,
+    "warm_gets": 20,
+    "warm_gets_seconds": 0.005668,
+    "initial_exec_credential_calls": 1,
+    "after_expiry_exec_credential_calls": 2,
+    "tls_verified": true,
+    "invalid_ca_rejected": true,
+    "kubectl_version": "v1.34.1",
+    "fixed_path_method_host_filters_verified": true,
+    "cas_conflict_and_both_acks_verified": true,
+    "proxy_and_socket_removed": true,
+    "legacy_managed_fields_mismatch_reproduced": true,
+    "full_resource_representation_parity_verified": true,
+    "sigterm_cleanup_verified": true
+  },
+  "static_checks": {
+    "ast_files": 294,
+    "fixture_sets": 4,
+    "schemas_changed": false,
+    "repository_boundary": "passed",
+    "helm_deployment_definitions": "passed"
+  },
+  "limits_preserved": {
+    "start_seconds": 15,
+    "minimum_review_seconds": 120,
+    "review_deadline_seconds": 210,
+    "owner_restore_seconds": 240,
+    "independent_restore_start_seconds": 300,
+    "observation_seconds": 120
+  },
+  "exact_head_human_review_and_ci_required": true,
+  "per_execution_fault_approval_required": true,
+  "agent_cluster_writes": 0,
+  "fault_injections": 0,
+  "refresh_or_sync_calls": 0,
+  "model_calls": 0,
+  "new_credentials_issued": false,
+  "terraform_executed": false,
+  "code_committed": false,
+  "code_pushed": false,
+  "code_integrated": false,
+  "formal_c04_c05_complete": false,
+  "source_sha256": {
+    "ai-ops/src/ai_ops/c_recovery_snapshot.py": "2efd9a3b004ce22e56edcd3bcba2a0205e658d2069dbafff6fed1930e481ee04",
+    "ai-ops/tests/test_c_observation_stability.py": "4e59c156ebcd7471b6cf5dac631046ce5be56870a0a96be513266bede0eec71a",
+    "ai-ops/tests/test_c_application_observation.py": "cb3bd7b4a6cf0667cc0b5bd7a06801e6c6244422941315f25dc17c2d64f75445"
+  },
+  "primary_reference": "https://kubernetes.io/docs/reference/kubernetes-api/definitions/managed-fields-entry-v1-meta/",
+  "historical_limit": "Trial004 raw values were not retained; the same four changed paths are reproduced in a new normal GET observation, but the exact historical manager/time value is not retroactively proven.",
+  "remaining": [
+    "review_and_integrate_with_ci",
+    "refresh_current_binding_normal_ci_and_guard_preparation_before_a_new_trial",
+    "separate_new_readiness_bound_execution_approval"
+  ]
+}
