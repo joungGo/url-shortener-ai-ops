@@ -13,6 +13,7 @@ from ai_ops.c_trial_guards import private_json, _github
 from ai_ops.c_trial_transport import C4TrialTransport
 from ai_ops.c_trial_ready import ACTIVATION_KEY, ACK_KEYS
 from ai_ops.contracts import _utc_datetime
+from ai_ops.c_trial_startup_trace import stage
 
 
 READY_WORKFLOW = '.github/workflows/ai-ops-c4-ready-rollback.yml'
@@ -20,7 +21,8 @@ READY_STEP = '준비 대기와 승인 후 기한 원복'
 GUARD_SOURCES = {READY_WORKFLOW, 'ai-ops/scripts/run_c4_ready_guard.py',
     'ai-ops/scripts/run_c2_rollback_guard.py', 'ai-ops/src/ai_ops/c_trial_ready.py',
     'ai-ops/src/ai_ops/c_trial_ready_guard.py', 'ai-ops/src/ai_ops/c_trial_execution.py',
-    'ai-ops/src/ai_ops/c2_rollback_guard.py', 'ai-ops/src/ai_ops/b6_coordination.py'}
+    'ai-ops/src/ai_ops/c2_rollback_guard.py', 'ai-ops/src/ai_ops/b6_coordination.py',
+    'ai-ops/src/ai_ops/c_trial_lease_client.py'}
 
 
 class StandbyGuardReader:
@@ -74,12 +76,31 @@ class StandbyGuardReader:
 
 
 class ReadyTrialTransport(C4TrialTransport):
-    def __init__(self, kubeconfig, *, intent, normal_binding, image_check, standby_reader, merge_session, clock=None):
+    def __init__(self, kubeconfig, *, intent, normal_binding, image_check, standby_reader, merge_session, clock=None,
+                 lease_client=None):
         super().__init__(kubeconfig, image_check=image_check,
                          guard_check=lambda p: False, merge_session=merge_session, clock=clock)
         self.standby_reader = standby_reader
         self.intent, self.normal_binding = intent, normal_binding
         self.activation = None
+        self.lease_client = lease_client
+
+    def get(self, resource):
+        if resource == 'lease' and getattr(self, 'lease_client', None) is not None:
+            with stage(self, 'kube.lease'):
+                return self.lease_client.get()
+        return super().get(resource)
+
+    def lease_command(self, *args, payload=None):
+        client = getattr(self, 'lease_client', None)
+        if client is None:
+            return super().lease_command(*args, payload=payload)
+        if args == ('-n', 'ai-ops-lab', 'get', 'lease', 'b6-scenario-lock', '--ignore-not-found', '-o', 'json'):
+            return json.dumps(client.get())
+        if args != ('replace', '-f', '-', '-o', 'json') or payload is None:
+            raise ValueError('고정 Lease의 조회·CAS 교체만 허용합니다')
+        # CAS 충돌을 성공/캐시 응답으로 바꾸지 않는다. 기존 소유권 경로가 처리한다.
+        return json.dumps(client.replace(json.loads(payload)))
 
     def require_images(self, plan):
         if any(getattr(plan, k) != v for k, v in self.intent.targets.items()):
@@ -118,7 +139,8 @@ class ReadyTrialTransport(C4TrialTransport):
         return self.standby_reader(intent)
 
     def arm_ready_guards(self, activation, lease):
-        current = self.get('lease')
+        with stage(self, 'arm.read_owner'):
+            current = self.get('lease')
         if (current['metadata']['uid'] != activation.execution.lease_uid
                 or current['spec'].get('holderIdentity') != activation.owner_holder
                 or lease.holder != activation.owner_holder or lease.uid != current['metadata']['uid']):
@@ -127,12 +149,14 @@ class ReadyTrialTransport(C4TrialTransport):
         if ACTIVATION_KEY in annotations or any(k in annotations for k in ACK_KEYS.values()):
             raise ValueError('old_ready_activation_present')
         annotations[ACTIVATION_KEY] = activation.model_dump_json()
-        self.lease_command('replace', '-f', '-', '-o', 'json', payload=json.dumps(current))
+        with stage(self, 'arm.publish'):
+            self.lease_command('replace', '-f', '-', '-o', 'json', payload=json.dumps(current))
         self.activation = activation
         end = time.monotonic()+activation.intent.start_write_budget_seconds
         while True:
             try:
-                self.require_ready_guard_acks(activation)
+                with stage(self, 'arm.poll_acks'):
+                    self.require_ready_guard_acks(activation)
                 return
             except MissingGuardAck:
                 if time.monotonic() >= end or self.clock() >= activation.execution.planned_at + timedelta(

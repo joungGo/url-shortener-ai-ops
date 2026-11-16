@@ -17,6 +17,7 @@ from ai_ops.c_trial_ready_transport import ReadyTrialTransport, StandbyGuardRead
 from ai_ops.c_trial_schedule import RefreshingProbe, validate_operator_socket
 from ai_ops.c_trial_bundle import verify_ready_runtime
 from ai_ops.c_trial_guards import private_json
+from ai_ops.c_trial_lease_client import TrialLeaseClient
 from ai_ops.c_trial_notice import _socket_path, require_bridge
 from ai_ops.c_trial_github import GitHubMergeSession
 from ai_ops.normal_ci_contract import NormalCIBinding
@@ -87,14 +88,16 @@ def main(argv=None):
         guards.require(current)
         with guards.lock:
             return {role: guards.value[role] for role in ('local', 'remote')}
+    lease_client = TrialLeaseClient(args.kubeconfig, intent.targets['lease_uid'], handle_sigterm=True)
     transport = ReadyTrialTransport(args.kubeconfig, intent=intent, normal_binding=binding,
         image_check=images.require, standby_reader=standby_reader,
-        merge_session=GitHubMergeSession)
+        merge_session=GitHubMergeSession, lease_client=lease_client)
     controller = ReadyTrialController(intent, transport, args.run_dir/'approval-consumed.json')
     evidence = {'trial_id': intent.trial_id, 'intent_hash': intent.digest(),
                 'status': 'preparing', 'fault_injected': False}
     post = forward = server = None
     try:
+        lease_client.start()
         images.start(); guards.start()
         caches = warm_trial_reads(intent.source_plan(), binding, args.normal_run_id,
                                   intent.targets['workflow_main'])
@@ -200,41 +203,47 @@ def main(argv=None):
             except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError):
                 evidence['fallback'] = 'lock_retained_inspect_current_owner'
     finally:
-        controller.startup_trace.finish('rejected')
-        evidence['startup_timing'] = controller.startup_trace.report()
-        if controller.executor is not None and controller.executor.control is not None:
-            evidence['execution_control'] = controller.executor.control.summary()
-        if post is not None:
-            if post.poll() is None:
-                post.terminate()
-                try: post.wait(timeout=15)
-                except subprocess.TimeoutExpired: post.kill(); post.wait(timeout=5)
-        for process in (forward,):
-            if process is not None and process.poll() is None:
-                process.terminate()
-                try: process.wait(timeout=8)
-                except subprocess.TimeoutExpired: process.kill(); process.wait(timeout=5)
-        if server is not None:
-            server.shutdown(); server.server_close()
-            (operator_root/'operator.sock').unlink(missing_ok=True)
-        for probe in (images, guards):
-            try: probe.close()
-            except ValueError: evidence.update(status='stopped', probe_cleanup_complete=False)
-        if controller.executor is not None and controller.executor.finished:
+        try:
+            controller.startup_trace.finish('rejected')
+            evidence['startup_timing'] = controller.startup_trace.report()
+            if controller.executor is not None and controller.executor.control is not None:
+                evidence['execution_control'] = controller.executor.control.summary()
+            if post is not None:
+                if post.poll() is None:
+                    post.terminate()
+                    try: post.wait(timeout=15)
+                    except subprocess.TimeoutExpired: post.kill(); post.wait(timeout=5)
+            for process in (forward,):
+                if process is not None and process.poll() is None:
+                    process.terminate()
+                    try: process.wait(timeout=8)
+                    except subprocess.TimeoutExpired: process.kill(); process.wait(timeout=5)
+            if server is not None:
+                server.shutdown(); server.server_close()
+                (operator_root/'operator.sock').unlink(missing_ok=True)
+            for probe in (images, guards):
+                try: probe.close()
+                except ValueError: evidence.update(status='stopped', probe_cleanup_complete=False)
+            if controller.executor is not None and controller.executor.finished:
+                try:
+                    transport.clear_ready_control()
+                    evidence['ready_control_removed'] = True
+                    job = evidence.get('capture_job')
+                    if job is not None:
+                        current = json.loads(transport._kube('-n', 'ai-ci', 'get', 'job', job['name'],
+                                                           '--ignore-not-found', '-o', 'json') or b'{}')
+                        if current:
+                            if current['metadata']['uid'] != job['uid'] or current['status'].get('succeeded') != 1:
+                                raise ValueError('ready_capture_cleanup_uid_or_status_changed')
+                            transport._kube('-n', 'ai-ci', 'delete', 'job', job['name'], '--wait=true', '--timeout=15s')
+                        evidence['capture_job_removed'] = True
+                except (ValueError, KeyError, OSError, subprocess.SubprocessError):
+                    evidence.update(status='stopped', ready_cleanup_needs_check=True)
+        finally:
             try:
-                transport.clear_ready_control()
-                evidence['ready_control_removed'] = True
-                job = evidence.get('capture_job')
-                if job is not None:
-                    current = json.loads(transport._kube('-n', 'ai-ci', 'get', 'job', job['name'],
-                                                       '--ignore-not-found', '-o', 'json') or b'{}')
-                    if current:
-                        if current['metadata']['uid'] != job['uid'] or current['status'].get('succeeded') != 1:
-                            raise ValueError('ready_capture_cleanup_uid_or_status_changed')
-                        transport._kube('-n', 'ai-ci', 'delete', 'job', job['name'], '--wait=true', '--timeout=15s')
-                    evidence['capture_job_removed'] = True
-            except (ValueError, KeyError, OSError, subprocess.SubprocessError):
-                evidence.update(status='stopped', ready_cleanup_needs_check=True)
+                lease_client.close()
+            except (OSError, subprocess.SubprocessError):
+                evidence.update(status='stopped', lease_proxy_cleanup_complete=False)
     # 진단 파일 오류가 감시/자격/포워드 정리를 건너뛰게 하지 않는다.
     try:
         write_private_json(args.run_dir/'startup-timing.json', evidence['startup_timing'])
