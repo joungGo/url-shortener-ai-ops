@@ -9,13 +9,13 @@
   "deployed": false,
   "live_trial_run": false,
   "full_tests": {
-    "passed": 1075,
+    "passed": 1076,
     "skipped": 0,
-    "seconds": 43.17,
+    "seconds": 47.523,
     "preexisting_resource_warnings": 1
   },
-  "focused_tests_passed": 63,
-  "new_regression_tests": 14,
+  "focused_tests_passed": 64,
+  "new_regression_tests": 15,
   "fixture_checks_passed": 4,
   "schemas_unchanged": 14,
   "ast_files": 310,
@@ -80,7 +80,7 @@
       "old_sha256": "36b824fb1eb9fc9c6fb3d47f82ecb8ae61f2f039189ab2604a57db028124282f"
     },
     "ai-ops/src/ai_ops/c_trial_github.py": {
-      "sha256": "d0b653a904495af66378233991cfca818504ceca8df348ba66b3b22b1215cc9e",
+      "sha256": "d23b9466bc1bae354359a34ef23504a222beb9687bf8c78b5da206db44ea2b8a",
       "old_sha256": "1bef7f478f17acd2d1664ffba42c25b1af5c41b2bfb17733342a559ea8ae60af"
     },
     "ai-ops/src/ai_ops/c_trial_read_budget.py": {
@@ -108,21 +108,22 @@
       "old_sha256": null
     },
     "ai-ops/tests/test_c_recovery_read_timing.py": {
-      "sha256": "1f7a5c1b0e27f68d808ca67cc8418bb11e8e0b5e87edbdd66aa584073a59b89b",
+      "sha256": "2e5a19fbe4479cb4115911c0d623be8771ce94e04acbb0cd22e15f50463a3567",
       "old_sha256": null
     }
   },
   "updated_at": "2026-11-16T12:40:17.567612+00:00",
   "review_supplement": {
-    "full_tests": 1075,
-    "focused_tests": 63,
-    "additional_regressions": 4,
+    "full_tests": 1076,
+    "focused_tests": 64,
+    "additional_regressions": 5,
     "schemas_unchanged": 14,
     "ast_files": 310,
     "status": "local_review_complete_remote_ci_pending",
     "existing_reader_deadline_inherited": true,
     "slow_app_get_headers_body_bounded": true,
     "no_policy_weakening": true,
-    "live_trial_executed": false
+    "live_trial_executed": false,
+    "response_close_failure_still_closes_connection": true
   }
 }

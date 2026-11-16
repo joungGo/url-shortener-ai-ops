@@ -78,12 +78,17 @@ class GitHubMergeSession:
         except http.client.HTTPException as exc:
             raise ValueError('고정 GitHub App 응답을 확인하지 못했습니다') from exc
         finally:
-            if watchdog is not None:
-                watchdog.cancel()
-                watchdog.join()
-            if response is not None:
-                response.close()
-            connection.close()
+            try:
+                if watchdog is not None:
+                    watchdog.cancel()
+                    if watchdog.ident is not None:
+                        watchdog.join()
+            finally:
+                try:
+                    if response is not None:
+                        response.close()
+                finally:
+                    connection.close()
 
     def _jwt(self):
         info = self.key.lstat()

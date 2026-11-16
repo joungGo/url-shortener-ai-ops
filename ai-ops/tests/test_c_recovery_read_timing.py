@@ -178,13 +178,14 @@ class RecoveryReadTimingTest(unittest.TestCase):
         import tempfile
         from pathlib import Path
         from ai_ops.c_operator import _send
-        now=datetime.now(timezone.utc); release=threading.Event()
+        release=threading.Event()
         with tempfile.TemporaryDirectory(dir='/tmp') as folder:
             path=Path(folder)/'operator.sock'
             with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as server:
-                server.bind(str(path));server.listen(1)
+                server.bind(str(path));server.listen(1);server.settimeout(.5)
                 def peer():
-                    connection,_=server.accept()
+                    try:connection,_=server.accept()
+                    except OSError:return
                     with connection:
                         connection.recv(4096)
                         for _ in range(100):
@@ -192,6 +193,7 @@ class RecoveryReadTimingTest(unittest.TestCase):
                             try:connection.sendall(b' ')
                             except OSError:break
                 thread=threading.Thread(target=peer);thread.start()
+                now=datetime.now(timezone.utc)
                 trace=RecoveryReadTiming(now+timedelta(seconds=.15),clock=lambda:datetime.now(timezone.utc))
                 try:
                     start=time.monotonic()
@@ -306,6 +308,17 @@ class RecoveryReadTimingTest(unittest.TestCase):
             finally:
                 stopped.set();server.shutdown();thread.join(timeout=2)
             self.assertFalse(thread.is_alive())
+
+    def test_response_close_error_does_not_skip_connection_close(self):
+        from unittest.mock import Mock
+        from ai_ops.c_trial_github import GitHubMergeSession
+        connection=Mock();response=connection.getresponse.return_value
+        response.status=204;response.read.return_value=b''
+        response.close.side_effect=OSError('fixture close failed')
+        with patch('ai_ops.c_trial_github.http.client.HTTPSConnection',return_value=connection):
+            with self.assertRaises(OSError):
+                GitHubMergeSession()._api('DELETE','/installation/token','fixture-token')
+        connection.close.assert_called_once()
 
 
 if __name__ == '__main__': unittest.main()
