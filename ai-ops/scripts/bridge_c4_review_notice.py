@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import select
+import signal
 import sys
 
 from ai_ops.c_trial_execution import TrialPlan
@@ -26,6 +27,8 @@ def main():
     parser.add_argument('--rehearsal', action='store_true',
                         help='PR 승인을 요청하지 않는 별도 리허설 전송; 실제 실행 영수증으로 사용 불가')
     parser.add_argument('--when-ready', action='store_true')
+    parser.add_argument('--host-events', action='store_true',
+                        help='단일 호스트 중계기의 준비/출력/ACK 계측 이벤트')
     parser.add_argument('--activation', type=Path,
                         help='준비 완료 방식의 승인 후 생성할 불변 activation 파일')
     args = parser.parse_args()
@@ -60,8 +63,11 @@ def main():
         active = resolver() if resolver is not None else plan
         if active is None:
             raise ValueError('ready_bridge_not_activated')
-        print(json.dumps({'status':'review_notice_requested',
-                          'tool':'functions.request_user_input_async','arguments':arguments},ensure_ascii=False),flush=True)
+        event = {'status':'review_notice_requested',
+                 'tool':'functions.request_user_input_async','arguments':arguments}
+        if args.host_events:
+            event['emitted_at'] = datetime.now(timezone.utc).isoformat()
+        print(json.dumps(event,ensure_ascii=False),flush=True)
         remaining = (active.review_cutoff()-timedelta(seconds=active.minimum_review_seconds)
                      -datetime.now(timezone.utc)).total_seconds()
         if remaining <= 0 or not select.select([sys.stdin], [], [], remaining)[0]:
@@ -70,10 +76,23 @@ def main():
         if len(raw) > 1024 or not raw.endswith('\n'):
             raise ValueError('review_notice_host_response_rejected')
         result = json.loads(raw)
-        return delivery_evidence(result)
+        evidence = delivery_evidence(result)
+        if args.host_events:
+            print(json.dumps({'status':'review_notice_host_ack_received',
+                              'received_at':datetime.now(timezone.utc).isoformat()}),flush=True)
+        return evidence
 
-    serve_bridge(plan, args.socket, notify, rehearsal=args.rehearsal,
-                 resolve_plan=resolver, standby_until=standby_until)
+    def bridge_listening():
+        print(json.dumps({'status':'review_bridge_bound'}),flush=True)
+    def terminate(signum,frame):
+        raise ValueError('review_notice_bridge_terminated')
+    previous = signal.signal(signal.SIGTERM,terminate)
+    try:
+        serve_bridge(plan, args.socket, notify, rehearsal=args.rehearsal,
+                     resolve_plan=resolver, standby_until=standby_until,
+                     on_ready=bridge_listening if args.host_events else None)
+    finally:
+        signal.signal(signal.SIGTERM,previous)
 
 
 if __name__ == '__main__':

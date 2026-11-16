@@ -1,0 +1,63 @@
+{
+  "status": "local_verified_uncommitted",
+  "base_sha": "e9b3751db6b0e8c658a36d36019a113b09db3274",
+  "historical_pr_to_receipt_seconds": 30.647779,
+  "historical_substage_cause_confirmed": false,
+  "reproduction": {
+    "status": "passed",
+    "fixture_only": true,
+    "blocking_monitor_seconds": 30.03786033399956,
+    "serial_emission_to_receipt_seconds": 30.038886,
+    "priority_emission_to_receipt_seconds": 0.000954,
+    "notice_seen_before_owner_completion": true,
+    "native_tool_delivery_verified": false,
+    "historical_delay_substage_cause_confirmed": false,
+    "external_calls": 0,
+    "fault_injections": 0,
+    "human_reviews_created": 0,
+    "terraform_executed": false
+  },
+  "full_tests": 1108,
+  "full_test_seconds": 42.494,
+  "focused_tests_before_final_runtime_guard": 36,
+  "protected_files_byte_identical": 17,
+  "protected_notice_functions_ast_identical": 5,
+  "ast_files": 317,
+  "schemas_unchanged": 14,
+  "fixture_checks": 4,
+  "repository_boundary": "passed",
+  "pinned_platform_chart_contract": "passed",
+  "existing_sqlite_resource_warning": 1,
+  "actual_native_delivery_verified": false,
+  "owner_adapter_live_verified": false,
+  "actual_fault_injections": 0,
+  "external_service_calls": 0,
+  "terraform_executed": false,
+  "remote_ci_executed": false,
+  "code_committed_or_pushed": false,
+  "c04_complete": false,
+  "c05_complete": false,
+  "unchanged_limits_seconds": [
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "followup_review": {
+    "status": "locally_passed_before_remote_ci",
+    "bugs_reproduced_and_fixed": [
+      "signal_restoration_on_trace_failure",
+      "bridge_exit_after_ack_not_masked",
+      "non_object_bridge_event_rejected"
+    ],
+    "full_tests": 1111,
+    "full_test_seconds": 48.015,
+    "focused_tests": 40,
+    "preserved_policy_files": 17,
+    "preserved_notice_guard_functions": 5,
+    "native_delivery_verified": false,
+    "trial_executed": false
+  }
+}
