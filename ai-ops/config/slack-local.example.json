@@ -1,0 +1,12 @@
+{
+  "team_id": "TLOCAL01",
+  "app_id": "ALOCAL01",
+  "bot_user_id": "UBOT0001",
+  "grants": [
+    {
+      "user_id": "UALICE01",
+      "channel_id": "CLOCAL01",
+      "targets": ["url-shortener-practice"]
+    }
+  ]
+}
