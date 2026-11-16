@@ -1,7 +1,6 @@
 """기존 병합 App의 한 저장소 단기 자격으로 정확한 PR head만 병합한다."""
 
 import base64
-from datetime import datetime, timezone
 import http.client
 import json
 import os
@@ -14,6 +13,8 @@ import threading
 import time
 
 from ai_ops.c_recovery_read_timing import phase, read_timeout
+from ai_ops.c_trial_token_lifetime import (TokenExchange, TokenResponse,
+    TokenLifetimeRejected, validate_token_lifetime, utcnow)
 
 
 REPOSITORY = "joungGo/c03-execution-lab"
@@ -28,9 +29,19 @@ class GitHubMergeSession:
         self.key = key or Path.home()/".local/share/url-shortener-ai-ops/c03-app-keys/merge.pem"
         self.token = None
         self.identity = None
+        self.lifetime = None
+        self.token_time_diagnostic = None
 
     def _api(self, method, path, credential, payload=None):
         # GET 기한과 자격 발급 전 대기를 제한한다. 회수 DELETE는 기한 후에도 수행한다.
+        if self.token is not None and credential == self.token and method != 'DELETE':
+            if self.lifetime is None:
+                raise ValueError('github_token_time_evidence_missing')
+            try:
+                self.lifetime.require_current()
+            except TokenLifetimeRejected as exc:
+                self.token_time_diagnostic = exc.diagnostic
+                raise
         with phase('github.app', read=method == 'GET'):
             return self._request(method, path, credential, payload)
 
@@ -38,6 +49,7 @@ class GitHubMergeSession:
         limited = method == 'GET' or (method == 'POST' and path.endswith('/access_tokens'))
         timeout = read_timeout(12) if limited else 12
         deadline = time.monotonic()+timeout
+        sent_at, sent_tick = utcnow(), time.monotonic()
         connection = http.client.HTTPSConnection("api.github.com", timeout=timeout)
         watchdog = None
         response = None
@@ -74,7 +86,12 @@ class GitHubMergeSession:
                 raw = response.read(2*1024*1024+1)
             if not 200 <= response.status < 300 or len(raw) > 2*1024*1024:
                 raise ValueError("고정 GitHub App 요청을 확인하지 못했습니다")
-            return json.loads(raw) if raw else {}
+            body = json.loads(raw) if raw else {}
+            if method == 'POST' and path.endswith('/access_tokens') and isinstance(body, dict):
+                exchange = TokenExchange(sent_at, sent_tick, utcnow(), time.monotonic(),
+                    tuple(value for name, value in response.getheaders() if name.lower() == 'date'))
+                return TokenResponse(body, exchange)
+            return body
         except http.client.HTTPException as exc:
             raise ValueError('고정 GitHub App 응답을 확인하지 못했습니다') from exc
         finally:
@@ -125,10 +142,14 @@ class GitHubMergeSession:
                           {"repository_ids": [1452572723], "permissions": PERMISSIONS})
         self.token = issued["token"]
         try:
-            expiry = datetime.fromisoformat(issued["expires_at"].replace("Z", "+00:00"))
-            if (issued.get("permissions") != PERMISSIONS
-                    or not 0 < (expiry-datetime.now(timezone.utc)).total_seconds() <= 3600):
-                raise ValueError("병합 자격의 권한·짧은 유효기간이 다릅니다")
+            if issued.get("permissions") != PERMISSIONS:
+                raise ValueError("병합 자격의 최소 권한이 다릅니다")
+            try:
+                self.lifetime = validate_token_lifetime(issued)
+            except TokenLifetimeRejected as exc:
+                self.token_time_diagnostic = exc.diagnostic
+                raise
+            self.token_time_diagnostic = self.lifetime.diagnostic
             repositories = self._api("GET", "/installation/repositories?per_page=100", self.token)
             repos = repositories["repositories"]
             if (repositories.get("total_count") != 1 or len(repos) != 1
@@ -156,6 +177,7 @@ class GitHubMergeSession:
                 or plan["body"]["merge_action"] != "direct_merge"
                 or plan["body"]["bypass_rules"] is not False):
             raise ValueError("검증된 정확한 PR head의 일반 병합 요청이 필요합니다")
+        self.lifetime.require_current()
         return self._api("PUT", "/"+plan["endpoint"], self.token,
                          {"sha": plan["body"]["sha"], "merge_method": "squash"})
 
@@ -164,6 +186,7 @@ class GitHubMergeSession:
             self._api("DELETE", "/installation/token", self.token)
             self.token = None
             self.identity = None
+            self.lifetime = None
 
     def __exit__(self, *exc):
         self.close()

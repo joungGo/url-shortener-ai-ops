@@ -1,0 +1,100 @@
+{
+  "record_type": "c04_installation_token_time_local",
+  "base_sha": "f00cd4edfce328f2e4540d62fcdb75e3882bc6bb",
+  "status": "local_implemented_and_verified",
+  "local_only": true,
+  "committed": false,
+  "pushed": false,
+  "remote_ci_run": false,
+  "deployed": false,
+  "live_trial_run": false,
+  "full_tests": {
+    "passed": 1090,
+    "seconds": 44.044,
+    "skipped": 0
+  },
+  "focused_tests": {
+    "passed": 33,
+    "seconds": 0.724,
+    "skipped": 0
+  },
+  "new_regression_tests": 14,
+  "preexisting_sqlite_resource_warnings": 1,
+  "fixtures_passed": 4,
+  "schemas_unchanged": 14,
+  "invariants": {
+    "approval_rollback_control_files_byte_identical": 10,
+    "trial_execution_ast_identical": true,
+    "python_ast_files": 312,
+    "timings_seconds_unchanged": [
+      15,
+      120,
+      210,
+      240,
+      300,
+      120
+    ],
+    "schemas_changed": false
+  },
+  "source_files": {
+    "ai-ops/src/ai_ops/c_trial_token_lifetime.py": "30c2bd8688ee6bce6003c5eafccf50e46fe6b4ede9b72a98615814b1300afe1a",
+    "ai-ops/src/ai_ops/c_trial_writer_api.py": "d2159e289067da1d20bee0bce89250dc1f5809e6b41caa7abc66086f3595c7d0",
+    "ai-ops/src/ai_ops/c_trial_github.py": "6a94ff107a54a14ee196b6291bc5c623805f32ad0f22e5929feb2d1e30237b26",
+    "ai-ops/scripts/prepare_c4_recovery_pr.py": "f005787d2e43e0d33fc98066707ac49cc32594cd206bd4de5cb3f330333cb627",
+    "ai-ops/tests/test_c_trial_token_lifetime.py": "0a0ce1a820fb9a3c79d3ad99cdea9ca3a583635fcafb0ee02eebf939e4521333",
+    "ai-ops/tests/test_c_trial_github.py": "4325985f4d3b8662f5e69831ebc8b327257389ee9c40b36f7db86e30b1a6fd06",
+    "ai-ops/tests/test_c_trial_writer_path.py": "4ec5e6d618f5d270750b930903e031addbed357f8afb01ce6124bfc4d2704888"
+  },
+  "reproduction": {
+    "server_clock_ahead_seconds": 1,
+    "normal_server_lifetime_seconds": 3600,
+    "old_local_remaining_seconds": 3601,
+    "old_rejected": true,
+    "old_revoke_called": true,
+    "new_accepts": true,
+    "new_usable_seconds": 3598.8,
+    "old_false_accept_case": {
+      "server_clock_ahead_seconds": -2,
+      "server_lifetime_seconds": 3601,
+      "old_local_remaining_seconds": 3599,
+      "new_rejects": true
+    }
+  },
+  "actual_007_numeric_lifetime_preserved": false,
+  "actual_007_expired_vs_upper_bound_not_determined": true,
+  "conditions": {
+    "token_server_max_seconds": 3600,
+    "token_clock_skew_guard_seconds": 5,
+    "token_clock_elapsed_difference_max_seconds": 1,
+    "token_issue_exchange_max_seconds": 12,
+    "date_precision_margin_seconds": 1,
+    "trial_timings_seconds": [
+      15,
+      120,
+      210,
+      240,
+      300,
+      120
+    ]
+  },
+  "private_key_reads": 0,
+  "live_service_calls": 0,
+  "live_credentials_issued": 0,
+  "terraform_executed": false,
+  "actual_slack_connected": false,
+  "external_model_calls": 0,
+  "formal_c04_c05_completed": false,
+  "evidence_root": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/c04-token-lifetime-local-20261116",
+  "working_copy": "/private/tmp/c04-token-lifetime-local-20261116",
+  "next": "Code review and CI integration; keep live repetition blocked. Historical 007 TTL branch remains unknown.",
+  "updated_at": "2026-11-16T13:43:31.545693+00:00",
+  "review_validation": {
+    "full_tests": 1094,
+    "full_seconds": 40.678,
+    "focused_tests": 37,
+    "added_actual_writer_path_regressions": 4,
+    "production_changes_during_review": false,
+    "schema_changes": 0,
+    "reviewed_invariants_unchanged": true
+  }
+}

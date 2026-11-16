@@ -2,6 +2,9 @@
 
 from datetime import datetime, timedelta, timezone
 import unittest
+import time
+from email.utils import format_datetime
+from ai_ops.c_trial_token_lifetime import TokenExchange, TokenResponse
 
 from ai_ops.c_trial_github import APP_ID, BOT_ID, INSTALLATION_ID, PERMISSIONS, GitHubMergeSession
 
@@ -25,8 +28,10 @@ class Session(GitHubMergeSession):
                     "repository_selection": "selected", "permissions": PERMISSIONS}
         if path.endswith("/access_tokens"):
             self.asserted_scope = payload
-            return {"token": "synthetic-installation-token", "permissions": PERMISSIONS,
-                    "expires_at": (datetime.now(timezone.utc)+timedelta(minutes=30)).isoformat()}
+            now, tick = datetime.now(timezone.utc), time.monotonic()
+            return TokenResponse({"token": "synthetic-installation-token", "permissions": PERMISSIONS,
+                    "expires_at": (now+timedelta(minutes=30)).isoformat()},
+                TokenExchange(now, tick, now, tick, (format_datetime(now, usegmt=True),)))
         if path.startswith("/installation/repositories"):
             return {"total_count": self.repo_count,
                     "repositories": [{"id": 1452572723, "full_name": "joungGo/c03-execution-lab"}]}
