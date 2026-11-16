@@ -1,0 +1,109 @@
+{
+  "status": "local_fix_verified_not_integrated_or_deployed",
+  "checked_at": "2026-11-16T07:53:00.354681+00:00",
+  "base_ai_sha": "2c2c59d19a16f2e85a60c7f424d19af87d0a82f7",
+  "branch": "codex/c04-proof-consistency-20261116",
+  "worktree": "/private/tmp/c04-proof-consistency-20261116",
+  "private_evidence": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/c04-proof-comparison-local-20261116",
+  "root_cause": "proxy preserves Lease metadata.managedFields; default kubectl JSON printer omits it, creating a false mismatch for an unchanged Lease",
+  "fix": "explicit --show-managed-fields=true in trial transport and audit GET; preserve full comparison",
+  "diagnostics": "fixed phase and field paths only; no response values or arbitrary keys; <=32 paths and <=8 chained exceptions",
+  "full_tests": {
+    "passed": 912,
+    "skipped": 0,
+    "new_regression_tests": 6,
+    "known_warning": "one SQLite ResourceWarning remains"
+  },
+  "local_tls_fixture": {
+    "status": "passed",
+    "upstream": "local_tls_fixture_only",
+    "cloud_calls": 0,
+    "model_calls": 0,
+    "warm_gets": 20,
+    "warm_gets_seconds": 0.00658,
+    "initial_exec_credential_calls": 1,
+    "after_expiry_exec_credential_calls": 2,
+    "tls_verified": true,
+    "invalid_ca_rejected": true,
+    "kubectl_version": "v1.34.1",
+    "fixed_path_method_host_filters_verified": true,
+    "cas_conflict_and_both_acks_verified": true,
+    "proxy_and_socket_removed": true,
+    "legacy_managed_fields_mismatch_reproduced": true,
+    "full_resource_representation_parity_verified": true,
+    "sigterm_cleanup_verified": true
+  },
+  "archived_source_reproduction": {
+    "archived_source_sha256": "db0eeaa74845623af921d3aba13c5cbde95d93932113af51297d19584d1b6a03",
+    "archived_trial_id": 202611160003,
+    "archived_failure_frame_reproduced": {
+      "rejected": true,
+      "source": "src/ai_ops/c_trial_source.py",
+      "line": 52,
+      "error_type": "ValueError"
+    },
+    "synthetic_representation_difference": "/lease/metadata/managedFields",
+    "fixed_source_collection_passed": true,
+    "resource_mutations_during_comparison": 0,
+    "cloud_calls": 0,
+    "model_calls": 0,
+    "live_trial_runs": 0,
+    "historical_raw_snapshots_available": false,
+    "limitation": "The 003 raw mismatch was not saved. The archived mixed-reader code deterministically reproduces the same rejection frame with an unchanged managed Lease."
+  },
+  "static_checks": {
+    "ast_files": 293,
+    "fixture_sets": 4,
+    "schemas_changed": false,
+    "repository_boundary": "passed",
+    "helm_deployment_definitions": "passed_after_preparing_pinned_platform_chart_locally"
+  },
+  "comparison_functions_ast_unchanged": [
+    "same_application_observation",
+    "same_recovery_resources"
+  ],
+  "timing_guard_control_files_byte_unchanged": [
+    "ai-ops/src/ai_ops/c_trial_ready.py",
+    "ai-ops/src/ai_ops/c_trial_execution.py",
+    "ai-ops/src/ai_ops/c_trial_ready_guard.py",
+    "ai-ops/src/ai_ops/c2_rollback_guard.py"
+  ],
+  "limits_preserved": {
+    "start_seconds": 15,
+    "minimum_review_seconds": 120,
+    "review_deadline_seconds": 210,
+    "owner_restore_seconds": 240,
+    "independent_restore_start_seconds": 300,
+    "observation_seconds": 120
+  },
+  "exact_user_head_review_and_ci_required": true,
+  "per_execution_fault_approval_required": true,
+  "source_sha256": {
+    "ai-ops/scripts/audit_c2_live_preflight.py": "95a93252a3f924e9b84bdb86041645b66af1e79303dd22b3b9c55c720702e5f0",
+    "ai-ops/scripts/check_c4_lease_proxy_local.py": "d9771a47e07a3a053d7b5e3b915dcaed0c287188e6500bda5c7f2570d1a789cf",
+    "ai-ops/scripts/prepare_c4_recovery_pr.py": "fe7970815d83aaae732000f76dce50690c93fad47559957303f05816fb0bb5ab",
+    "ai-ops/scripts/run_c4_ready_trial.py": "85e0049a3ce07c1f1c8cb82e56cc39dbc31ddbb39abec896fc31fd7d60111e5b",
+    "ai-ops/scripts/run_c4_trial.py": "f2cf505ecd0b58428c71b9f9136d25225122e887c333ebc5f5410a4b915548fd",
+    "ai-ops/src/ai_ops/c_execution_preflight.py": "f8e2be5fd5ce01432cd10e80e218081be20c1c57b595cd14776e48f9b3e4820d",
+    "ai-ops/src/ai_ops/c_failure_handoff.py": "c67287548a4fe9f82a8f4692e40c4e7d94a6c3a6fc1953af2e2e610c7194bf40",
+    "ai-ops/src/ai_ops/c_recovery_snapshot.py": "badc7e6cab7caa650ddda709f952ccbb88811470870e5aa1202a678fbac13076",
+    "ai-ops/src/ai_ops/c_trial_read_budget.py": "1834f62cd21cc4c378cfb732da303c8604c2d81e5fb35516c6f6b7bd0fc0a0d5",
+    "ai-ops/src/ai_ops/c_trial_source.py": "a18ce62e71f91aa047e50dac63baa653a01f7baffbf652af895bbbea3f9d83c0",
+    "ai-ops/src/ai_ops/c_trial_transport.py": "e9b47ed156e64b9af14cb8b01e945c5a51d685e3fe8411a228f602379446bebc",
+    "ai-ops/tests/test_c_resource_representation.py": "c1688e99ef1a051c957782255719bfb677a3bec451a6ca6af3d277383d09fea4"
+  },
+  "cloud_calls": 0,
+  "model_calls": 0,
+  "live_trials_executed": 0,
+  "terraform_executed": false,
+  "code_committed": false,
+  "code_pushed": false,
+  "code_integrated": false,
+  "formal_c04_c05_complete": false,
+  "remaining": [
+    "review_and_integrate_local_fix_with_ci",
+    "refresh_current_Pod_binding_and_normal_ci_before_preparation",
+    "new_guard_readiness_and_separate_execution_approval_before_any_live_trial"
+  ],
+  "historical_limit": "003 raw before/source/after snapshots were not saved; cannot exclude another simultaneous historical difference"
+}

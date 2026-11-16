@@ -14,6 +14,7 @@ import threading
 import time
 
 from ai_ops.c_trial_lease_client import TrialLeaseClient, LeaseConflict, LEASE_PATH, CONTEXT, _UnixConnection
+from ai_ops.c_trial_transport import C4TrialTransport
 
 
 def main():
@@ -45,7 +46,10 @@ print(json.dumps({'apiVersion':'client.authentication.k8s.io/v1beta1','kind':'Ex
  'status':{'token':'local-fixture-only','expirationTimestamp':(datetime.now(timezone.utc)+timedelta(seconds=6)).isoformat().replace('+00:00','Z')}}))
 ''')
         state = dict(apiVersion='coordination.k8s.io/v1', kind='Lease', metadata=dict(
-            name='b6-scenario-lock', namespace='ai-ops-lab', uid='local-fixture', resourceVersion='1'), spec={})
+            name='b6-scenario-lock', namespace='ai-ops-lab', uid='local-fixture', resourceVersion='1',
+            managedFields=[{'manager':'fixture-controller','operation':'Update',
+                'apiVersion':'coordination.k8s.io/v1','fieldsType':'FieldsV1',
+                'fieldsV1':{'f:spec':{}}}]), spec={})
         requests = []
         lock = threading.Lock()
         class Handler(http.server.BaseHTTPRequestHandler):
@@ -56,7 +60,18 @@ print(json.dumps({'apiVersion':'client.authentication.k8s.io/v1beta1','kind':'Ex
                     requests.append((self.command, self.path))
                     if self.headers.get('Authorization') != 'Bearer local-fixture-only':
                         code, value = 401, {'kind': 'Status', 'reason': 'Unauthorized'}
-                    elif self.path != LEASE_PATH:
+                    elif self.path.split('?')[0] == '/api':
+                        code, value = 200, {'kind':'APIVersions','apiVersion':'v1','versions':['v1']}
+                    elif self.path.split('?')[0] == '/apis':
+                        code, value = 200, {'kind':'APIGroupList','apiVersion':'v1','groups':[
+                            {'name':'coordination.k8s.io','versions':[{'groupVersion':'coordination.k8s.io/v1','version':'v1'}],
+                             'preferredVersion':{'groupVersion':'coordination.k8s.io/v1','version':'v1'}}]}
+                    elif self.path.split('?')[0] in ('/api/v1','/apis/coordination.k8s.io/v1'):
+                        group = self.path.split('?')[0].removeprefix('/apis/').removeprefix('/api/')
+                        code, value = 200, {'kind':'APIResourceList','apiVersion':'v1','groupVersion':group,
+                            'resources':[] if group == 'v1' else [{'name':'leases','singularName':'lease',
+                                'namespaced':True,'kind':'Lease','verbs':['get','update']}]}
+                    elif self.path.split('?')[0] != LEASE_PATH:
                         code, value = 404, {'kind': 'Status', 'reason': 'NotFound'}
                     else:
                         code, value = 200, state
@@ -111,6 +126,16 @@ print(json.dumps({'apiVersion':'client.authentication.k8s.io/v1beta1','kind':'Ex
             time.sleep(6.1); client.get()
             assert int(count.read_text()) == 2, 'exec_credentials_not_refreshed'
             assert state['metadata']['annotations'] == {'remote':'ack','local':'ack'}
+            # 같은 API 응답도 kubectl 기본 출력은 managedFields를 숨긴다.
+            # proxy 원본을 줄이지 않고 GET도 전체 원본을 읽는 계약을 검증한다.
+            legacy = json.loads(subprocess.run(['kubectl','--kubeconfig',str(kubeconfig),
+                '-n','ai-ops-lab','get','lease','b6-scenario-lock','-o','json'],
+                check=True,capture_output=True,timeout=10).stdout)
+            raw = client.get()
+            assert 'managedFields' in raw['metadata'] and 'managedFields' not in legacy['metadata']
+            transport = C4TrialTransport.__new__(C4TrialTransport)
+            transport.kubeconfig = kubeconfig
+            assert transport.get('lease') == raw, 'kubectl_proxy_managed_fields_representation_mismatch'
             socket_path = client.socket_path; process = client.process
             client.close(); assert process.poll() is not None and not socket_path.parent.exists()
             subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
@@ -166,6 +191,8 @@ finally: c.close()
                 'tls_verified':True,'invalid_ca_rejected':True,'kubectl_version':version,
                 'fixed_path_method_host_filters_verified':True,
                 'cas_conflict_and_both_acks_verified':True,'proxy_and_socket_removed':True,
+                'legacy_managed_fields_mismatch_reproduced':True,
+                'full_resource_representation_parity_verified':True,
                 'sigterm_cleanup_verified':True}))
         finally:
             client.close(); server.shutdown(); server.server_close(); thread.join(timeout=2)

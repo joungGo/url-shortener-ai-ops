@@ -50,3 +50,82 @@ def same_recovery_resources(before, after, *, now=None):
     return (same_application_observation(before["application"], after["application"], now=now)
             and before["deployment"] == after["deployment"]
             and before["lease"] == after["lease"])
+
+
+# 진단에는 API 응답의 값이나 임의 key를 넣지 않는다. 고정 필드 경로만 사용한다.
+_PHASE_MESSAGES = {
+    'transport.first_to_final': '조회 도중 실습 원본이 바뀌었습니다',
+    'audit.first_to_final': 'C-03 원본 조회 중 실습 대상 또는 잠금이 바뀌었습니다',
+    'trial_source.before_to_raw': '인증된 사건 원본 조회 중 대상이 바뀌었습니다',
+    'trial_source.raw_to_after': '인증된 사건 원본 조회 중 대상이 바뀌었습니다',
+    'handoff.first_to_result': 'C-03 원본 조회 중 실패 인계 대상이 바뀌었습니다',
+    'handoff.result_to_second': 'C-03 원본 조회 중 실패 인계 대상이 바뀌었습니다',
+    'preflight.first_to_second': '실행 직전 실습 원본이 바뀌었습니다',
+}
+_DIAGNOSTIC_FIELDS = {
+    'metadata': ('uid', 'name', 'namespace', 'resourceVersion', 'generation', 'managedFields',
+                 'annotations', 'labels', 'deletionTimestamp', 'creationTimestamp', 'ownerReferences',
+                 'finalizers'),
+    'spec': ('source', 'destination', 'project', 'syncPolicy', 'template', 'replicas', 'selector',
+             'strategy', 'holderIdentity', 'acquireTime', 'renewTime', 'leaseDurationSeconds',
+             'leaseTransitions'),
+    'status': ('reconciledAt', 'sync', 'health', 'operationState', 'conditions', 'resources',
+               'observedGeneration', 'replicas', 'readyReplicas', 'availableReplicas',
+               'unavailableReplicas', 'updatedReplicas'),
+}
+
+
+def _changed_paths(before, after, resource):
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return ['/'+resource]
+    paths = []
+    for section, fields in _DIAGNOSTIC_FIELDS.items():
+        if (section in before, before.get(section)) == (section in after, after.get(section)):
+            continue
+        left, right = before.get(section), after.get(section)
+        prefix = '/'+resource+'/'+section
+        if not isinstance(left, dict) or not isinstance(right, dict):
+            paths.append(prefix)
+            continue
+        for field in fields:
+            if (field in left, left.get(field)) != (field in right, right.get(field)):
+                paths.append(prefix+'/'+field)
+        if {k: v for k, v in left.items() if k not in fields} != {
+                k: v for k, v in right.items() if k not in fields}:
+            paths.append(prefix+'/other')
+    for field in ('apiVersion', 'kind', 'operation'):
+        if (field in before, before.get(field)) != (field in after, after.get(field)):
+            paths.append('/'+resource+'/'+field)
+    known = {*_DIAGNOSTIC_FIELDS, 'apiVersion', 'kind', 'operation'}
+    if {k: v for k, v in before.items() if k not in known} != {
+            k: v for k, v in after.items() if k not in known}:
+        paths.append('/'+resource+'/other')
+    return paths
+
+
+class RecoveryResourcesChanged(ValueError):
+    """전체 원본 판정은 유지하고 실패 단계·고정 경로만 예외에 보존한다."""
+
+    def __init__(self, phase, before, after, *, now=None):
+        if phase not in _PHASE_MESSAGES:
+            raise ValueError('resource_comparison_phase_rejected')
+        now = datetime.now(timezone.utc) if now is None else now
+        paths = []
+        for resource in ('application', 'deployment', 'lease'):
+            left, right = before[resource], after[resource]
+            accepted = (same_application_observation(left, right, now=now)
+                        if resource == 'application' else left == right)
+            if not accepted:
+                paths.extend(_changed_paths(left, right, resource))
+        self.phase, self.changed_paths = phase, tuple(paths[:32])
+        self.truncated = len(paths) > 32
+        super().__init__(_PHASE_MESSAGES[phase])
+
+    def diagnostic(self):
+        return {'phase': self.phase, 'changed_paths': list(self.changed_paths),
+                'truncated': self.truncated}
+
+
+def require_same_recovery_resources(before, after, *, phase, now=None):
+    if not same_recovery_resources(before, after, now=now):
+        raise RecoveryResourcesChanged(phase, before, after, now=now)

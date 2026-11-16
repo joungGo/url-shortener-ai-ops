@@ -16,7 +16,7 @@ from ai_ops.c_recovery_proof import assess_proposal_recheck
 from ai_ops.c_approval import prepare_pr_link,verify_review,ApprovalRejected,ApprovalGitHubReader
 from ai_ops.path_policy import write_private_json
 from ai_ops.c_trial_request_time import wait_for_request_projection
-from ai_ops.c_trial_read_budget import approval_rejection_codes,rejection_source_frames
+from ai_ops.c_trial_read_budget import approval_rejection_codes,rejection_source_frames,resource_change_diagnostics
 
 
 def main():
@@ -199,6 +199,7 @@ def main():
         state.update(stage='stopped',error_type=type(exc).__name__,error_code=str(exc) if str(exc).startswith(('command_failed_','manual_recovery_','fresh_','investigation_','review_notice_','incident_','insufficient_actual_review_notice_window')) else 'source_or_pr_condition_failed')
         state['approval_rejection_codes']=approval_rejection_codes(exc)
         state['rejection_source_frames']=rejection_source_frames(exc)
+        state['resource_change_diagnostics'] = resource_change_diagnostics(exc)
         save('post-state.json',state)
     print(json.dumps(state,ensure_ascii=False))
 

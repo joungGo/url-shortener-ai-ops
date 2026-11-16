@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ai_ops.c_approval import ApprovalGitHubReader, ApprovalRejected
 from ai_ops.contracts import _utc_datetime
+from ai_ops.c_recovery_snapshot import RecoveryResourcesChanged
 
 
 def recovery_github_reader(deadline, *, repository, clock):
@@ -71,3 +72,14 @@ def rejection_source_frames(error):
         frames.extend(current[-3:])
         error = error.__cause__ if error.__cause__ is not None else error.__context__
     return frames[-8:]
+
+
+def resource_change_diagnostics(error):
+    """예외 체인에서 값 없는 비교 실패 진단만 최대 8개 추출한다."""
+    records, seen = [], set()
+    while error is not None and id(error) not in seen and len(seen) < 8:
+        seen.add(id(error))
+        if isinstance(error, RecoveryResourcesChanged):
+            records.append(error.diagnostic())
+        error = error.__cause__ if error.__cause__ is not None else error.__context__
+    return records
