@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "registry_sha256": "c794f91bd51e15c8c28e0177bf2e9e5a798b74db9a401274205af68a8ba9968c",
+  "documents": [
+    {
+      "document_id": "cache",
+      "document_version": 1,
+      "content_sha256": "becfff4385d787f59cbcbbe9e0fe22d150b13d5b5210d4a55699e21ea0527fde",
+      "services": [
+        "url-shortener",
+        "redis",
+        "cache"
+      ],
+      "symptoms": [
+        "캐시 오류",
+        "캐시 미스",
+        "히트율 저하",
+        "cache-hit-rate-low"
+      ],
+      "failure_types": [
+        "cache-unavailable",
+        "cache-read-error",
+        "json-decode-error"
+      ],
+      "keywords": [
+        "캐시",
+        "redis",
+        "cache",
+        "오류",
+        "미스",
+        "일관성",
+        "consistency_primary",
+        "jsondecodeerror"
+      ]
+    },
+    {
+      "document_id": "database",
+      "document_version": 1,
+      "content_sha256": "506806f86d006203bfdcf4c4b3366d7591c5ff503c126aed17cb533b0e5df247",
+      "services": [
+        "url-shortener",
+        "postgresql",
+        "rds",
+        "database"
+      ],
+      "symptoms": [
+        "DB 지연",
+        "연결 풀 대기",
+        "준비 검사 실패",
+        "replica-lag"
+      ],
+      "failure_types": [
+        "db-latency",
+        "pool-timeout",
+        "read-role-unknown"
+      ],
+      "keywords": [
+        "DB",
+        "데이터베이스",
+        "지연",
+        "연결",
+        "pool",
+        "primary",
+        "replica",
+        "sqlalchemyerror"
+      ]
+    },
+    {
+      "document_id": "deployment",
+      "document_version": 1,
+      "content_sha256": "8c637bf0121b5c264ef9c708a25fd88ade80d847dd96cec3e4a90859534a680d",
+      "services": [
+        "url-shortener",
+        "argocd",
+        "gitops",
+        "deployment"
+      ],
+      "symptoms": [
+        "이미지 가져오기 실패",
+        "배포 실패",
+        "오류율 증가",
+        "ImagePullBackOff"
+      ],
+      "failure_types": [
+        "image-pull-error",
+        "revision-mismatch",
+        "deployment-verification-failed"
+      ],
+      "keywords": [
+        "배포",
+        "이미지",
+        "복구",
+        "롤백",
+        "imagepullbackoff",
+        "revision",
+        "synced",
+        "healthy",
+        "gitops"
+      ]
+    }
+  ]
+}

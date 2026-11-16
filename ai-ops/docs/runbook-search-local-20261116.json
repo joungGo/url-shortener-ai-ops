@@ -1,0 +1,170 @@
+{
+  "status": "reviewed_local_verified_pending_pr_ci",
+  "verified_at": "2026-11-16T10:49:20.837093+00:00",
+  "base_sha": "54a90a9d4cf4f7ee0148f88c1146b32cd9f9900b",
+  "branch": "codex/runbook-search-local-20261116",
+  "worktree": "/private/tmp/ai-ops-runbook-search-local-20261116",
+  "tests": {
+    "focused": 37,
+    "full": 1028,
+    "skipped": 0
+  },
+  "local_flow": {
+    "status": "passed",
+    "samples": [
+      {
+        "query": "캐시 오류",
+        "top_document_id": "cache",
+        "top_section": "L10-L25"
+      },
+      {
+        "query": "DB 지연",
+        "top_document_id": "database",
+        "top_section": "L1-L8"
+      },
+      {
+        "query": "ImagePullBackOff",
+        "top_document_id": "deployment",
+        "top_section": "L43-L57"
+      }
+    ],
+    "provenance_recomputed_hits": 11,
+    "metadata_filter": true,
+    "scope_enforced": true,
+    "external_network_calls": 0,
+    "slack_calls": 0,
+    "model_calls": 0,
+    "fault_injections": 0,
+    "recovery_executions": 0,
+    "execution_allowed": false
+  },
+  "ast_files": 305,
+  "fixture_sets_unchanged": 4,
+  "schema_files": 14,
+  "schemas_changed": false,
+  "repository_boundary": "passed",
+  "registered_documents": [
+    "cache",
+    "database",
+    "deployment"
+  ],
+  "document_versions": [
+    1,
+    1,
+    1
+  ],
+  "recorded_document_check_date": "2026-09-27",
+  "recorded_live_verified": false,
+  "current_source_code_checked": false,
+  "current_runtime_verified": false,
+  "result_provenance": [
+    "document_id",
+    "document_version",
+    "content_sha256",
+    "path",
+    "registry_sha256",
+    "metadata_sha256",
+    "section.id",
+    "section.heading_path",
+    "section.start_line",
+    "section.end_line",
+    "section.content_sha256",
+    "excerpt.start_line",
+    "excerpt.end_line"
+  ],
+  "filters": [
+    "document_ids",
+    "service",
+    "symptom",
+    "failure_type",
+    "document_version",
+    "code_revision"
+  ],
+  "metadata_only_matches_explicit": true,
+  "existing_get_runbook_reused": true,
+  "existing_approval_rollback_files_unchanged": 9,
+  "existing_queue_worker_tasks_get_runbook_slack_files_unchanged": 7,
+  "unchanged_sha256": {
+    "ai-ops/src/ai_ops/c_trial_ready.py": "37b0edc8ef2ac98e6421b66044dcaf80e908ae5373f8247cf82b1050cfd7a4c0",
+    "ai-ops/src/ai_ops/c_trial_execution.py": "36b824fb1eb9fc9c6fb3d47f82ecb8ae61f2f039189ab2604a57db028124282f",
+    "ai-ops/src/ai_ops/c_trial_ready_guard.py": "20aadd86b6e98508f48cf0f0fa6375d4fdf113cba3e4b17a26191204bd10a2a9",
+    "ai-ops/src/ai_ops/c2_rollback_guard.py": "053412c20cf1541c5c6646b8be722fa3fde483dd7146d2271ffd3073dda87bef",
+    "ai-ops/src/ai_ops/c_execution_control.py": "b665526ebaa25baecc27ce93fc010dfe7aade62defde0d1167796849e8fedc89",
+    "ai-ops/src/ai_ops/c_execution_preflight.py": "f8e2be5fd5ce01432cd10e80e218081be20c1c57b595cd14776e48f9b3e4820d",
+    "ai-ops/src/ai_ops/c_failure_handoff.py": "c67287548a4fe9f82a8f4692e40c4e7d94a6c3a6fc1953af2e2e610c7194bf40",
+    "ai-ops/src/ai_ops/c_approval.py": "487810a74821c0b48053f8b9b36802d7f281804e40b15978e7a8a0d8d2abdac4",
+    "ai-ops/src/ai_ops/c_trial_notice.py": "7701a451d51d0a3e977cbec53cd58d6374ae09f0ecd12610880c6ae91731d965",
+    "ai-ops/src/ai_ops/job_queue.py": "084b96ba01b0f37644b3e2371983197a2e63a5d24fd2462ae9a34ba3fb0dcb46",
+    "ai-ops/src/ai_ops/worker.py": "57c5bc5d825b34281bf39e4d036ad9d7f39d9b918bda9ba3a6f083047e3944bf",
+    "ai-ops/src/ai_ops/tasks.py": "631d544e579b71e84962baf86cc9fae139388d74f1461f4d507d4a4964ba980e",
+    "ai-ops/src/ai_ops/task_service.py": "47b9e6d18bbec805c7247ad0d6609a5da39585ebb55d5c9ab2e026975c8c84d1",
+    "ai-ops/src/ai_ops/replay_tools.py": "752a969c66f7c81884fb5805dbc93be7667d4dda55247a7a3ca5bd8e8f9f6c03",
+    "ai-ops/src/ai_ops/slack_adapter.py": "b28c20cb09cbc5c355eeb5420fe9ba7e61bcdbe39dd9f9dd2d73078e721a20dd",
+    "ai-ops/src/ai_ops/slack_local.py": "6d9061e2c89f5b9299e0906487a96072331fe460769e2057742d356b51abdfe5",
+    "ai-ops/runbooks/index.yaml": "c794f91bd51e15c8c28e0177bf2e9e5a798b74db9a401274205af68a8ba9968c",
+    "ai-ops/runbooks/cache.md": "becfff4385d787f59cbcbbe9e0fe22d150b13d5b5210d4a55699e21ea0527fde",
+    "ai-ops/runbooks/database.md": "506806f86d006203bfdcf4c4b3366d7591c5ff503c126aed17cb533b0e5df247",
+    "ai-ops/runbooks/deployment.md": "8c637bf0121b5c264ef9c708a25fd88ade80d847dd96cec3e4a90859534a680d",
+    "ai-ops/pyproject.toml": "6c6d9253924140aaced5d9c21a468ff700661ef532701cb4ad2d0f40779d5f23",
+    "ai-ops/requirements.lock": "628955a48213d5adfc435c5676f05fb4459c0b27ed2d6586441aa6b88002ea7a"
+  },
+  "source_sha256": {
+    "ai-ops/src/ai_ops/runbook_search.py": "90373a70d316dd1f86fbf9841aa2d6d9d6007783255ba1a8ee1ab3f710e97717",
+    "ai-ops/runbooks/search-metadata.json": "4c49233fa860e19fc21e34af74e31d80c08637dd9c80adbea7e47dd3cad2927b",
+    "ai-ops/tests/test_runbook_search.py": "ac5c0a1c83c9a0ac79aea5cc113d12e8ba9223373bff33df990f06c939586e54",
+    "ai-ops/scripts/check_runbook_search_local.py": "2731c42bd1de0635240522b84e96664596c4e6ea01683ce37aa2782053dc2c64",
+    "ai-ops/docs/runbook-search-local-20261116.md": "a912ce1790f09fb19d145e060db043e3c6cb8b28fa3aba3dd48b78c49736aad9",
+    ".github/workflows/ai-ops-ci.yml": "fe188cf65d06ad8188e1c34c0a49e7f70dc19cf2cbee41724d2ed083c129fb09"
+  },
+  "original_dirty_files_preserved_except_appended_handoff": 19,
+  "bounds": {
+    "file_bytes": 65536,
+    "output_bytes": 65536,
+    "documents": 32,
+    "sections_per_document": 128,
+    "query_characters": 512,
+    "query_terms": 12,
+    "term_min_characters": 2,
+    "term_max_characters": 64,
+    "default_hits": 5,
+    "maximum_hits": 10,
+    "excerpt_lines": 5,
+    "excerpt_characters": 400
+  },
+  "limits_preserved": {
+    "startup_seconds": 15,
+    "minimum_review_seconds": 120,
+    "review_deadline_seconds": 210,
+    "owner_restore_seconds": 240,
+    "independent_restore_start_seconds": 300,
+    "observation_seconds": 120
+  },
+  "per_execution_approval_required": true,
+  "exact_head_github_human_review_required": true,
+  "external_network_calls": 0,
+  "real_slack_calls": 0,
+  "aws_calls": 0,
+  "model_calls": 0,
+  "real_credentials_read_or_issued": 0,
+  "fault_injections": 0,
+  "recovery_executions": 0,
+  "terraform_apply_destroy": 0,
+  "committed": false,
+  "pushed": false,
+  "ci_run": false,
+  "live_deployed": false,
+  "formal_C04_C05_complete": false,
+  "known_warning": "existing SQLite ResourceWarning",
+  "sandbox_retry": "Initial full suite could not bind local sockets: 35 errors and 10 failures. Same suite passed with local socket permission.",
+  "remaining": [
+    "PR_CI_merge_main_CI_verification",
+    "separately_reviewed_target_scoped_search_citation_integration",
+    "separate_actual_Slack_connection_plan",
+    "fresh_readiness_and_execution_approval_before_any_trial"
+  ],
+  "review_fixes": [
+    "masked_heading_scoring",
+    "nonreflecting_cli_parse_errors"
+  ],
+  "before_fix_regression_failures": 2
+}

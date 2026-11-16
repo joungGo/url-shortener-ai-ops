@@ -38,6 +38,7 @@ jobs:
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python -m unittest discover -s ai-ops/tests -p 'test_*.py' -v
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/check_task_service_local.py
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/check_slack_adapter_local.py
+          PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/check_runbook_search_local.py
           /tmp/ai-ops-venv/bin/python ai-ops/scripts/build_dev_fixtures.py --check
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/build_holdout_fixtures.py --check
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/build_holdout_v2_fixtures.py --check
@@ -86,6 +87,10 @@ jobs:
             --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --entrypoint python ai-ops:ci -c \
             'import os, pydantic; from ai_ops.replay_tools import _runbook; assert os.getuid() == 10001; assert pydantic.__version__ == "2.13.5"; [_runbook(name) for name in ("cache", "database", "deployment")]'
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --entrypoint python ai-ops:ci -c \
+            'from ai_ops.runbook_search import RunbookSearch; result=RunbookSearch().search("ImagePullBackOff",document_ids=["deployment"]); assert result["hits"][0]["section"]["start_line"] == 43; assert not result["execution_allowed"]'
 
 
 
