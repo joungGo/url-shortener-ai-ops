@@ -268,8 +268,15 @@ class SlackAdapter:
         text+=f"작업: {row['job_id']}\n요청: {row['request_id']}\n"
         if result.get('reference'):
             text+=f"근거: {result['reference']['incident_id']} / {result['reference']['run_id']}\n"
+        if result.get('runbook_context'):
+            context=result['runbook_context']
+            text+=f"런북 참고 상태: {context['status']} (현재 소스/실환경 미검증)\n"
+            for citation in context['citations']:
+                text+=f"참고: {citation['document_id']} v{citation['document_version']} {citation['section']['id']} SHA256 {citation['content_sha256']}\n"
         text+='저장된 증거 기준입니다. 변경 실행·복구 완료·사람 승인 결과가 아닙니다.'
         if not self._authorized(row):raise ValueError('slack_reply_scope_changed')
+        if result.get('runbook_context') and self.tasks.result(row['job_id']) != result:
+            raise ValueError('slack_runbook_scope_changed')
         return {'channel':row['channel_id'],'thread_ts':row['thread_ts'],'text':text,
                 'mrkdwn':False,'parse':'none','unfurl_links':False,'unfurl_media':False,'reply_broadcast':False}
 
@@ -323,6 +330,8 @@ class SlackAdapter:
                            (request_id,digest,'sending',attempts+1,0,None,now))
             try:
                 if not self._authorized(self._row(request_id)):raise ValueError('slack_reply_scope_changed')
+                if self.tasks.settings.runbooks is not None and self._payload(self._row(request_id)) != payload:
+                    raise ValueError('slack_runbook_scope_changed')
                 response=transport.post_message(dict(payload))
             except SlackNotSent:
                 return self._finish(request_id,'pending' if attempts+1<3 else 'failed',retry_at=self.tasks.queue.now()+5)
@@ -359,7 +368,13 @@ class SlackAdapter:
             except Exception:return self._finish(request_id,'needs_review')
             valid=self._matches(found,payload,bot=self.policy.bot_user_id)
             if valid and prior['message_ts'] and prior['message_ts']!=found['ts']:valid=False
-            if valid and not self._authorized(self._row(request_id)):valid=False
+            if valid:
+                try:
+                    current=self._row(request_id)
+                    valid=(self._authorized(current) and (self.tasks.settings.runbooks is None
+                           or self._payload(current)==payload))
+                except (ValueError,OSError,sqlite3.Error):
+                    valid=False
             return self._finish(request_id,'delivered' if valid else 'needs_review',message_ts=found['ts'] if valid else None)
 
     def prune(self):

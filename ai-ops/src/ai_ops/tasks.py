@@ -150,14 +150,21 @@ class TaskService:
             raise ValueError('task_report_binding_rejected')
         if self.show(job) != view:
             raise ValueError('task_changed_during_result_read')
-        # 자유 문장/원문 증거/로컬 파일 경로를 알림에 복사하지 않는다.
+        # 관측 요약과 마스킹한 런북 참고 자료를 분리하며 원문 관측/개인 경로는 복사하지 않는다.
         report = record.report
-        return {'task_id': job, 'state': 'available', 'investigation_state': investigation['state'],
+        result = {'task_id': job, 'state': 'available', 'investigation_state': investigation['state'],
                 'reference': view['result']['reference'], 'bundle_hash': record.bundle.bundle_hash,
                 'summary': DIAGNOSIS[report.diagnosis_status],
                 'observed_state': CURRENT_STATE[report.current_state],
                 'evidence_ids': sorted({eid for fact in report.facts for eid in fact.evidence_ids}),
                 'limitation_count': len(report.limitations), 'execution_allowed': False}
+        if record.runbook_context is not None:
+            from ai_ops.runbook_context import withheld
+            result['runbook_context'] = (withheld() if self.settings.runbooks is None else
+                self.settings.runbooks.expose(record.runbook_context, record.request, record.bundle, report, self.settings))
+        if self.show(job) != view:
+            raise ValueError('task_changed_during_reference_read')
+        return result
 
     def _envelope(self, job):
         self._request(job)  # 기존 큐 작업의 조회는 허용하되 회신 목적지를 추정하지 않는다.
@@ -226,6 +233,11 @@ class TaskService:
             db.execute('UPDATE task_deliveries SET state=?,updated_at=? WHERE job_id=? AND state="sending"',
                        (state, self.queue.now(), job))
 
+    def _check_reference_envelope(self, job, envelope):
+        if (envelope['result'].get('runbook_context') is not None
+                and self.result(job) != envelope['result']):
+            raise ValueError('task_reference_scope_changed')
+
     def deliver(self, job):
         with self._delivery_lock():
             return self._deliver(job)
@@ -254,6 +266,7 @@ class TaskService:
             # 전달 중/불명확 결과는 새 전송하지 않는다. reconcile은 별도 명령이다.
             return self._delivery_from_row(identifier, state, attempts)
         try:
+            self._check_reference_envelope(job, envelope)
             self._publish(identifier, envelope)
         except DeliveryNotSent:
             self._finish_delivery(job, 'pending' if attempts + 1 < 3 else 'failed')
@@ -282,6 +295,8 @@ class TaskService:
             raise ValueError('task_delivery_not_prepared')
         try:
             valid = self._read_delivery(row['delivery_id']) == envelope
+            if valid:
+                self._check_reference_envelope(job, envelope)
         except (OSError, ValueError):
             valid = False
         with self.queue.transaction() as db:

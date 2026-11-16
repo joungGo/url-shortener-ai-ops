@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "registry_sha256": "c794f91bd51e15c8c28e0177bf2e9e5a798b74db9a401274205af68a8ba9968c",
+  "metadata_sha256": "4c49233fa860e19fc21e34af74e31d80c08637dd9c80adbea7e47dd3cad2927b",
+  "targets": [
+    {
+      "alias": "url-shortener-practice",
+      "target": {
+        "cluster_id": "practice-eks-example",
+        "namespace": "url-shortener",
+        "workload": "url-shortener-api",
+        "service": "url-shortener-svc",
+        "environment": "practice"
+      },
+      "document_ids": [
+        "cache",
+        "database",
+        "deployment"
+      ]
+    }
+  ]
+}

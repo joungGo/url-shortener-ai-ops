@@ -7,13 +7,17 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from time import monotonic
-from typing import Annotated, Literal, Protocol
+from typing import Annotated, Literal, Protocol, TYPE_CHECKING
 from urllib.parse import urlsplit
 
 from pydantic import Field, StrictInt, StrictStr, model_validator
 
 from ai_ops.contracts import K8sName, Sha256, StrictModel, Target, sha256_json
 from ai_ops.evidence import ALLOWED_QUERY_IDS, QUERY_OUTCOMES, _json_object
+
+
+if TYPE_CHECKING:
+    from ai_ops.runbook_context import RunbookPolicy
 
 
 QueryId = Literal["cache_outcomes", "cache_hit_ratio", "http_error_ratio", "api_latency", "db_latency"]
@@ -201,9 +205,10 @@ class BSettings:
     runtime: BRuntime
     metrics: MetricCatalog
     config_hash: str
+    runbooks: RunbookPolicy | None = None
 
 
-def load_b_settings(bindings: Path, runtime: Path, metrics: Path) -> BSettings:
+def load_b_settings(bindings: Path, runtime: Path, metrics: Path, *, runbook_policy: Path | None = None) -> BSettings:
     """로컬 신뢰 설정을 크기·중복 키·연결 종류·내용 해시와 함께 검사한다."""
     parsed = []
     for path, model in ((bindings, BindingRegistry), (runtime, BRuntime), (metrics, MetricCatalog)):
@@ -221,9 +226,13 @@ def load_b_settings(bindings: Path, runtime: Path, metrics: Path) -> BSettings:
                           (binding.prometheus_connection, "prometheus")):
             if ref not in execution.connections or execution.connections[ref].kind != kind:
                 raise ValueError("binding references an absent or wrong-kind connection")
-    return BSettings(registry, execution, catalog, sha256_json(
-        [item.model_dump(mode="json") for item in parsed]
-    ))
+    references = None
+    configuration = [item.model_dump(mode="json") for item in parsed]
+    if runbook_policy is not None:
+        from ai_ops.runbook_context import RunbookPolicy
+        references = RunbookPolicy(runbook_policy, registry)
+        configuration.append({'runbook_policy_hash': references.policy_hash})
+    return BSettings(registry, execution, catalog, sha256_json(configuration), references)
 
 
 class Clock(Protocol):
