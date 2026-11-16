@@ -179,7 +179,7 @@ def deliver_review_notice(plan, ready, path, destination, *, clock=_moment):
 
 
 def serve_bridge(plan, path, notify_host, *, clock=_moment, rehearsal=False,
-                 resolve_plan=None, standby_until=None):
+                 resolve_plan=None, standby_until=None, on_ready=None):
     """한 실행 전용이며 실제 호스트의 응답을 받기 전에는 전달 성공을 반환하지 않는다."""
     path = _socket_path(path, existing=False)
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
@@ -187,6 +187,8 @@ def serve_bridge(plan, path, notify_host, *, clock=_moment, rehearsal=False,
         identity = path.lstat().st_ino
         try:
             server.listen(2); server.settimeout(.5)
+            if on_ready is not None:
+                on_ready()
             while True:
                 if resolve_plan is not None:
                     current = resolve_plan()
