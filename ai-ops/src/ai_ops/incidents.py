@@ -30,6 +30,7 @@ from ai_ops.collection import CapturedSnapshot, CollectionAudit
 from ai_ops.data_policy import POLICY_VERSION, ensure_external_model_allowed, validate_local_bundle, validate_snapshot
 from ai_ops.openai_engine import AIAnalysisError, AIConfig, AIOutcome
 from ai_ops.reports import render_markdown, validate_report
+from ai_ops.runbook_context import validate_saved, render_context, read_saved
 from ai_ops.replay_runner import ReplayLimits, ReplayResult, SelectionModel, run_replay
 from ai_ops.rules import analyze_rules, analyze_snapshot_rules, analyze_snapshot_rules_v1, analyze_snapshot_rules_v2, analyze_snapshot_rules_v3
 from ai_ops.ci_rules import ENGINE as CI_RULES_ENGINE, analyze_ci_snapshot
@@ -103,6 +104,7 @@ class RunRecord:
     report: AnalysisReport | None = None
     markdown: str | None = None
     collection_audit: CollectionAudit | None = None
+    runbook_context: dict | None = None
 
     @property
     def incident_id(self) -> str:
@@ -328,7 +330,19 @@ class IncidentStore:
             delivered = set(audit["delivered_evidence_ids"])
         validate_report(report, request, bundle, run_id, delivered)
         markdown = render_markdown(report, request, bundle, delivered)
-        return RunRecord(metadata=metadata, request=request, bundle=bundle, report=report, markdown=markdown, collection_audit=collection_audit)
+        context = None
+        context_path = run_dir / "runbook-context.json"
+        if metadata.get("runbook_context_hash") is not None:
+            context = read_saved(run_dir)
+            if (sha256_json(context) != metadata["runbook_context_hash"] or collection_audit is None
+                    or context.get("config_hash") != collection_audit.config_hash):
+                raise ValueError("stored_runbook_context_hash_rejected")
+            context = validate_saved(context, request, bundle, report)
+            markdown += render_context(context)
+        elif context_path.exists() or context_path.is_symlink():
+            raise ValueError("unbound_runbook_context_rejected")
+        return RunRecord(metadata=metadata, request=request, bundle=bundle, report=report, markdown=markdown,
+                         collection_audit=collection_audit, runbook_context=context)
 
     def show(self, incident_id: str, run_id: str) -> RunRecord:
         with self._locked():
@@ -462,6 +476,12 @@ class IncidentStore:
                 delivered = set(replay.delivered_evidence_ids) if replay else None
                 validate_report(report, request, bundle, run_id, delivered)
                 markdown = render_markdown(report, request, bundle, delivered)
+                context = None
+                if settings is not None and settings.runbooks is not None:
+                    context = settings.runbooks.build(request, bundle, report, settings)
+                    metadata["runbook_context_hash"] = sha256_json(context)
+                    _atomic_write(run_dir / "runbook-context.json", canonical_json_bytes(context))
+                    markdown += render_context(context)
                 if replay:
                     _write_json(run_dir / "tool-audit.json", replay.as_dict())
                 _write_json(run_dir / "report.json", report.model_dump(mode="json"))
@@ -502,7 +522,7 @@ class IncidentStore:
                 self._transition(run_dir, metadata, stopped, reason)
                 raise RunStopped(request.incident_id, run_id, stopped, reason) from None
             return RunRecord(metadata=metadata, request=request, bundle=bundle,
-                             report=report, markdown=markdown, collection_audit=collection_audit)
+                             report=report, markdown=markdown, collection_audit=collection_audit, runbook_context=context)
 
     def _reserve_ai_budget(self, config: AIConfig) -> None:
         """저장소 잠금 안에서 건당 상한을 UTC 일일 한도에 보수적으로 선예약한다."""

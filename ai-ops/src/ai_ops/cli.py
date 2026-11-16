@@ -52,6 +52,7 @@ def _parser() -> argparse.ArgumentParser:
     collect.add_argument("--bindings", type=Path, required=True)
     collect.add_argument("--runtime", type=Path, required=True)
     collect.add_argument("--metric-queries", type=Path, required=True)
+    collect.add_argument("--runbook-policy", type=Path)
     collect.add_argument("--target", required=True, help="등록된 대상 별칭이다")
     collect.add_argument("--store", type=Path, default=DEFAULT_STORE)
     collect.add_argument("--question", required=True)
@@ -65,6 +66,7 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--bindings", type=Path, required=True)
         command.add_argument("--runtime", type=Path, required=True)
         command.add_argument("--metric-queries", type=Path, required=True)
+        command.add_argument("--runbook-policy", type=Path)
         command.add_argument("--store", type=Path, default=DEFAULT_STORE)
         if name == "queue-submit":
             command.add_argument("--target", required=True)
@@ -118,7 +120,7 @@ def _print_record(record) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
-    args = cli_paths(parser, parser.parse_args(argv), {'bundle': 'directory', 'registry': 'input', 'bindings': 'input', 'runtime': 'input', 'metric_queries': 'input', 'store': 'store'})
+    args = cli_paths(parser, parser.parse_args(argv), {'bundle': 'directory', 'registry': 'input', 'bindings': 'input', 'runtime': 'input', 'metric_queries': 'input', 'runbook_policy': 'input', 'store': 'store'})
     try:
         if args.command == "alert-show":
             print(json.dumps(show_alert(JobQueue(args.store),args.job),ensure_ascii=False,indent=2))
@@ -132,7 +134,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.command in ("queue-show", "queue-cancel"):
                 value = queue.cancel(args.job) if args.command == "queue-cancel" else queue.show(args.job)
             else:
-                settings = load_b_settings(args.bindings, args.runtime, args.metric_queries)
+                settings = load_b_settings(args.bindings, args.runtime, args.metric_queries, runbook_policy=args.runbook_policy)
                 if args.command == "queue-submit":
                     job, duplicate = queue.submit(settings, target=args.target, question=args.question,
                         request_id=args.request_id, route=args.route, operation=args.operation)
@@ -173,7 +175,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"저장소: {store.root}")
             return 0
         if args.command == "collect-investigate":
-            settings = load_b_settings(args.bindings, args.runtime, args.metric_queries)
+            settings = load_b_settings(args.bindings, args.runtime, args.metric_queries, runbook_policy=args.runbook_policy)
             binding = next((item for item in settings.bindings.bindings if item.alias == args.target), None)
             if binding is None:
                 raise ValueError("target alias is not registered")

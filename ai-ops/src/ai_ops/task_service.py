@@ -127,18 +127,19 @@ def main(argv=None):
     parser.add_argument('--bindings', type=Path)
     parser.add_argument('--runtime', type=Path)
     parser.add_argument('--metric-queries', type=Path)
+    parser.add_argument('--runbook-policy', type=Path)
     parser.add_argument('--target')
     parser.add_argument('--question')
     parser.add_argument('--request-id')
     parser.add_argument('--conversation-id')
     parser.add_argument('--task-id')
     args = cli_paths(parser, parser.parse_args(argv), {'store': 'store', 'bindings': 'input',
-                                                     'runtime': 'input', 'metric_queries': 'input'})
+                                                     'runtime': 'input', 'metric_queries': 'input', 'runbook_policy': 'input'})
     try:
         if args.action == 'serve':
             if None in (args.bindings, args.runtime, args.metric_queries):
                 parser.error('serve에는 bindings/runtime/metric-queries가 필요합니다')
-            settings = load_b_settings(args.bindings, args.runtime, args.metric_queries)
+            settings = load_b_settings(args.bindings, args.runtime, args.metric_queries, runbook_policy=args.runbook_policy)
             with LocalTaskServer(TaskService(JobQueue(args.store), settings)) as server:
                 def stop(*_):
                     # serve_forever와 같은 스레드에서 shutdown을 호출해 교착하지 않는다.

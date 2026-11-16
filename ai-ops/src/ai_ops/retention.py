@@ -15,7 +15,7 @@ from ai_ops.job_queue import JobQueue, RETENTION_SECONDS, utc
 
 TERMINAL = {"completed", "partial", "failed", "cancelled", "needs_review"}
 RUN_FILES = {"input.json", "metadata.json", "report.json", "report.md",
-             "collection-audit.json", "tool-audit.json"}
+             "collection-audit.json", "tool-audit.json", "runbook-context.json"}
 
 
 def private_file(path: Path) -> None:
