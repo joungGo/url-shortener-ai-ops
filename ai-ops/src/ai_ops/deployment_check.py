@@ -15,13 +15,14 @@ from pathlib import Path
 from ai_ops.path_policy import cli_paths
 
 from ai_ops.b_contracts import load_b_settings
+from ai_ops.runtime_settings import runbook_settings_kwargs
 from ai_ops.replay_tools import _runbook
 from ai_ops.observability import Telemetry, log_event, metrics_server
 
 
 def check_local(config: Path, store: Path) -> None:
     """키 내용을 출력하지 않고 설정·CA·토큰 가독성과 SQLite WAL 저장을 확인한다."""
-    settings = load_b_settings(config / "bindings.json", config / "runtime.json", config / "metric-queries.json")
+    settings = load_b_settings(config / "bindings.json", config / "runtime.json", config / "metric-queries.json", **runbook_settings_kwargs(config))
     for connection in settings.runtime.connections.values():
         if connection.base_url is None:
             raise ValueError("unconfigured connection")
