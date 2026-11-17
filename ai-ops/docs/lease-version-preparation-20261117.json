@@ -1,0 +1,60 @@
+{
+  "scope": "local_only",
+  "base_ai_main": "948212074c1b4b018efac4d871876b3fc05b1e80",
+  "base_platform_main": "867ea23dbf118a04eb0e5672b07802c8b852c4bf",
+  "upstream": "v0.35.8",
+  "reference_kubectl": "v1.35.8",
+  "original_exec_sha256": "eadae0f9b084722b93ca2c9af56df5d71a8778090c28dde27c12d36b76d917b3",
+  "build_seconds": 46.60431,
+  "binary_sha256": "bbf6834d69cee844312b22b5fe368a759ec7e1ba4344cb10ea1fc8624b8ca287",
+  "sample_platform": "darwin/arm64",
+  "go_version": "go version go1.27.4 darwin/arm64",
+  "diagnostic_preparation_seconds": 0.164016,
+  "diagnostic_pin_check_seconds": 0.062698,
+  "official_preparation_seconds": 0.084382,
+  "diagnostic_twenty_gets_seconds": 0.012425,
+  "timeout_cases": [
+    {
+      "stage": "authentication",
+      "elapsed_seconds": 3.001504
+    },
+    {
+      "stage": "tls",
+      "elapsed_seconds": 3.002361
+    },
+    {
+      "stage": "response_wait",
+      "elapsed_seconds": 3.003939
+    }
+  ],
+  "real_authentication_measured": false,
+  "live_runtime_connected": false,
+  "guards_approval_rollback_unchanged": true,
+  "build_manifest": {
+    "schema_version": 1,
+    "offline": true,
+    "dependency_lock_unchanged": true,
+    "upstream_client_go": "v0.35.8",
+    "reference_kubectl": "v1.35.8",
+    "preparation_only": true,
+    "build_seconds": 46.60431,
+    "upstream_module_sum": "h1:tIW2sirCQMiGoCSvtOYqS059CDQ5n1nrDQa+PVt4nqY=",
+    "original_exec_sha256": "eadae0f9b084722b93ca2c9af56df5d71a8778090c28dde27c12d36b76d917b3",
+    "source_hashes": {
+      "lease_trace.go": "c61a2011f5b8001ef7632618ecbce7f2c396672e48bfae9bcb6296e10708baf1",
+      "lease_trace_test.go": "9be571e1ede28d07b335b650bea12770faad26c66d8a86c51b95597589cff030",
+      "main.go": "9a4deba3bf51420fbc4e55d13ce8a87ac0e3e1b1cd8d976c9e69e4e3b347e6a8",
+      "build.py": "f3fd1933dcec11ad69feebf939f8346e159d605f3125dc9dedb7cc8c62171a21",
+      "go.mod": "4099606f5df3ae5ddcacd63f42dead4190657077ea58d60cec70fa741c6498cf",
+      "go.sum": "1b000f0561183ca7109b6d19c462365793413ea237447b845869eed774e04e13"
+    },
+    "binary_sha256": "bbf6834d69cee844312b22b5fe368a759ec7e1ba4344cb10ea1fc8624b8ca287",
+    "go_version": "go version go1.27.4 darwin/arm64"
+  },
+  "python_tests": 1230,
+  "python_seconds": 55.808,
+  "python_skips": 0,
+  "go_race": "passed",
+  "initial_sandbox_socket_denial": true,
+  "local_permitted_retry": "passed"
+}

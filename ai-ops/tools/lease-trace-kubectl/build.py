@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import time
 
 
 def patch_source(source):
@@ -35,10 +36,18 @@ def check_locked_dependencies(dest, expected):
         raise ValueError('lease_trace_dependency_lock_changed')
 
 
+def check_upstream_versions(module):
+    required = {'k8s.io/client-go', 'k8s.io/kubectl', 'k8s.io/component-base',
+                'k8s.io/api', 'k8s.io/apimachinery', 'k8s.io/cli-runtime'}
+    versions = {entry['Path']: entry['Version'] for entry in module.get('Require', [])}
+    if module.get('Replace') or any(versions.get(name) != 'v0.35.8' for name in required):
+        raise ValueError('lease_trace_upstream_version_mismatch')
+
+
 def main():
     p=argparse.ArgumentParser();p.add_argument('--go',default='go');p.add_argument('--output',type=Path,required=True)
     p.add_argument('--offline', action='store_true', help='Use cached modules and the explicit local Go toolchain only')
-    args=p.parse_args();root=Path(__file__).resolve().parent;dest=args.output.resolve()
+    args=p.parse_args();started=time.monotonic();root=Path(__file__).resolve().parent;dest=args.output.resolve()
     dest.mkdir(parents=True,exist_ok=False,mode=0o700)
     for n in ('go.mod','go.sum','main.go'):
         if (root/n).exists():shutil.copyfile(root/n,dest/n)
@@ -47,8 +56,9 @@ def main():
         env.update(GOPROXY='off', GOSUMDB='off', GONOPROXY='none')
     def run(*argv):return subprocess.check_output([args.go,*argv],cwd=dest,text=True,env=env)
     original_locks = locked_dependencies(dest)
-    meta=json.loads(run('mod','download','-json','k8s.io/client-go@v0.34.1'))
-    if meta.get('Version')!='v0.34.1' or meta.get('Sum') != 'h1:ZUPJKgXsnKwVwmKKdPfw4tB58+7/Ik3CrjOEhsiZ7mY=':
+    check_upstream_versions(json.loads(run('mod','edit','-json')))
+    meta=json.loads(run('mod','download','-json','k8s.io/client-go@v0.35.8'))
+    if meta.get('Version')!='v0.35.8' or meta.get('Sum') != 'h1:tIW2sirCQMiGoCSvtOYqS059CDQ5n1nrDQa+PVt4nqY=':
         raise ValueError('client_go_module_not_verified')
     check_locked_dependencies(dest, original_locks)
     # Verify cached original sources before replacing client-go with a private copy.
@@ -60,7 +70,7 @@ def main():
     (dest/'client-go').chmod(0o700)
     original=dest/'client-go/plugin/pkg/client/auth/exec/exec.go'
     original.chmod(0o600);source=original.read_text()
-    if hashlib.sha256(source.encode()).hexdigest() != 'bfea9be50246b1ba2baa9407d5e816a52252bb6590b86b28dbdf5dccf638324c':
+    if hashlib.sha256(source.encode()).hexdigest() != 'eadae0f9b084722b93ca2c9af56df5d71a8778090c28dde27c12d36b76d917b3':
         raise ValueError('unexpected_client_go_exec_source')
     original.write_text(patch_source(source))
     for n in ('lease_trace.go','lease_trace_test.go'):
@@ -74,7 +84,8 @@ def main():
     run('build','-mod=readonly','-trimpath','-o','kubectl-c04-trace','.')
     check_locked_dependencies(dest, runtime_locks)
     binary=dest/'kubectl-c04-trace';binary.chmod(0o700)
-    manifest={'schema_version':1,'offline':args.offline,'dependency_lock_unchanged':True,'upstream_client_go':'v0.34.1','upstream_module_sum':meta['Sum'],
+    manifest={'schema_version':1,'offline':args.offline,'dependency_lock_unchanged':True,'upstream_client_go':'v0.35.8','reference_kubectl':'v1.35.8',
+              'preparation_only':True,'build_seconds':round(time.monotonic()-started,6),'upstream_module_sum':meta['Sum'],
               'original_exec_sha256':hashlib.sha256(source.encode()).hexdigest(),
               'source_hashes':{n:hashlib.sha256((root/n).read_bytes()).hexdigest() for n in ('lease_trace.go','lease_trace_test.go','main.go','build.py','go.mod','go.sum')},
               'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),'go_version':run('version').strip()}
