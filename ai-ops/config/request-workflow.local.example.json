@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "mode": "local_fixture",
+  "bindings": "targets.practice.example.json",
+  "runtime": "b-runtime.example.json",
+  "metric_queries": "metric-queries.json",
+  "runbook_policy": "runbook-policy.local.example.json",
+  "slack_policy": "slack-local.example.json"
+}
