@@ -271,17 +271,18 @@ class SlackAdapter:
         if row['state']!='queued' or not row['job_id'] or not self._authorized(row): raise ValueError('slack_reply_scope_rejected')
         result=self.tasks.result(row['job_id'])
         if result['state'] in ('pending','expired'):raise ValueError('slack_result_not_ready')
-        text=f"조사 결과: {row['target']} · {result.get('investigation_state',self.tasks.show(row['job_id'])['investigation']['state'])}\n"
-        text+=result.get('summary','이 작업의 조사 결과를 사용할 수 없습니다.')+'\n'
-        text+=f"작업: {row['job_id']}\n요청: {row['request_id']}\n"
-        if result.get('reference'):
-            text+=f"근거: {result['reference']['incident_id']} / {result['reference']['run_id']}\n"
+        from ai_ops.result_explanation import result_text
+        text=result_text(row['target'], result)
         if result.get('runbook_context'):
             context=result['runbook_context']
             text+=f"런북 참고 상태: {context['status']} (현재 소스/실환경 미검증)\n"
             for citation in context['citations']:
                 text+=f"참고: {citation['document_id']} v{citation['document_version']} {citation['section']['id']} SHA256 {citation['content_sha256']}\n"
-        text+='저장된 증거 기준입니다. 변경 실행·복구 완료·사람 승인 결과가 아닙니다.'
+        text+='\n추적 정보\n'
+        text+=f"작업: {row['job_id']}\n요청: {row['request_id']}\n"
+        if result.get('reference'):
+            text+=f"근거: {result['reference']['incident_id']} / {result['reference']['run_id']}\n"
+        text+='저장된 증거 기준이며 변경·복구를 실행하지 않았습니다. 사람 승인 결과가 아닙니다.'
         if not self._authorized(row):raise ValueError('slack_reply_scope_changed')
         if result.get('runbook_context') and self.tasks.result(row['job_id']) != result:
             raise ValueError('slack_runbook_scope_changed')
