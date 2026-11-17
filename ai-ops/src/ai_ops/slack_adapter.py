@@ -1,6 +1,6 @@
-"""서명·권한을 확인한 Slack 요청의 영속 접수와 fixture 전용 회신 어댑터.
+"""서명·권한을 확인한 Slack 요청의 영속 접수와 명시적으로 선택한 전송기의 회신 어댑터.
 
-실제 Slack HTTP 클라이언트·토큰 로더·변경 실행기는 없다. 접수 ACK와 큐 전달,
+기본은 fixture이며 실제 Slack 전송은 별도 opt-in transport만 허용한다. 접수 ACK와 큐 전달,
 조사 결과, 회신 성공, 사람 수신 확인을 각각 구분한다.
 """
 
@@ -62,20 +62,25 @@ class SlackAdmissionBusy(OSError):
 
 
 class SlackAdapter:
-    def __init__(self, tasks, policy, signing_secret, *, monotonic=time.monotonic):
+    def __init__(self, tasks, policy, signing_secret, *, monotonic=time.monotonic, transport_mode="local_fixture"):
         if not isinstance(signing_secret, bytes) or not 16 <= len(signing_secret) <= 128:
             raise ValueError('slack_signing_secret_rejected')
         self.tasks, self.policy = tasks, SlackPolicy.model_validate(policy).model_copy(deep=True)
         aliases = {b.alias for b in tasks.settings.bindings.bindings}
         if any(not set(g.targets) <= aliases for g in self.policy.grants):
             raise ValueError('slack_policy_target_rejected')
+        if transport_mode not in ('local_fixture', 'slack_web_api'):
+            raise ValueError('slack_transport_mode_rejected')
+        self.transport_mode = transport_mode
         self._secret = signing_secret
         self.monotonic = monotonic
         self.policy_hash = sha256_json(self.policy.model_dump())
         self.config_hash = tasks.settings.config_hash
         self.authorization_hash = tasks.queue.engine.request_fingerprint({'policy':self.policy_hash,
             'config':self.config_hash,'signing_key_hash':hashlib.sha256(signing_secret).hexdigest()})
-        self.directory = tasks.queue.root / 'slack'
+        if transport_mode == 'slack_web_api':
+            self.authorization_hash = sha256_json({'mode':transport_mode,'authorization':self.authorization_hash})
+        self.directory = tasks.queue.root / ('slack-web' if transport_mode == 'slack_web_api' else 'slack')
         _private_directory(self.directory)
         self.path = self.directory / 'inbox.sqlite3'
         fd = os.open(self.path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600); os.close(fd)
@@ -196,7 +201,10 @@ class SlackAdapter:
         target = command.group(1)
         if not self.policy.allows(user, channel, target): raise ValueError('slack_principal_target_rejected')
         question, _ = sanitize_question(command.group(2) or '현재 상태를 확인해줘')
-        request_id = 'slack-' + sha256_json({'team':self.policy.team_id,'app':self.policy.app_id,'event':event_id})
+        identity = {'team':self.policy.team_id,'app':self.policy.app_id,'event':event_id}
+        if self.transport_mode == 'slack_web_api':
+            identity['transport'] = self.transport_mode
+        request_id = 'slack-' + sha256_json(identity)
         fingerprint = self.tasks.queue.engine.request_fingerprint({'body_sha256':hashlib.sha256(body).hexdigest(),
                          'policy':self.policy_hash,'config':self.config_hash})
         now = self.tasks.queue.now()
@@ -281,7 +289,11 @@ class SlackAdapter:
                 'mrkdwn':False,'parse':'none','unfurl_links':False,'unfurl_media':False,'reply_broadcast':False}
 
     def _transport(self, transport):
-        if (transport is None or getattr(transport,'mode',None)!='local_fixture'
+        if self.transport_mode == 'slack_web_api':
+            from ai_ops.slack_web import SlackWebTransport
+            if not isinstance(transport, SlackWebTransport) or not transport.verified_for(self.policy):
+                raise ValueError('slack_web_identity_required')
+        if (transport is None or getattr(transport,'mode',None)!=self.transport_mode
                 or getattr(transport,'team_id',None)!=self.policy.team_id
                 or getattr(transport,'app_id',None)!=self.policy.app_id
                 or getattr(transport,'bot_user_id',None)!=self.policy.bot_user_id):
@@ -290,7 +302,7 @@ class SlackAdapter:
     def _reply_status(self, request_id):
         with self._db() as db:
             row=db.execute('SELECT state,attempts,retry_at,message_ts FROM slack_replies WHERE request_id=?',(request_id,)).fetchone()
-        return {'request_id':request_id,'transport':'local_slack_fixture',**(dict(row) if row else {'state':'not_prepared'}),
+        return {'request_id':request_id,'transport':('slack_web_api' if self.transport_mode == 'slack_web_api' else 'local_slack_fixture'),**(dict(row) if row else {'state':'not_prepared'}),
                 'human_read_confirmed':False,'execution_allowed':False}
 
     def _finish(self, request_id, state, *, retry_at=0, message_ts=None):
@@ -350,10 +362,9 @@ class SlackAdapter:
                 return self._finish(request_id,'delivered',message_ts=body['ts'])
             return self._finish(request_id,'needs_review')
 
-    @staticmethod
-    def _reply_status_values(request_id, row):
+    def _reply_status_values(self, request_id, row):
         return {'request_id':request_id,'state':row['state'],'attempts':row['attempts'],
-                'message_ts':row['message_ts'],'retry_at':row['retry_at'],'transport':'local_slack_fixture',
+                'message_ts':row['message_ts'],'retry_at':row['retry_at'],'transport':('slack_web_api' if self.transport_mode == 'slack_web_api' else 'local_slack_fixture'),
                 'human_read_confirmed':False,'execution_allowed':False}
 
     def reconcile_reply(self, request_id, transport=None):
