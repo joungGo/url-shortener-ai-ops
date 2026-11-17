@@ -265,8 +265,12 @@ def factory(tasks, policy, config):
 with patch('ai_ops.slack_server.SlackRuntime',factory), patch('socket.create_connection',side_effect=AssertionError('network forbidden')):
     raise SystemExit(main(sys.argv[1:]))
 """
+        # unittest discovery adjusts only the parent sys.path. Explicitly pass
+        # the fixture directory to the child; CI PYTHONPATH contains only src.
+        environment = {**os.environ, 'PYTHONPATH': os.pathsep.join(
+            [str(ROOT / 'tests'), os.environ.get('PYTHONPATH', '')])}
         with subprocess.Popen([sys.executable,'-c',code,*self.args('relay','--enable-web')],
-                              stdout=subprocess.PIPE,stderr=subprocess.PIPE) as child:
+                              env=environment, stdout=subprocess.PIPE,stderr=subprocess.PIPE) as child:
             try:
                 deadline=time.monotonic()+10
                 while time.monotonic()<deadline:
