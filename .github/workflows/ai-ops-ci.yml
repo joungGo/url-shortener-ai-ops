@@ -119,7 +119,7 @@ jobs:
           export PATH="$RUNNER_TEMP/trace-tools:$PATH"
           trace_pin=$(python3 -c 'import json,os; from pathlib import Path; print(json.loads((Path(os.environ["RUNNER_TEMP"])/"trace-build/build-manifest.json").read_text())["binary_sha256"])')
           "$RUNNER_TEMP/trace-venv/bin/python" ai-ops/scripts/check_c4_lease_stages_local.py --binary "$RUNNER_TEMP/trace-build/kubectl-c04-trace" --sha256 "$trace_pin"
-          "$RUNNER_TEMP/trace-venv/bin/python" ai-ops/scripts/check_c4_lease_proxy_local.py --trace-binary "$RUNNER_TEMP/trace-build/kubectl-c04-trace" --trace-sha256 "$trace_pin"
+          "$RUNNER_TEMP/trace-venv/bin/python" ai-ops/scripts/check_c4_lease_proxy_local.py --expected-reference-version v1.35.8 --trace-binary "$RUNNER_TEMP/trace-build/kubectl-c04-trace" --trace-sha256 "$trace_pin"
 
   image:
     needs: contracts

@@ -24,6 +24,21 @@ class LeaseTraceBuildTest(unittest.TestCase):
                     build.check_locked_dependencies(root, expected)
                 (root/name).write_bytes(expected[name])
 
+    def test_mixed_or_replaced_upstream_versions_are_rejected(self):
+        required = ('client-go', 'kubectl', 'component-base', 'api', 'apimachinery', 'cli-runtime')
+        module = {'Require':[{'Path':'k8s.io/'+name, 'Version':'v0.35.8'} for name in required]}
+        build.check_upstream_versions(module)
+        for entry in module['Require']:
+            entry['Version'] = 'v0.34.1'
+            with self.assertRaisesRegex(ValueError, '^lease_trace_upstream_version_mismatch$'):
+                build.check_upstream_versions(module)
+            entry['Version'] = 'v0.35.8'
+        for key,value in [('Replace',[{'Old':{'Path':'k8s.io/client-go'},'New':{'Path':'PRIVATE'}}]),
+                          ('Require',module['Require'][:-1])]:
+            bad = dict(module); bad[key] = value
+            with self.assertRaisesRegex(ValueError, '^lease_trace_upstream_version_mismatch$'):
+                build.check_upstream_versions(bad)
+
     def test_patch_requires_exact_upstream_call_sites(self):
         source = '''func (r *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 \tcreds, err := r.a.getCreds()

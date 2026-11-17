@@ -23,8 +23,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--trace-binary')
     parser.add_argument('--trace-sha256')
+    parser.add_argument('--expected-reference-version')
     args = parser.parse_args()
     trace_options = dict(trace_binary=args.trace_binary, trace_sha256=args.trace_sha256)
+    reference_version = json.loads(subprocess.run(['kubectl', 'version', '--client', '-o', 'json'],
+        check=True, capture_output=True, timeout=5).stdout)['clientVersion']['gitVersion']
+    if args.expected_reference_version and reference_version != args.expected_reference_version:
+        raise ValueError('reference_kubectl_version_mismatch')
     os.umask(0o077)
     with tempfile.TemporaryDirectory(prefix='c4-proxy-local-', dir='/tmp') as folder:
         root = Path(folder)
@@ -115,7 +120,14 @@ print(json.dumps({'apiVersion':'client.authentication.k8s.io/v1beta1','kind':'Ex
         kubeconfig = root/'kubeconfig'; kubeconfig.write_text(json.dumps(config)); kubeconfig.chmod(0o600)
         client = TrialLeaseClient(kubeconfig, 'local-fixture', **trace_options)
         try:
-            client.start(); start = time.perf_counter()
+            pin_start = time.perf_counter()
+            client._proxy_command()  # Measure the actual ownership/hash check; no cached bypass.
+            pin_seconds = time.perf_counter()-pin_start
+            preparation_start = time.perf_counter()
+            client.start()
+            preparation_seconds = time.perf_counter()-preparation_start
+            initial_trace = client.last_upstream_trace
+            start = time.perf_counter()
             for _ in range(20): client.get()
             elapsed = time.perf_counter()-start
             assert int(count.read_text()) == 1, 'exec_credentials_not_reused'
@@ -211,13 +223,14 @@ finally: c.close()
                 else: raise AssertionError('sigterm_left_proxy')
             finally:
                 if child.poll() is None: child.kill(); child.wait(timeout=5)
-            reference_version = json.loads(subprocess.run(['kubectl', 'version', '--client', '-o', 'json'],
-                check=True, capture_output=True, timeout=5).stdout)['clientVersion']['gitVersion']
             version = (json.loads(subprocess.run([args.trace_binary, 'version', '--client', '-o', 'json'],
                 check=True, capture_output=True, timeout=5).stdout)['clientVersion']['gitVersion']
                 if args.trace_binary else reference_version)
             print(json.dumps({'status':'passed','upstream':'local_tls_fixture_only','cloud_calls':0,
                 'model_calls':0,'trace_binary_sha256':args.trace_sha256,'warm_gets':20,'warm_gets_seconds':round(elapsed,6),
+                'preparation_seconds':round(preparation_seconds,6),'binary_pin_check_seconds':round(pin_seconds,6),
+                'first_request_trace':initial_trace,'preparation_includes_first_fake_auth_tls_uid':True,
+                'timings_are_local_samples_not_live_budget_proof':True,
                 'initial_exec_credential_calls':1,'after_expiry_exec_credential_calls':2,
                 'tls_verified':True,'invalid_ca_rejected':True,'kubectl_version':version,
                 'reference_kubectl_version':reference_version,

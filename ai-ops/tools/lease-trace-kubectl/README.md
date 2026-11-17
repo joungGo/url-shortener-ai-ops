@@ -1,10 +1,10 @@
 # Lease 요청 단계 계측용 로컬 kubectl
 
-C-04의 고정 Lease 요청에서 **완료되지 않은 단계의 시작**을 남기는 선택형 진단 빌드다. 일반 `kubectl` 완료 로그를 추측해서 분류하지 않는다. Kubernetes `kubectl/client-go v0.34.1`의 기존 proxy·인증·TLS를 사용하고, exec 인증 RoundTripper에 관측 콜백만 추가한다. `main.go`는 진단 빌드 진입점이며 공식 배포 kubectl 바이너리가 아니다.
+C-04의 고정 Lease 요청에서 **완료되지 않은 단계의 시작**을 남기는 선택형 진단 빌드다. 일반 `kubectl` 완료 로그를 추측해서 분류하지 않는다. Kubernetes `kubectl/client-go v0.35.8`의 기존 proxy·인증·TLS를 사용하고, exec 인증 RoundTripper에 관측 콜백만 추가한다. `main.go`는 진단 빌드 진입점이며 공식 배포 kubectl 바이너리가 아니다.
 
 ## 빌드와 로컬 검증
 
-Python 3.11+와 Go 1.24+가 필요하다. Go 의존성은 `go.mod/go.sum`, client-go 모듈 checksum 및 수정할 원본 파일 SHA로 고정한다. `build.py`는 별도 새 디렉터리에만 소스를 복사하며 전역 Go 모듈 캐시를 수정하지 않는다. `--offline`은 기존 모듈 캐시만 사용하고 Go 자동 toolchain 다운로드도 금지한다. 옵션 없이 빌드할 때 모듈 다운로드는 가능하지만 실행기 시작 중에는 다운로드·빌드하지 않는다.
+Python 3.11+와 Go 1.25+가 필요하다. Go 의존성은 `go.mod/go.sum`, client-go 모듈 checksum 및 수정할 원본 파일 SHA로 고정한다. `build.py`는 별도 새 디렉터리에만 소스를 복사하며 전역 Go 모듈 캐시를 수정하지 않는다. `--offline`은 기존 모듈 캐시만 사용하고 Go 자동 toolchain 다운로드도 금지한다. 옵션 없이 빌드할 때 모듈 다운로드는 가능하지만 실행기 시작 중에는 다운로드·빌드하지 않는다.
 
 ```sh
 python ai-ops/tools/lease-trace-kubectl/build.py --offline --go /absolute/local/go --output /absolute/private/new-build
@@ -51,8 +51,14 @@ Python socket 3초와 기존 CLI 플래그, 기존 인증/갱신/요청 처리, 
 
 2026-11-17에는 소스와 로컬 대역만 검증했다. 실제 감시/실행기 옵션 전달, 이미지·원격 workflow 연결은 아직 하지 않았다. 빌드·검토·CI 및 읽기 전용 연결 검증 후 별도 통합해야 한다. 과거 Lease 오류의 직접 원인은 미확정이며, 계측 구현만으로 원인 해결이나 새 실습 준비 완료를 판정하지 않는다.
 
-근거: [client-go exec](https://github.com/kubernetes/client-go/blob/v0.34.1/plugin/pkg/client/auth/exec/exec.go), [kubectl proxy](https://github.com/kubernetes/kubectl/blob/v0.34.1/pkg/proxy/proxy_server.go), [Go httptrace](https://pkg.go.dev/net/http/httptrace).
+근거: [client-go exec](https://github.com/kubernetes/client-go/blob/v0.35.8/plugin/pkg/client/auth/exec/exec.go), [kubectl proxy](https://github.com/kubernetes/kubectl/blob/v0.35.8/pkg/proxy/proxy_server.go), [Go httptrace](https://pkg.go.dev/net/http/httptrace).
 
 ## 2026-11-17 로컬 검토 후 정리
 
-검증 결과의 `kubectl_version`은 실제 시험한 proxy 바이너리가 보고한 버전이고, `reference_kubectl_version`은 비교용 공식 kubectl 버전이다. 진단 빌드는 upstream 소스 v0.34.1이며 공식 릴리스의 버전 문자열을 주입하지 않는다. 배포용 v1.35.8과 동일 구현이라고 주장하지 않는다. 실행기/이미지/플랫폼 감시에 반영하기 전에는 사용할 버전의 정합성·고정 source/hash·빌드와 준비 단계 비용을 별도로 검토해야 한다. 이번 검토는 실제 연결 승인이 아니다.
+검증 결과의 `kubectl_version`은 실제 시험한 proxy 바이너리가 보고한 버전이고, `reference_kubectl_version`은 비교용 공식 kubectl 버전이다. 진단 빌드는 upstream 소스 v0.35.8이며 공식 릴리스의 버전 문자열을 주입하지 않는다. 배포용 v1.35.8과 대응하는 upstream 소스로 정렬했다. 관측 훅을 추가한 별도 빌드이므로 공식 배포 바이너리와 동일하다고 주장하지 않는다. 실행기/이미지/플랫폼 감시에 반영하기 전에는 사용할 버전의 정합성·고정 source/hash·빌드와 준비 단계 비용을 별도로 검토해야 한다. 이번 검토는 실제 연결 승인이 아니다.
+
+## 준비 비용과 버전 검증
+
+빌더는 핵심 Kubernetes 모듈 6개의 v0.35.8 일치·사전 replace 부재를 확인한다. source/checksum/의존성 잠금을 갱신했으며 자동 실행 시에는 readonly 검사를 유지한다. manifest의 `build_seconds`는 캐시 상태에 의존하는 이번 빌드 표본이다.
+
+로컬 proxy 검사의 `--expected-reference-version v1.35.8`은 시험 전에 공식 비교 버전을 확인한다. `binary_pin_check_seconds`는 실제 소유권/해시 검사, `preparation_seconds`는 그 검사를 다시 포함한 proxy 기동·최초 가짜 인증·TLS·UID 조회 비용이다. `first_request_trace`는 best effort 단계 관측이며 누락을 0초로 해석하지 않는다. 시간값은 로컬 표본이고 AWS 인증·네트워크 비용이나 15초 시작 성공을 보장하지 않는다. 빌드/다운로드와 최초 인증은 준비 단계에서 완료해야 하며 승인 후 기존 현재 상태/ACK 재검증을 생략하지 않는다. 실제 실행기 연결은 별도 후속 작업이다.
