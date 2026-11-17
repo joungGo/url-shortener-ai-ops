@@ -7,6 +7,7 @@ from datetime import timedelta
 
 from ai_ops.b_contracts import ReadRequest, ReadTransport
 from ai_ops.collection import ReadFailure, SnapshotBuilder
+from ai_ops.contracts import canonical_json_bytes
 from ai_ops.evidence import normalize_source_time
 from ai_ops.live_collectors.common import add, labels_match, list_items, metadata, owned_by, read_json, utc_now
 
@@ -186,18 +187,24 @@ def _configuration(builder, pod, prefix, at):
 def _logs(builder, transport, pod, prefix, restarts):
     limits = builder.settings.runtime.limits
     lines_left = limits.log_lines_per_pod
-    for previous in ([False, True] if restarts > 0 else [False]):
+    streams = [False, True] if restarts > 0 else [False]
+    for index, previous in enumerate(streams):
         key = prefix + ("-previous-log" if previous else "-log")
         # 원시 로그 응답 누적량은 정규화 후보 크기와 별도로 제한한다.
-        remaining = limits.raw_log_bytes - builder.raw_log_bytes_read
+        remaining = min(limits.raw_log_bytes - builder.raw_log_bytes_read,
+                        limits.response_bytes, limits.total_response_bytes - builder.raw_bytes)
         if remaining <= 0 or lines_left <= 0:
             add(builder, key, "log", failure=ReadFailure("missing", "truncated"), context={"truncated": True})
             continue
+        # 현재 로그가 이전 컨테이너 조사 예산까지 독점하지 않도록 예약한다.
+        streams_left = len(streams) - index
+        line_limit = max(1, lines_left // streams_left)
+        byte_limit = max(1, remaining // streams_left)
         path = f"/api/v1/namespaces/{builder.binding.target.namespace}/pods/{pod['metadata']['name']}/log"
         since = builder.started_at - timedelta(seconds=limits.lookback_seconds)
         params = (("container", builder.binding.container), ("timestamps", "true"), ("follow", "false"),
-                  ("sinceTime", since.isoformat().replace("+00:00", "Z")), ("tailLines", str(lines_left)),
-                  ("limitBytes", str(remaining)), ("previous", str(previous).lower()))
+                  ("sinceTime", since.isoformat().replace("+00:00", "Z")), ("tailLines", str(line_limit)),
+                  ("limitBytes", str(byte_limit)), ("previous", str(previous).lower()))
         response = builder.read(ReadRequest(builder.binding.kubernetes_connection, path, params), transport)
         if isinstance(response, ReadFailure):
             add(builder, key, "log", failure=response, context=_context(pod["metadata"]))
@@ -206,13 +213,18 @@ def _logs(builder, transport, pod, prefix, restarts):
             continue
         # UID 재확인 실패나 잘림으로 버리는 로그도 Pod의 줄 수 예산에 포함한다.
         try:
-            lines = response.body.decode("utf-8").splitlines()
+            # limitBytes는 마지막 줄/UTF-8 문자를 중간에서 끊을 수 있다.
+            # 완결된 줄만 분석하며 버린 꼬리도 읽기 예산에서 이미 차감됐다.
+            cut_tail = bool(response.body) and not response.body.endswith(b"\n")
+            complete_body = response.body
+            if cut_tail:
+                complete_body = response.body.rsplit(b"\n", 1)[0] + b"\n" if b"\n" in response.body else b""
+            lines = complete_body.decode("utf-8").splitlines()
         except UnicodeError:
             lines_left = 0
             add(builder, key, "log", failure=ReadFailure("invalid", "invalid_log_encoding"))
             continue
-        available_lines = lines_left
-        lines_left = max(0, lines_left - len(lines))
+        lines_left = max(0, lines_left - len(lines) - int(cut_tail))
         # 같은 이름의 Pod가 교체됐으면 이전 UID의 로그로 귀속시키지 않는다.
         current = _read(builder, transport, path.removesuffix("/log"))
         if isinstance(current, ReadFailure):
@@ -226,18 +238,29 @@ def _logs(builder, transport, pod, prefix, restarts):
             add(builder, key, "log", failure=ReadFailure("invalid", "revision_changed"))
             continue
         try:
-            if not lines:
-                add(builder, key, "log", failure=ReadFailure("missing", "empty_response"))
-                continue
-            if len(response.body) >= remaining or len(lines) >= available_lines:
+            truncated = cut_tail or len(response.body) >= byte_limit or len(lines) >= line_limit
+            if truncated:
+                # 누락 증거를 남겨 전체 정상/완료 판정이 가능해지지 않도록 한다.
                 add(builder, key, "log", failure=ReadFailure("missing", "truncated"), context={"truncated": True})
+                if len(lines) > line_limit or len(builder.items) >= limits.max_items:
+                    continue
+                key += "-sample"
+                # JSON 포장 비용도 기존 후보 예산에 포함하며 상한을 늘리지 않는다.
+                budget = min(limits.response_bytes, limits.raw_log_bytes - builder.log_bytes)
+                while lines and len(canonical_json_bytes({"container": builder.binding.container, "lines": lines})) > budget:
+                    lines.pop(0)
+                if not lines:
+                    continue
+            elif not lines:
+                add(builder, key, "log", failure=ReadFailure("missing", "empty_response"))
                 continue
             try:
                 at = max((normalize_source_time(line.partition(" ")[0])[0], line.partition(" ")[0]) for line in lines)[1]
             except (ValueError, TypeError):
                 add(builder, key, "log", failure=ReadFailure("invalid", "invalid_log_timestamp"))
                 continue
-            add(builder, key, "log", at=at, payload={"container": builder.binding.container, "lines": lines}, context=_context(pod["metadata"]))
+            add(builder, key, "log", at=at, payload={"container": builder.binding.container, "lines": lines},
+                context={**_context(pod["metadata"]), "truncated": truncated})
         except (ValueError, TypeError, UnicodeError):
             add(builder, key, "log", failure=ReadFailure("invalid", "invalid_payload"))
 

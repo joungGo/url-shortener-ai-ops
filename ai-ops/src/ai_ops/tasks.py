@@ -158,6 +158,8 @@ class TaskService:
                 'observed_state': CURRENT_STATE[report.current_state],
                 'evidence_ids': sorted({eid for fact in report.facts for eid in fact.evidence_ids}),
                 'limitation_count': len(report.limitations), 'execution_allowed': False}
+        from ai_ops.result_explanation import evidence_summary
+        result['evidence_summary'] = evidence_summary(record.bundle, record.collection_audit)
         if record.runbook_context is not None:
             from ai_ops.runbook_context import withheld
             result['runbook_context'] = (withheld() if self.settings.runbooks is None else
