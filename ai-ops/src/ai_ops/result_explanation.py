@@ -34,7 +34,11 @@ def evidence_summary(bundle, audit):
     known = set().union(*(codes for codes, _ in REASONS))
     if reasons - known:
         limitations.append('일부 자료의 형식·시각·대상 일치 검증을 통과하지 못했습니다.')
-    return {'available': available, 'limitations': limitations}
+    result = {'available': available, 'limitations': limitations}
+    if audit is not None:
+        from ai_ops.evidence_coverage import coverage
+        result['coverage'] = coverage(bundle, audit)
+    return result
 
 
 def result_text(target, result):
@@ -51,6 +55,9 @@ def result_text(target, result):
         text += '\n판단에 부족한 자료\n' + ''.join('- ' + item + '\n' for item in summary['limitations'])
     elif state == 'partial':
         text += '\n판단에 부족한 자료: 전체 상태를 확정할 근거가 충분하지 않습니다.\n'
+    if summary.get('coverage'):
+        from ai_ops.evidence_coverage import coverage_text
+        text += '\n' + coverage_text(summary['coverage'])
     if state == 'partial':
         text += 'partial은 자료 범위가 불완전하다는 뜻입니다. 이것만으로 정상·장애를 확정할 수 없습니다.\n'
     return text + '\n'
