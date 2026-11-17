@@ -1,0 +1,79 @@
+{
+  "status": "passed",
+  "scope": "local_implementation_only",
+  "base_main": "5a6298e389fae0defc1e025537e19081ab0e229b",
+  "new_tests": 28,
+  "full_tests": 1156,
+  "full_seconds": 52.316,
+  "skipped": 0,
+  "invariant_sources": 56,
+  "actual_slack_connected": false,
+  "credentials_issued": false,
+  "root_cause_investigation": false,
+  "trial_executed": false,
+  "remote_ci_executed": false,
+  "commit_push_merge": false,
+  "default_enabled": false,
+  "limits_preserved": {
+    "lease_socket_seconds": 3,
+    "start_seconds": 15,
+    "minimum_review_seconds": 120,
+    "review_deadline_seconds": 210,
+    "owner_rollback_seconds": 240,
+    "independent_rollback_seconds": 300,
+    "recovery_observation_seconds": 120
+  },
+  "slack_ingress_ack_seconds": 2.5,
+  "web_api_io_timeout_seconds": 3,
+  "web_api_total_wallclock_deadline_guaranteed": false,
+  "verified": [
+    "signed_ASGI_to_existing_queue_worker_to_web_API_double",
+    "runbook_citations",
+    "same_channel_thread",
+    "identity_workspace_app_bot",
+    "restart_dedup",
+    "fixture_web_ledger_and_request_isolation",
+    "uncertain_result_no_repost",
+    "bounded_rate_limit_retry",
+    "private_credentials",
+    "ingress_timeout_cancel_capacity",
+    "queue_backpressure"
+  ],
+  "limitations": [
+    "No real Slack connection/delivery measurement",
+    "No automatic remote reconciliation of uncertain posts",
+    "ASGI server/TLS/proxy/credential deployment still requires actual connection preparation"
+  ],
+  "known_test_warning": "Existing SQLite ResourceWarning; no failures",
+  "private_evidence": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/slack-web-local-20261117",
+  "files": [
+    {
+      "path": "ai-ops/src/ai_ops/slack_adapter.py",
+      "sha256": "bbdf617e1aeca5dccf58b27c4a3cfecead35f7abe4b357ed7e44d808051073fe"
+    },
+    {
+      "path": "ai-ops/src/ai_ops/slack_web.py",
+      "sha256": "e5e1aac0ec942a88f0ad0e9fd7a2d5631ed0024f07a1431c7a3f0d53dff8748a"
+    },
+    {
+      "path": "ai-ops/src/ai_ops/slack_ingress.py",
+      "sha256": "7c5686c843a9a5ea325c25aea7dd312fdde570677132983b0c48949567e38724"
+    },
+    {
+      "path": "ai-ops/src/ai_ops/slack_runtime.py",
+      "sha256": "d31f068ed3d8cb4909d419c9ef4255ab32acedf601f26622ba8833a37c435c91"
+    },
+    {
+      "path": "ai-ops/tests/test_slack_web.py",
+      "sha256": "514da89a9d316ba92276f9d452ac302c53e7a97862fc1816f3a7b7a678c8946c"
+    },
+    {
+      "path": "ai-ops/config/slack-web.disabled.example.json",
+      "sha256": "611ab9a797afaefbaf26d412830686cf69a27b02b091633b4e1008a6c17ee304"
+    },
+    {
+      "path": "ai-ops/docs/slack-web-connection-local-20261117.md",
+      "sha256": "919297aa122cceaddbf0d8242eedbea75fc3de7c7267da21f12de0462597e647"
+    }
+  ]
+}
