@@ -53,14 +53,18 @@ class SlackRuntime:
         """Explicit external connection, to be called only after actual connection approval."""
         return self.transport.verify_identity()
 
-    def relay_once(self):
+    def relay_once(self, *, stopped=lambda: False):
         """Bounded inbox relay + one ready reply; existing Worker runs separately.
 
         No retries of ambiguous sends. A failed identity refresh prevents posting.
         Pending investigations are skipped so they cannot starve completed work.
         """
+        if stopped():
+            return {'state':'stopped','execution_allowed':False}
         if not self.transport.verified_for(self.adapter.policy):
             self.prepare()
+        if stopped():
+            return {'state':'stopped','execution_allowed':False}
         try:
             admitted = self.adapter.drain_one()
         except (QueueBusy, QueueFull):
@@ -76,6 +80,8 @@ class SlackRuntime:
         if not candidates:
             self._cursor = (-1, "")
         for row in candidates:
+            if stopped():
+                return {'state':'stopped','execution_allowed':False}
             self._cursor = (row['created_at'],row['request_id'])
             try:
                 if self.tasks.show(row['job_id'])['result']['state'] in ('pending','expired'):
@@ -85,6 +91,8 @@ class SlackRuntime:
                 # expose errors (possibly secret paths) or let it block unrelated work.
                 continue
             try:
+                if stopped():
+                    return {'state':'stopped','execution_allowed':False}
                 reply = self.adapter.reply(row['request_id'],self.transport)
             except (ValueError, OSError):
                 reply = {'state':'blocked'}

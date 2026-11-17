@@ -16,6 +16,7 @@ import threading
 import time
 
 from ai_ops.b_contracts import load_b_settings
+from ai_ops.runtime_settings import runbook_settings_kwargs
 from ai_ops.contracts import canonical_json_bytes
 from ai_ops.deployment_check import check_local
 from ai_ops.incidents import _atomic_write
@@ -144,7 +145,7 @@ def main(argv=None) -> int:
         signal.signal(signal.SIGTERM, lambda *_: stopped.set())
         signal.signal(signal.SIGINT, lambda *_: stopped.set())
         check_local(args.config, args.store)
-        settings = load_b_settings(args.config / "bindings.json", args.config / "runtime.json", args.config / "metric-queries.json")
+        settings = load_b_settings(args.config / "bindings.json", args.config / "runtime.json", args.config / "metric-queries.json", **runbook_settings_kwargs(args.config))
         queue = JobQueue(args.store)
         normal_binding_path = args.config / "normal-ci-binding.json"
         normal_inbox = (NormalCIInbox(queue, NormalCIBinding.model_validate_json(

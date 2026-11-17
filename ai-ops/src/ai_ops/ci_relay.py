@@ -11,6 +11,7 @@ import signal
 import threading
 
 from ai_ops.b_contracts import load_b_settings
+from ai_ops.runtime_settings import runbook_settings_kwargs
 from ai_ops.ci_history import GitHubReader, LAB_RUNS_PATH, NORMAL_RUNS_PATH, _positive
 from ai_ops.contracts import _utc_datetime
 from ai_ops.evidence import _json_object
@@ -125,7 +126,7 @@ def main(argv=None) -> int:
         signal.signal(signal.SIGTERM, lambda *_: stopped.set())
         signal.signal(signal.SIGINT, lambda *_: stopped.set())
     try:
-        settings = load_b_settings(args.config / "bindings.json", args.config / "runtime.json", args.config / "metric-queries.json")
+        settings = load_b_settings(args.config / "bindings.json", args.config / "runtime.json", args.config / "metric-queries.json", **runbook_settings_kwargs(args.config))
         token_file = os.environ.get("AI_CI_GITHUB_TOKEN_FILE")
         reader = None
         if token_file:
