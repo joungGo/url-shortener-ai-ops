@@ -1,6 +1,7 @@
 """실제 kubectl과 로컬 TLS API 대역만 사용한다. AWS/GitHub/실습 환경은 호출하지 않는다."""
 
 from copy import deepcopy
+import argparse
 import base64
 import http.server
 import json
@@ -19,6 +20,11 @@ from ai_ops.c_trial_transport import C4TrialTransport
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--trace-binary')
+    parser.add_argument('--trace-sha256')
+    args = parser.parse_args()
+    trace_options = dict(trace_binary=args.trace_binary, trace_sha256=args.trace_sha256)
     os.umask(0o077)
     with tempfile.TemporaryDirectory(prefix='c4-proxy-local-', dir='/tmp') as folder:
         root = Path(folder)
@@ -107,7 +113,7 @@ print(json.dumps({'apiVersion':'client.authentication.k8s.io/v1beta1','kind':'Ex
             'users':[{'name':'fixture','user':{'exec':{'apiVersion':'client.authentication.k8s.io/v1beta1',
                 'command':sys.executable,'args':[str(credential)],'interactiveMode':'Never'}}}]}
         kubeconfig = root/'kubeconfig'; kubeconfig.write_text(json.dumps(config)); kubeconfig.chmod(0o600)
-        client = TrialLeaseClient(kubeconfig, 'local-fixture')
+        client = TrialLeaseClient(kubeconfig, 'local-fixture', **trace_options)
         try:
             client.start(); start = time.perf_counter()
             for _ in range(20): client.get()
@@ -167,7 +173,7 @@ print(json.dumps({'apiVersion':'client.authentication.k8s.io/v1beta1','kind':'Ex
             bad_config['clusters'][0]['cluster']['certificate-authority-data'] = base64.b64encode(
                 (root/'other-cert.pem').read_bytes()).decode()
             bad_path = root/'untrusted-kubeconfig'; bad_path.write_text(json.dumps(bad_config)); bad_path.chmod(0o600)
-            untrusted = TrialLeaseClient(bad_path, 'local-fixture')
+            untrusted = TrialLeaseClient(bad_path, 'local-fixture', **trace_options)
             try:
                 try: untrusted.start()
                 except ValueError: pass
@@ -180,7 +186,7 @@ print(json.dumps({'apiVersion':'client.authentication.k8s.io/v1beta1','kind':'Ex
             child_script.write_text('''from pathlib import Path
 import json,sys,time
 from ai_ops.c_trial_lease_client import TrialLeaseClient
-c=TrialLeaseClient(sys.argv[1],'local-fixture',handle_sigterm=True)
+c=TrialLeaseClient(sys.argv[1],'local-fixture',handle_sigterm=True,**json.loads(sys.argv[3]))
 try:
  c.start()
  state=Path(sys.argv[2]); temporary=state.with_suffix('.tmp')
@@ -190,7 +196,7 @@ try:
 except ValueError: pass
 finally: c.close()
 ''')
-            child = subprocess.Popen([sys.executable, str(child_script), str(kubeconfig), str(child_state)],
+            child = subprocess.Popen([sys.executable, str(child_script), str(kubeconfig), str(child_state), json.dumps(trace_options)],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             try:
                 end = time.monotonic()+12
@@ -205,12 +211,17 @@ finally: c.close()
                 else: raise AssertionError('sigterm_left_proxy')
             finally:
                 if child.poll() is None: child.kill(); child.wait(timeout=5)
-            version = json.loads(subprocess.run(['kubectl', 'version', '--client', '-o', 'json'],
+            reference_version = json.loads(subprocess.run(['kubectl', 'version', '--client', '-o', 'json'],
                 check=True, capture_output=True, timeout=5).stdout)['clientVersion']['gitVersion']
+            version = (json.loads(subprocess.run([args.trace_binary, 'version', '--client', '-o', 'json'],
+                check=True, capture_output=True, timeout=5).stdout)['clientVersion']['gitVersion']
+                if args.trace_binary else reference_version)
             print(json.dumps({'status':'passed','upstream':'local_tls_fixture_only','cloud_calls':0,
-                'model_calls':0,'warm_gets':20,'warm_gets_seconds':round(elapsed,6),
+                'model_calls':0,'trace_binary_sha256':args.trace_sha256,'warm_gets':20,'warm_gets_seconds':round(elapsed,6),
                 'initial_exec_credential_calls':1,'after_expiry_exec_credential_calls':2,
                 'tls_verified':True,'invalid_ca_rejected':True,'kubectl_version':version,
+                'reference_kubectl_version':reference_version,
+                'proxy_implementation':'pinned_diagnostic' if args.trace_binary else 'standard_kubectl',
                 'fixed_path_method_host_filters_verified':True,
                 'cas_conflict_and_both_acks_verified':True,'proxy_and_socket_removed':True,
                 'legacy_managed_fields_mismatch_reproduced':True,
