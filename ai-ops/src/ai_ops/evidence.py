@@ -331,8 +331,57 @@ CAPTURED_EVENT_REASONS = {
 }
 
 
-def _diagnostic_tokens(line: str) -> list[str]:
+# Uvicorn access logs are observations, never error/health verdicts. Match the
+# whole record before legacy marker extraction so a URL containing RedisError
+# cannot become an exception fact. Never retain the peer, URL or reason phrase.
+_ACCESS_PREFIX = r'(?:INFO:\s+)?(?:[0-9a-fA-F:.]+|\[[0-9a-fA-F:.]+\]):[0-9]{1,5} - "'
+_ACCESS_RECORD = re.compile(_ACCESS_PREFIX)
+_ACCESS_LOG = re.compile(
+    _ACCESS_PREFIX + r'(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) ([^"\s]+) HTTP/(?:1\.[01]|2(?:\.0)?)"'
+    r' ([1-5][0-9]{2})(?: [A-Za-z ]{1,80})?'
+)
+_ACCESS_PROJECTED = re.compile(
+    r'http_method=(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) '
+    r'http_status=([1-5][0-9]{2}) http_path_kind=(probe|other)'
+)
+_CACHE_RECORD = re.compile(r'(?:INFO:app\.api\.routes\.item:)?cache_(?:hit|miss|bypass) ')
+_CACHE_LOG = re.compile(
+    r'(?:INFO:app\.api\.routes\.item:)?cache_(hit|miss|bypass) '
+    r'endpoint=(list_items|get_item)(?: item_id=[0-9]{1,20})?'
+    r'(?: reason=(recent_write))?'
+)
+_CACHE_PROJECTED = re.compile(
+    r'cache_signal=(hit|miss|bypass) endpoint=(list_items|get_item)'
+    r'(?: cache_reason=(recent_write))?'
+)
+
+
+def _observational_log_tokens(line: str) -> list[str] | None:
+    # Canonical forms must survive stored snapshot revalidation unchanged.
+    if _ACCESS_PROJECTED.fullmatch(line) or _CACHE_PROJECTED.fullmatch(line):
+        return line.split(" ")
+    access = _ACCESS_LOG.fullmatch(line)
+    if access:
+        method, path, status = access.groups()
+        kind = "probe" if path.partition("?")[0] in {"/healthz", "/readyz", "/metrics"} else "other"
+        return [f"http_method={method}", f"http_status={status}", f"http_path_kind={kind}"]
+    cache = _CACHE_LOG.fullmatch(line)
+    if cache:
+        signal, endpoint, reason = cache.groups()
+        return [f"cache_signal={signal}", f"endpoint={endpoint}"] + (
+            ["cache_reason=recent_write"] if reason else [])
+    # Known record envelopes with unsupported content must not fall through
+    # to free-text markers in a URL or arbitrary trailing field.
+    if _ACCESS_RECORD.match(line) or _CACHE_RECORD.match(line):
+        return []
+    return None
+
+
+def _diagnostic_tokens(line: str, *, observations: bool = False) -> list[str]:
     """자유 문장 대신 코드에서 쓰는 유한한 진단 표식만 남긴다."""
+    observation = _observational_log_tokens(line) if observations else None
+    if observation is not None:
+        return observation
     tokens = [marker for marker in CAPTURED_LOG_MARKERS
               if re.search(r"(?<![\w])" + re.escape(marker) + r"(?![\w])", line)]
     fields = {
@@ -374,7 +423,7 @@ def normalize_captured_payload(
             at, offset = normalize_source_time(raw_time)
             if not separator or not window.start <= at <= window.end:
                 raise ValueError("captured log time is outside the window")
-            tokens = _diagnostic_tokens(message)
+            tokens = _diagnostic_tokens(message, observations=True)
             if tokens:
                 cleaned.append(_utc_text(at) + " " + " ".join(tokens))
                 line_times.append({"at": _utc_text(at), "source_at": raw_time, "source_offset": offset})
