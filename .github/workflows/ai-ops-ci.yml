@@ -75,6 +75,52 @@ jobs:
           AI_OPS_PLATFORM_SOURCE_ROOT: ${{ github.workspace }}/.platform-source
         run: PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/check_deployment.py
 
+  lease-trace:
+    name: Lease trace local contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GOTOOLCHAIN: local
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.4'
+          cache-dependency-path: ai-ops/tools/lease-trace-kubectl/go.sum
+      - name: 잠금된 도구·모듈 준비
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/trace-venv"
+          "$RUNNER_TEMP/trace-venv/bin/python" -m pip install --require-hashes --only-binary=:all: -r ai-ops/requirements.lock
+          (cd ai-ops/tools/lease-trace-kubectl && go mod download)
+          git diff --exit-code -- ai-ops/tools/lease-trace-kubectl/go.mod ai-ops/tools/lease-trace-kubectl/go.sum
+          mkdir -m 700 "$RUNNER_TEMP/trace-tools"
+          curl -fsSL -o "$RUNNER_TEMP/trace-tools/kubectl" https://dl.k8s.io/release/v1.35.8/bin/linux/amd64/kubectl
+          curl -fsSL -o "$RUNNER_TEMP/trace-tools/kubectl.sha256" https://dl.k8s.io/release/v1.35.8/bin/linux/amd64/kubectl.sha256
+          echo "$(cat "$RUNNER_TEMP/trace-tools/kubectl.sha256")  $RUNNER_TEMP/trace-tools/kubectl" | sha256sum --check --status
+          chmod 700 "$RUNNER_TEMP/trace-tools/kubectl"
+      - name: 오프라인 진단 빌드·인증 race 검사
+        env:
+          GOPROXY: 'off'
+          GOSUMDB: 'off'
+          GONOPROXY: none
+        run: |
+          set -euo pipefail
+          python3 ai-ops/tools/lease-trace-kubectl/build.py --offline --go "$(command -v go)" --output "$RUNNER_TEMP/trace-build"
+          (cd "$RUNNER_TEMP/trace-build" && go test -mod=readonly -race k8s.io/client-go/plugin/pkg/client/auth/exec -count=1)
+      - name: 가짜 인증·loopback 지연·Lease 계약 검증
+        env:
+          PYTHONPATH: ai-ops/src
+        run: |
+          set -euo pipefail
+          export PATH="$RUNNER_TEMP/trace-tools:$PATH"
+          trace_pin=$(python3 -c 'import json,os; from pathlib import Path; print(json.loads((Path(os.environ["RUNNER_TEMP"])/"trace-build/build-manifest.json").read_text())["binary_sha256"])')
+          "$RUNNER_TEMP/trace-venv/bin/python" ai-ops/scripts/check_c4_lease_stages_local.py --binary "$RUNNER_TEMP/trace-build/kubectl-c04-trace" --sha256 "$trace_pin"
+          "$RUNNER_TEMP/trace-venv/bin/python" ai-ops/scripts/check_c4_lease_proxy_local.py --trace-binary "$RUNNER_TEMP/trace-build/kubectl-c04-trace" --trace-sha256 "$trace_pin"
+
   image:
     needs: contracts
     runs-on: ubuntu-24.04
@@ -114,7 +160,7 @@ jobs:
   main-gate:
     name: C03 Main PR Gate
     if: ${{ always() && github.event_name == 'pull_request' && github.base_ref == 'main' }}
-    needs: [scope, contracts, image, terraform]
+    needs: [scope, contracts, image, terraform, lease-trace]
     runs-on: ubuntu-24.04
     steps:
       - name: 적용 범위에 맞는 검사 결과 확인
@@ -125,8 +171,9 @@ jobs:
           CONTRACTS_RESULT: ${{ needs.contracts.result }}
           IMAGE_RESULT: ${{ needs.image.result }}
           TERRAFORM_RESULT: ${{ needs.terraform.result }}
+          LEASE_TRACE_RESULT: ${{ needs.lease-trace.result }}
         run: |
-          [[ "$SCOPE_RESULT" == success ]] || exit 1
+          [[ "$SCOPE_RESULT" == success && "$LEASE_TRACE_RESULT" == success ]] || exit 1
           case "$AI_CHANGES" in
             true)
               [[ "$CONTRACTS_RESULT" == success && "$IMAGE_RESULT" == success && "$TERRAFORM_RESULT" == success ]]
