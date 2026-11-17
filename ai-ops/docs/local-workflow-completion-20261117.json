@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-17",
+  "status": "reviewed_local_passed_pending_ci",
+  "scope": "request_workflow_only_lease_telemetry_excluded",
+  "base_commit": "83d411bfec2f18f23edc69646393494641a1af29",
+  "initial_worktree_tests": {
+    "full": 1134,
+    "included_uncommitted_lease_tests": 7
+  },
+  "reviewed_tests": {
+    "full": 1128,
+    "focused": 30,
+    "seconds": 50.936,
+    "failed": 0,
+    "skipped": 0
+  },
+  "review_findings": [
+    {
+      "issue": "invalid Slack config values leaked in CLI exception stderr",
+      "reproduced_before_fix": true,
+      "status": "fixed",
+      "regression": "test_cli_rejects_invalid_config_without_echoing_sensitive_values"
+    }
+  ],
+  "source_sha256": {
+    ".github/workflows/ai-ops-ci.yml": "a468b5ba5a94bff8279aa36237486e6e152e996d73b9ff3231b769e4808b4c86",
+    "ai-ops/tests/test_lab_ci_history.py": "dbe210dbb0b63443b4530c5a5ee3f8455fb81c7eb3c88bc24c617a619c233611",
+    "ai-ops/README.md": "bbc96254b6507997e763d6908173041968e0518d19d4976430eabbbc56b79b72",
+    "ai-ops/src/ai_ops/workflow_config.py": "080c099c97d1ac9308e1ee948e6e2bb031545f3b3138050a87863173b0eeaa70",
+    "ai-ops/scripts/check_request_workflow_local.py": "8d3164928f268652d08c0ebb1ae17d4d4b8784756501da862ce3490277d27b65",
+    "ai-ops/tests/test_workflow_config.py": "38c39315733b7efed4f9e15cd65164b76732b22fab6d13462ebfa68ed948bb88",
+    "ai-ops/tests/test_request_workflow.py": "60965cb52a1baaf6e1a884923d3aa0cee14e3836006a53ad3225de6478a1c246",
+    "ai-ops/config/request-workflow.local.example.json": "606b9bb08c4af64bb517da8fd3d30af193115f5ae79d75d3a711dcb0bd2cb610",
+    "ai-ops/docs/local-workflow-completion-20261117.md": "2d6ab166ce3f19cc406e46d91414c5697f889a3eea8694f8dd21b81ea98bf1e1"
+  },
+  "initial_integrated_flow": {
+    "status": "passed",
+    "scope": "implementation_and_local_integration_only",
+    "wiring": {
+      "status": "valid",
+      "mode": "local_fixture",
+      "config_hash": "87c21c1c47b3b378ec81359b8de4feea95a7a87d8f6f55a2af2d1319fd0d7d26",
+      "target_count": 1,
+      "slack_grant_count": 1,
+      "runbook_policy_hash": "c0e6449800d12c7e8b099db6bee94a01f3524c340630b34774aa552158e9818d",
+      "external_connections_enabled": false,
+      "model_enabled": false,
+      "execution_allowed": false
+    },
+    "signed_http_ack_seconds": 0.002621,
+    "ack_before_queue": true,
+    "shared_queue_worker_config": true,
+    "common_task_id_and_verified_result": true,
+    "report_state": "partial",
+    "citation_count": 2,
+    "document_and_section_hashes_verified": true,
+    "same_channel_thread_fixture_reply": true,
+    "fixture_reply_posts": 1,
+    "local_mailbox_uses_same_citations": true,
+    "restart_duplicate_reused": true,
+    "investigation_attempts": 1,
+    "invalid_signature_actor_execution_actions_rejected": true,
+    "secret_canary_absent": true,
+    "execution_allowed": false,
+    "human_read_confirmed": false,
+    "real_slack_calls": 0,
+    "external_network_calls": 0,
+    "model_calls": 0,
+    "fault_injections": 0,
+    "recovery_executions": 0,
+    "servers_threads_socket_and_fixture_store_removed": true
+  },
+  "unchanged_existing_source_files": 52,
+  "limits_seconds": {
+    "start": 15,
+    "minimum_review": 120,
+    "review_deadline": 210,
+    "owner_rollback": 240,
+    "independent_rollback": 300,
+    "recovery_observation": 120
+  },
+  "remote_ci_executed": false,
+  "excluded": [
+    "Lease stage instrumentation",
+    "historical root cause investigation",
+    "real Slack connection",
+    "trial execution"
+  ],
+  "remaining_outside_scope": [
+    "code review/remote CI/main integration",
+    "real Slack connection",
+    "C04/C05 live final validation with new readiness approval and exact-head human review",
+    "A5/A7 independent evaluation and full control repository cutover"
+  ]
+}

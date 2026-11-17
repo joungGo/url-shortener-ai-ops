@@ -40,6 +40,8 @@ jobs:
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/check_slack_adapter_local.py
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/check_runbook_search_local.py
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/check_runbook_context_local.py
+          PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python -m ai_ops.workflow_config --config ai-ops/config/request-workflow.local.example.json
+          PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/check_request_workflow_local.py
           /tmp/ai-ops-venv/bin/python ai-ops/scripts/build_dev_fixtures.py --check
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/build_holdout_fixtures.py --check
           PYTHONPATH=ai-ops/src /tmp/ai-ops-venv/bin/python ai-ops/scripts/build_holdout_v2_fixtures.py --check
