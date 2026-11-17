@@ -148,6 +148,12 @@ class TaskService:
                 or record.bundle.bundle_hash != investigation['bundle_hash']
                 or record.report.execution.mode != 'rules'):
             raise ValueError('task_report_binding_rejected')
+        if record.collection_audit is not None and any(e.ci_run_id for e in record.collection_audit.entries):
+            from ai_ops.ci_handoff import check_investigation_context
+            from ai_ops.collection import CapturedSnapshot
+            binding = self.settings.bindings.resolve(record.bundle.target)
+            check_investigation_context(self.queue, self.settings, binding.alias,
+                                        CapturedSnapshot(record.bundle, record.collection_audit))
         if self.show(job) != view:
             raise ValueError('task_changed_during_result_read')
         # 관측 요약과 마스킹한 런북 참고 자료를 분리하며 원문 관측/개인 경로는 복사하지 않는다.

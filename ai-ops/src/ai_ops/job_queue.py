@@ -191,6 +191,58 @@ class JobQueue:
             raise CIInputError("CI 중복 키와 실행 출처가 다릅니다")
         return history
 
+    def investigation_history(self, settings: BSettings, target: str, *, run_id=None, run_attempt=None):
+        """Reuse only HMAC-verified CI inputs from this private queue, never fetch GitHub.
+
+        Discovery is bounded to 20 completed CI jobs; result reads use the exact
+        indexed run/attempt key, independently of that window. Original times and
+        current UID/image checks remain the collector's responsibility. A missing
+        or incompatible record must not be replaced by a normal CI receipt.
+        """
+        from ai_ops.ci_handoff import SOURCE, CIInputError
+        from ai_ops.lab_ci_history import WORKFLOW
+        if (run_id is None) != (run_attempt is None):
+            raise CIInputError('Incomplete CI context identity')
+        extra = ''
+        params = ['%"ci_history"%']
+        if run_id is not None:
+            extra = 'AND episode_key=? '
+            params.append(sha256_json({'source': SOURCE, 'repository': 'f-lab-edu/F-Lab-DevOps',
+                                      'workflow': WORKFLOW, 'run_id': run_id, 'run_attempt': run_attempt}))
+        self._safe_files()
+        db = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True, timeout=5)
+        db.row_factory = sqlite3.Row
+        try:
+            rows = db.execute(
+                "SELECT * FROM jobs WHERE state IN ('completed','partial') "
+                "AND payload LIKE ? AND NOT EXISTS "
+                "(SELECT 1 FROM purges WHERE purges.job_id=jobs.job_id) "
+                + extra + "ORDER BY created_at DESC, job_id DESC LIMIT 20",
+                params,
+            ).fetchall()
+        finally:
+            db.close()
+        candidates = []
+        for row in rows:
+            job = dict(row)
+            if len(job['payload'].encode('utf-8')) > 65536:
+                raise CIInputError('CI context input too large')
+            payload = json.loads(job['payload'])
+            if (payload.get('source') != SOURCE or payload.get('target') != target
+                    or payload.get('config_hash') != settings.config_hash):
+                continue
+            history = self.verify_ci_payload(job, payload)
+            if run_id is not None and (history.run_id, history.run_attempt) != (run_id, run_attempt):
+                continue
+            # Artifact time, not enqueue/retry time, decides which history is latest.
+            candidates.append((history.parsed()[2].observed_at, history))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        if len(candidates) > 1 and candidates[0][0] == candidates[1][0]:
+            raise CIInputError('Ambiguous CI context')
+        return candidates[0][1]
+
     def _submit(self, db, *, payload: dict, fingerprint: str, episode_key: str, now: float) -> tuple[str, bool]:
         """검증한 입력을 호출자의 트랜잭션 안에서 접수한다."""
         episode = db.execute("SELECT job_id FROM episodes WHERE episode_key=?", (episode_key,)).fetchone()
