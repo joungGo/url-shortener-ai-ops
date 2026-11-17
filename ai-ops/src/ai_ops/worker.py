@@ -91,7 +91,13 @@ class Worker:
             raise ValueError("수집 대상과 큐 대상이 일치하지 않습니다")
         if "ci_history" in payload:
             check_snapshot(snapshot, self.queue.verify_ci_payload(job, payload))
+        else:
+            self._check_context(snapshot, payload)
         return snapshot
+
+    def _check_context(self, snapshot, payload):
+        from ai_ops.ci_handoff import check_investigation_context
+        check_investigation_context(self.queue, self.settings, payload["target"], snapshot)
 
     def _check_record(self, job: dict, record):
         payload = self._payload(job)
@@ -174,10 +180,16 @@ class Worker:
                         options = {"route": payload["route"], "operation": payload["operation"]}
                         if "ci_history" in payload:
                             options["ci_history"] = self.queue.verify_ci_payload(job, payload)
+                        else:
+                            history = self.queue.investigation_history(self.settings, payload["target"])
+                            if history is not None:
+                                options["ci_history"] = history
                         snapshot = self.collector(self.settings, binding.target, **options)
                         snapshot = validate_snapshot(snapshot, self.settings)
                         if "ci_history" in payload:
                             check_snapshot(snapshot, options["ci_history"])
+                        else:
+                            self._check_context(snapshot, payload)
                         if snapshot.bundle.target != binding.target:
                             raise ValueError("수집 대상과 큐 대상이 일치하지 않습니다")
                         observation["result"] = {"complete": "success", "partial": "partial", "unavailable": "failure"}[snapshot.audit.collection_status]

@@ -102,3 +102,17 @@ def check_snapshot(snapshot, history):
                 or item.payload.get("source_sha") != history.source_revision
                 or item.payload.get("status") != ("failed" if record.stage == "deployment" else "healthy_after_rollback")):
             raise CIInputError("CI 수집 내용과 접수 기록이 다릅니다")
+
+
+def check_investigation_context(queue, settings, target, snapshot):
+    """Revalidate linked provenance on resumed work and before exposing results."""
+    runs = {(e.ci_run_id, e.ci_run_attempt) for e in snapshot.audit.entries if e.ci_run_id}
+    if not runs:
+        return
+    if len(runs) != 1:
+        raise CIInputError("Mixed investigation history")
+    run_id, run_attempt = next(iter(runs))
+    history = queue.investigation_history(settings, target, run_id=run_id, run_attempt=run_attempt)
+    if history is None:
+        raise CIInputError("Investigation history no longer verifiable")
+    check_snapshot(snapshot, history)
