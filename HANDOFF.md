@@ -1,5 +1,17 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-18 조사 Job 설정 호환 검토 완료 · CI/main 반영 단계
+
+현재 변경의 기능·회귀 및 자격 전달 경계를 직접 검토했고 추가 결함은 발견하지 못했다. 코드/로그 해시가 로컬 1,247개 시험 통과 시점과 일치한다. 상세 `ai-ops/docs/capture-job-config-review-20261118.md`. 사용자 요청으로 이번 PR의 CI 성공을 확인한 후 일반 main 병합을 진행하며 실제 결과는 PR 기록으로 확인한다. 기존 시간·승인·원복 유지, 실제 배포·실습 없음. C04/C05는 미완료이며 다음 실제 실행 전 검증은 별도다. 추천 GPT-6 SOL · High.
+
+## 2026-11-18 조사 Job의 Slack worker 설정 호환 · 로컬 수정 완료
+
+현재 common-materialize + Memory config 구조를 엄격히 검증해 조사 Job을 생성하고, runbook-policy를 접수 CLI에 전달해 worker와 config_hash를 맞췄다. 기존 ci-config 직접/projected 구성은 유지한다. 허용되지 않은 init/Secret/토큰/환경변수/추가 권한·중복 source는 거절하며 시간·승인·UID/CAS/Lease/ACK·원복 조건은 변경하지 않았다.
+
+실제 worker의 저장 사본에서 구버전 거절→수정 생성 성공을 확인했다. 검증 수치·범위는 작업트리의 `ai-ops/docs/capture-job-config-local-20261118.md/json`을 따른다. 실제 배포·server dry-run·원격 CI·Slack·감시·장애·Terraform·모델 호출 없음. 실제 init 기동 시간은 미검증이며 C04/C05는 미완료다.
+
+코드 기준 AI main5931e245f01b55ce4d74c0e34aa8763ca8cd83b1, 브랜치 `codex/c04-capture-config-20261118`, 작업트리 `/Users/jounghyeon/dev/Url-Shortener-EKS-Platform/.worktrees/c04-capture-config-20261118`. 원래 두 체크아웃의 미커밋 작업은 보존했다. 다음은 이 브랜치 검토·CI·main 반영 후 새로운 실행 전 준비 검증이며, 현재 배포 코드는 변경하지 않았다. 새 준비가 끝나면 실행 승인을 별도로 받는다. 추천 **GPT-6 SOL · High**.
+
 ## 2026-11-18 남은 partial 처리 로컬 구현·검증 완료
 
 로그 상한을 유지하며 정제 표본의 줄 수·probe 외 HTTP·진단·시각 범위를 표시하고, 이벤트 전체 UID 조회 성공 후 빈 목록과 조회 실패를 구분했다. 현재 배포와 범위 밖 이력의 원래 시각을 분리하고, CI 실패/원복 이력 미확보를 장애 발생으로 단정하지 않는다. missing/partial/실행 거부 및 기존 시간·승인·원복 조건은 유지했다.

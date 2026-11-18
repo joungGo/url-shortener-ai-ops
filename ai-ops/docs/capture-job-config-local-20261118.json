@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-18",
+  "scope": "local_only",
+  "base_commit": "5931e245f01b55ce4d74c0e34aa8763ca8cd83b1",
+  "branch": "codex/c04-capture-config-20261118",
+  "validation": {
+    "new_tests": 7,
+    "negative_layout_cases": 24,
+    "targeted_tests": 17,
+    "full_tests": 1247,
+    "full_result": "passed",
+    "full_duration_seconds": 53.417,
+    "initial_sandbox_run": "local socket bind denied; repeated with loopback permission",
+    "saved_worker_snapshot": {
+      "old_builder": "rejected",
+      "new_builder": "accepted",
+      "manifest_applied": false
+    },
+    "legacy_manifest": "identical_to_base",
+    "materialized_manifest_delta": [
+      "config volumes",
+      "fixed initializer",
+      "explicit runbook policy"
+    ],
+    "queue_worker": "same config_hash; local fixture processed to partial; no external network or model",
+    "log_sha256": "cfb8bf2045250eca9d339040bbd79f9e6d168ab0332f1b9c462e64acd47fd612"
+  },
+  "preserved": {
+    "capture_deadline_seconds": 180,
+    "capture_backoff_limit": 0,
+    "capture_ttl_seconds": 300,
+    "c04_start_seconds": 15,
+    "minimum_review_after_notice_seconds": 120,
+    "review_deadline_seconds": 210,
+    "owner_rollback_target_seconds": 240,
+    "independent_rollback_start_seconds": 300,
+    "recovery_observation_seconds": 120,
+    "approval_uid_cas_lease_ack_rollback": "unchanged"
+  },
+  "not_run": [
+    "remote CI",
+    "commit/push/merge",
+    "server dry-run",
+    "deployment",
+    "Slack request",
+    "guard start",
+    "fault exercise",
+    "Terraform",
+    "paid model"
+  ],
+  "limitations": [
+    "Kubernetes scheduling and actual init startup latency not measured",
+    "C04 and C05 remain incomplete"
+  ],
+  "source_sha256": {
+    "ai-ops/src/ai_ops/c2_live_job.py": "f107394ffa7f246c27d42bf4852b92dbc8b5d33d34ff1403e8c6c8c530b07473",
+    "ai-ops/src/ai_ops/c_capture_config.py": "a76a09901228afd7342b476e643be3264af93381de32a174fb15c66be6c7dd52",
+    "ai-ops/tests/test_c_capture_config.py": "b921b94059346f94452b85234e5088764103357963b9f02fdfcbc1e49f7fc052"
+  }
+}
