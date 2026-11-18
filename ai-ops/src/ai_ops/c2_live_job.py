@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import hashlib
 import re
+
+from ai_ops.c_capture_config import capture_configuration
 
 
 TARGET = "url-shortener-b6-lab"
@@ -97,11 +98,9 @@ def build_live_capture_job(deployment: dict, *, run_id: int, run_attempt: int,
         containers = pod["containers"]
         volumes = pod["volumes"]
         worker = next(item for item in containers if item["name"] == "ci-worker")
-        config = next(item for item in volumes if item["name"] == "config")
         data = next(item for item in volumes if item["name"] == "data")
     except (KeyError, TypeError, StopIteration):
         raise ValueError("실습 worker Deployment 구조가 유효하지 않습니다") from None
-    config_sources = {item.get("configMap", {}).get("name") for item in config.get("projected", {}).get("sources", [])}
     if (metadata.get("name") != "ci-worker" or metadata.get("namespace") != "ai-ci"
             or not isinstance(metadata.get("uid"), str) or not metadata["uid"]
             or spec.get("replicas") != 1 or pod.get("serviceAccountName") != "ci-worker"
@@ -109,14 +108,15 @@ def build_live_capture_job(deployment: dict, *, run_id: int, run_attempt: int,
             or len(containers) != 2 or {item.get("name") for item in containers} != {"ci-worker", "projection-read"}
             or not IMAGE.fullmatch(worker.get("image", ""))
             or any(item["image"] != worker["image"] for item in containers)
-            or data.get("persistentVolumeClaim", {}).get("claimName") != "ci-queue"
-            or (config.get("configMap", {}).get("name") != "ci-config"
-                and config_sources != {"ci-config", "ci-normal-binding"})):
+            or data.get("persistentVolumeClaim", {}).get("claimName") != "ci-queue"):
         raise ValueError("실습 worker의 이미지·설정·PVC가 고정 범위와 다릅니다")
+    capture_volumes, initializers, needs_policy = capture_configuration(pod, worker)
     name = f"c2-live-capture-{run_id}-{run_attempt}"
     args = ["queue-submit", "--bindings", "/etc/ai-ops/bindings.json", "--runtime", "/etc/ai-ops/runtime.json",
             "--metric-queries", "/etc/ai-ops/metric-queries.json", "--store", "/data/incidents",
             "--target", TARGET, "--question", QUESTION, "--request-id", name]
+    if needs_policy:
+        args += ["--runbook-policy", "/etc/ai-ops/runbook-policy.json"]
     return {"apiVersion": "batch/v1", "kind": "Job", "metadata": {"name": name, "namespace": "ai-ci",
             "labels": {"app.kubernetes.io/part-of": "ai-ci", "ai-ops/c2-live-capture": "true"},
             "annotations": {"ai-ops/s10-failure-revision": failure_revision,
@@ -141,4 +141,5 @@ def build_live_capture_job(deployment: dict, *, run_id: int, run_attempt: int,
                                          "volumeMounts": [{"name": "config", "mountPath": "/etc/ai-ops", "readOnly": True},
                                                           {"name": "data", "mountPath": "/data"},
                                                           {"name": "tmp", "mountPath": "/tmp"}]}],
-                         "volumes": [deepcopy(config), deepcopy(data), {"name": "tmp", "emptyDir": {"sizeLimit": "16Mi"}}]}}}}
+                         **({"initContainers": initializers} if initializers else {}),
+                         "volumes": [*capture_volumes, {"name": "tmp", "emptyDir": {"sizeLimit": "16Mi"}}]}}}}
