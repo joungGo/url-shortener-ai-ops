@@ -4,6 +4,7 @@ import http.client
 import hashlib
 from contextlib import contextmanager
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -131,6 +132,43 @@ class LeaseRequestError(ValueError):
     def __init__(self, code, diagnostic):
         super().__init__(code)
         self.diagnostic = diagnostic
+
+
+def lease_failure_summary(value):
+    """Revalidate persisted child diagnostics; never forward raw exception/log fields."""
+    value = value if isinstance(value, dict) else {}
+    choices = {
+        'code': {'lease_proxy_connection_failed', 'lease_proxy_not_running',
+                 'lease_proxy_response_too_large', 'lease_proxy_incomplete_response',
+                 'lease_proxy_invalid_response', 'lease_proxy_request_failed',
+                 'lease_proxy_resource_changed'},
+        'method': {'GET', 'PUT'},
+        'phase': {'proxy_liveness', 'unix_connect', 'request_send', 'response_headers',
+                  'response_body', 'response_validation'},
+        'cause': {'timeout', 'peer_closed', 'incomplete_response', 'connection_reset',
+                  'broken_pipe', 'socket_missing', 'connection_refused', 'permission_denied',
+                  'http_protocol', 'os_error', 'proxy_not_running', 'response_too_large',
+                  'invalid_json', 'http_status', 'resource_identity'},
+    }
+    result = {key: value.get(key) if isinstance(value.get(key), str)
+              and value[key] in allowed else 'unknown' for key, allowed in choices.items()}
+    for key, limit in (('elapsed_seconds', 3600), ('timeout_seconds', 3)):
+        number = value.get(key)
+        result[key] = (number if type(number) in (int, float) and 0 <= number <= limit
+                       and math.isfinite(number) else None)
+    status = value.get('http_status')
+    result['http_status'] = status if type(status) is int and 100 <= status <= 599 else None
+    upstream = value.get('upstream')
+    last = (upstream.get('last_observed') if isinstance(upstream, dict)
+            else value.get('last_observed_upstream'))
+    result['last_observed_upstream'] = (
+        {'phase': last['phase'], 'state': last['state']}
+        if isinstance(last, dict) and isinstance(last.get('phase'), str)
+        and last['phase'] in _StageCollector.PHASES and isinstance(last.get('state'), str)
+        and last['state'] in {'start', 'done', 'failed'} else None)
+    # Missing best-effort telemetry is not proof of a network/authentication cause.
+    result['upstream_cause_proven'] = False
+    return result
 
 
 def _cause(error):
