@@ -1,5 +1,7 @@
 # WF-01 사건 ID·두 채널 연결·조사 시작 정책 계약
 
+> 2026-11-19 갱신: WF-02/03은 main 반영, WF-04는 [사건 Slack 연결 로컬 검증](incident-slack-local-20261119.md) 완료. 실제 배포는 없다. 아래 ‘예정/미지원’은 최초 설계 시점이며 최신 구현·외부 응답의 비공개 경계·status-event/this 규칙은 WF-04 문서와 작업표를 따른다. 기존 시간·승인·원복 조건은 유지한다.
+
 2026-11-18 KST · 설계 v1 · **문서 계약 완료; WF-02 main 반영·WF-03 로컬 검증 완료, 새 경로 외부 연결·배포 미착수**. 최초 설계 기준 AI main36a55fd; WF-03 구현 기준9c9f3fc. [전체 계획](incident-workflow-and-improvement-plan-20261118.md)과 [작업표](incident-workflow-implementation-tracker.md)의 P1 구체안이다. 아래 명령·설정·상태 이름은 추가 구현할 인터페이스이며 지금 Slack에서 사용할 수 있는 기능이 아니다. 현행은 `investigate 대상 질문`만 지원한다.
 
 ## 1. 설계 결정

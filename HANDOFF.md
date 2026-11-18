@@ -1,5 +1,19 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-04 코드 검토·CI 반영 준비
+
+사건 지정 Slack 조사·상태/결과 연결을 직접 검토해 정책 변경 중단 뒤 이전 큐 권한 잔존과 연결 비활성화 뒤 사건 복사본 만료 지연2건을 재현·수정했다. Slack125개·전체1372개(84.572초/skip0)·AST8개·diff·저장소 경계 통과. 검토 기록 `ai-ops/docs/incident-slack-review-20261119.md`, 최종 소스 해시 `incident-slack-review-validation-20261119.json`을 따른다. 최초 로컬1370개/해시는 이전 시점 기록이다.
+
+사용자 요청에 따라 이 검토 코드의 PR CI 통과 후 일반 main 반영을 진행한다. 이 커밋 시점의 원격 CI/main은 아직 미확정이며 최종 상태는 최신 인계 기록을 따른다. 기존 시간·승인·원복 조건 유지. 실제 배포·DB전환·Slack·장애·인프라·Terraform·모델 실행 없음. 추천 GPT-6 SOL · High.
+
+## 2026-11-19 WF-04 사건 지정 Slack 연결 로컬 검증 완료
+
+AI mainca63fcf 기반 작업트리 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf04-slack-events-20261119`에서 사건 지정 `investigate-event`·`status-event`·유일한 thread 참조를 기존 사건 outbox/JobQueue/Worker/TaskService·Slack 회신 장부에 연결했다. 사용자/채널/대상 인가, 정책 변경 후 예약·수집 전 fence, 요청/응답 중복·재시작, 과거 발생 시각/현재 수집 구분, 사건 만료와 복사본 정리를 포함한다. 기존 일반 조사/이전 전달 payload 호환을 유지했다.
+
+신규36개·전체1370개(83.71초/skip0), AST8개·diff·저장소 경계 통과. 상세: [WF-04 구현·검증](/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf04-slack-events-20261119/ai-ops/docs/incident-slack-local-20261119.md), 같은 폴더 작업표/검증 JSON. 인프라 정리 완료 상태와 개인 복원 자료는 그대로 보존했다.
+
+로컬 미커밋이며 원격CI/main·실제배포·Slack전송·장애/모델/Terraform 실행 없음. 사건 메타데이터v2 전환은 실제 적용하지 않았으며 배포 시 기존 수신기/worker/relay 중지·DB 백업과 같은 검토 버전 적용 필요. 기존3/15/120/210/240/300/120초·실행별승인·정확head리뷰/CI·잠금/ACK·원복/회수, C04/C05미완료 유지. 다음은 WF-04 코드 검토·CI/main, 이후 WF-05 로컬 계약. 추천 GPT-6 SOL · High.
+
 ## 2026-11-18 WF-03 검토·CI 반영 준비
 
 Slack 기본 fallback 라벨 노출·대체 Helm/Slack 설정·실제 template CI 누락3건을 보완했다. 플랫폼10개·AI교차9개 통과, 기존 AI1334개 검증 코드4개 해시 동일. 양쪽 C03 gate에 검사를 연결하며 AI는 플랫폼 PR163 head d6c2c8f를 고정한다. 상세 `ai-ops/docs/incident-notice-review-20261118.md/json`(검증은 review-validation 파일). 정확 head·CI·현재 리뷰 조건을 확인한 뒤 main 반영하며 보호 변경은 새 사용자 결정 없이 실행하지 않는다. 실제 배포·Slack·장애 실습 없음. 기존 시간·승인·원복 유지.

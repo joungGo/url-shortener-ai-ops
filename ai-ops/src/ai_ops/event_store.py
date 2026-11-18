@@ -29,9 +29,22 @@ def _exists(db):
         raise ValueError('event schema missing')
     if exists:
         row = db.execute('SELECT version FROM event_meta WHERE singleton=1').fetchone()
-        if row is None or row['version'] != 1:
+        if row is None or row['version'] not in (1,2):
             raise ValueError('unsupported event schema')
+        if row['version']==2:
+            for table in ('event_request_authorities','event_request_scopes'):
+                if not db.execute("SELECT 1 FROM sqlite_master WHERE name=? AND type='table'",(table,)).fetchone():
+                    raise ValueError('event authorization schema missing')
     return exists
+
+
+def _scope_valid(db, key):
+    # Older WF-02 databases have no Slack authority table until explicit opt-in.
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE name='event_request_scopes'").fetchone():
+        return True
+    row = db.execute('SELECT s.authorization,a.authorization AS current FROM event_request_scopes s '
+                     'LEFT JOIN event_request_authorities a ON a.owner=s.owner WHERE s.request_key=?',(key,)).fetchone()
+    return row is None or row['authorization']==row['current']
 
 
 def guard_jobs(db, now, *, job_id=None):
@@ -39,7 +52,7 @@ def guard_jobs(db, now, *, job_id=None):
     if not _exists(db):
         return
     policy = db.execute("SELECT revision FROM event_policy WHERE singleton=1").fetchone()
-    sql = ("SELECT j.job_id,j.generation,e.status,e.expires_at,e.expired,r.kind,r.policy_revision "
+    sql = ("SELECT j.job_id,j.generation,e.status,e.expires_at,e.expired,r.kind,r.policy_revision,r.request_key "
            "FROM jobs j JOIN event_requests r ON r.job_id=j.job_id JOIN events e ON e.event_id=r.event_id "
            "WHERE j.state IN ('queued','collecting')")
     params = ()
@@ -52,6 +65,8 @@ def guard_jobs(db, now, *, job_id=None):
         reason = None
         if row['expired'] or row['expires_at'] <= now:
             reason = 'event_expired'
+        elif not _scope_valid(db,row['request_key']):
+            reason = 'event_request_authorization_changed'
         elif row['kind'] == 'legacy':
             reason = 'legacy_requires_manual_request'
         elif row['kind'] == 'automatic':
@@ -90,8 +105,10 @@ class EventStore:
         with queue.transaction() as db:
             db.execute("CREATE TABLE IF NOT EXISTS event_meta (singleton INTEGER PRIMARY KEY CHECK(singleton=1), version INTEGER NOT NULL, registry_hash TEXT NOT NULL)")
             meta = db.execute('SELECT * FROM event_meta').fetchone()
-            if meta and (meta['version'] != 1 or meta['registry_hash'] != registry_hash):
+            if meta and (meta['version'] not in (1,2) or meta['registry_hash'] != registry_hash):
                 raise ValueError('event schema/source registry changed; explicit migration required')
+            if meta and meta['version']==2:
+                _exists(db)  # do not silently repair an incomplete authorization schema
             db.execute('INSERT OR IGNORE INTO event_meta VALUES (1,1,?)', (registry_hash,))
             db.execute("CREATE TABLE IF NOT EXISTS event_policy (singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL, activated_at REAL NOT NULL, config_hash TEXT NOT NULL, rules TEXT NOT NULL)")
             db.execute("INSERT OR IGNORE INTO event_policy VALUES (1,0,?,?, '[]')", (queue.now(), settings.config_hash))
@@ -100,6 +117,10 @@ class EventStore:
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS one_event_auto ON event_requests(event_id) WHERE kind IN ('automatic','legacy')")
             db.execute("CREATE INDEX IF NOT EXISTS pending_event_requests ON event_requests(state,created_at)")
             db.execute("CREATE TABLE IF NOT EXISTS event_legacy (episode_key TEXT PRIMARY KEY, event_id TEXT UNIQUE NOT NULL)")
+            db.execute('CREATE TABLE IF NOT EXISTS event_request_authorities (owner TEXT PRIMARY KEY,authorization TEXT NOT NULL)')
+            db.execute('CREATE TABLE IF NOT EXISTS event_request_scopes (request_key TEXT PRIMARY KEY,owner TEXT NOT NULL,authorization TEXT NOT NULL)')
+            # WF-02 workers reject metadata v2 instead of bypassing the new fence.
+            db.execute('UPDATE event_meta SET version=2 WHERE singleton=1')
             # Older workers must not consume event jobs without the new policy fence.
             db.execute('PRAGMA user_version=3')
 
@@ -295,7 +316,15 @@ class EventStore:
                    (key,event_id,kind,fp,revision,json.dumps(payload),self.queue.now()))
         return key
 
-    def request(self, event_id, *, request_id, question, subject, allowed_targets):
+    def set_request_authority(self, owner, authorization):
+        _name(owner)
+        if not re.fullmatch('[0-9a-f]{64}',authorization):
+            raise ValueError('invalid request authorization')
+        with self.queue.transaction() as db:
+            db.execute('INSERT INTO event_request_authorities VALUES (?,?) ON CONFLICT(owner) '
+                       'DO UPDATE SET authorization=excluded.authorization',(owner,authorization))
+
+    def request(self, event_id, *, request_id, question, subject, allowed_targets, authority=None):
         """Called only after user/channel/signature checks (WF-04); never trusts text ACLs."""
         _name(request_id); _name(subject)
         if (not isinstance(allowed_targets, (list, tuple, set, frozenset))
@@ -306,19 +335,60 @@ class EventStore:
             if meta['target'] is None or meta['target'] not in allowed_targets:
                 raise ValueError('event request not authorized')
             key = sha256_json({'source':'event-manual','request_id':request_id})
+            if authority is not None:
+                owner,authorization=authority
+                current=db.execute('SELECT authorization FROM event_request_authorities WHERE owner=?',(owner,)).fetchone()
+                if current is None or current[0]!=authorization:
+                    raise ValueError('inactive event request authority')
+                prior=db.execute('SELECT owner,authorization FROM event_request_scopes WHERE request_key=?',(key,)).fetchone()
+                if prior and tuple(prior)!=(owner,authorization):
+                    raise ValueError('event request scope conflict')
+                db.execute('INSERT OR IGNORE INTO event_request_scopes VALUES (?,?,?)',(key,owner,authorization))
             return self._reserve(db,event_id,'manual',key,question,None,subject)
 
-    def drain(self, *, limit=100):
+    def authorized_view(self, reference, *, allowed_targets):
+        """Trusted caller supplies current ACL. Missing/forbidden/unbound look identical."""
+        if not isinstance(allowed_targets, (list, tuple, set, frozenset)):
+            raise ValueError('invalid allowed targets')
+        event_id = self.reference_id(reference)
+        with self.queue.transaction() as db:
+            row = db.execute('SELECT * FROM events WHERE event_id=?', (event_id,)).fetchone()
+            if row is None or row['metadata'] is None:
+                return None
+            meta = json.loads(row['metadata'])
+            binding = next((b for b in self.settings.bindings.bindings if b.alias == meta['target']), None)
+            if (binding is None or meta['target'] not in allowed_targets
+                    or meta['config_hash'] != self.settings.config_hash
+                    or meta['target_hash'] != sha256_json(binding.target.model_dump(mode='json'))):
+                return None
+            expired = bool(row['expired'] or row['expires_at'] <= self.queue.now())
+            return {'event_id':event_id, 'target':meta['target'],
+                    'registration':'expired' if expired else 'registered',
+                    'status':row['status'], 'starts_at':meta['starts_at'], 'ends_at':row['ends_at'],
+                    'notification':'unknown'}
+
+    def request_receipt(self, key):
+        """Internal outbox receipt, never exposes another user's request via Slack."""
+        with self.queue.transaction() as db:
+            row = db.execute('SELECT state,job_id FROM event_requests WHERE request_key=?', (key,)).fetchone()
+        if row is None:
+            raise ValueError('event request missing')
+        return dict(row)
+
+    def drain(self, *, limit=100, request_key=None):
         if type(limit) is not int or not 1<=limit<=100:
             raise ValueError('invalid drain limit')
         delivered = []
         with self.queue.transaction() as db:
             policy = db.execute('SELECT * FROM event_policy WHERE singleton=1').fetchone()
-            rows = db.execute("SELECT r.*,e.status,e.expires_at,e.expired FROM event_requests r JOIN events e ON e.event_id=r.event_id WHERE r.state='pending' ORDER BY r.created_at,r.request_key LIMIT ?",(limit,)).fetchall()
+            if request_key is not None and (not isinstance(request_key,str) or not re.fullmatch('[0-9a-f]{64}',request_key)):
+                raise ValueError('invalid event request key')
+            rows = db.execute("SELECT r.*,e.status,e.expires_at,e.expired FROM event_requests r JOIN events e ON e.event_id=r.event_id WHERE r.state='pending' AND (? IS NULL OR r.request_key=?) ORDER BY r.created_at,r.request_key LIMIT ?",(request_key,request_key,limit)).fetchall()
             for row in rows:
                 reason = None
                 payload = json.loads(row['payload'])
                 if row['expired'] or row['expires_at']<=self.queue.now(): reason='event_expired'
+                elif not _scope_valid(db,row['request_key']): reason='event_request_authorization_changed'
                 elif payload['config_hash'] != self.settings.config_hash or policy['config_hash'] != self.settings.config_hash: reason='config_changed'
                 elif row['kind']=='automatic' and (row['status']=='resolved' or row['policy_revision']!=policy['revision']): reason='event_policy_or_status_changed'
                 if reason:
@@ -382,17 +452,23 @@ class EventStore:
         return event_id
 
     def expire(self, *, apply=False):
-        """7 days from occurrence; keep hash tombstones. Never delete active evidence."""
-        result = {'mode':'apply' if apply else 'preview','expired':[],'deferred':[]}
-        with self.queue.transaction() as db:
-            for row in db.execute('SELECT event_id FROM events WHERE expired=0 AND expires_at<=?',(self.queue.now(),)).fetchall():
-                event_id=row['event_id']
-                active=db.execute("SELECT 1 FROM event_requests r JOIN jobs j ON j.job_id=r.job_id WHERE r.event_id=? AND j.state IN ('collecting','analyzing')",(event_id,)).fetchone()
-                if active:
-                    result['deferred'].append(event_id); continue
-                result['expired'].append(event_id)
-                if apply:
-                    guard_jobs(db,self.queue.now())
-                    db.execute("UPDATE event_requests SET state='expired',payload=NULL,fingerprint=NULL,policy_revision=NULL,created_at=NULL,reason='event_expired' WHERE event_id=?",(event_id,))
-                    db.execute('UPDATE events SET expired=1,metadata=NULL,identity_hash=NULL,ends_at=NULL,received_at=NULL WHERE event_id=?',(event_id,))
-        return result
+        return expire_events(self.queue,apply=apply)
+
+
+def expire_events(queue, *, apply=False):
+    """7 days from occurrence; keep hash tombstones. Never delete active evidence."""
+    result = {'mode':'apply' if apply else 'preview','expired':[],'deferred':[]}
+    with queue.transaction() as db:
+        if not _exists(db):
+            return result
+        for row in db.execute('SELECT event_id FROM events WHERE expired=0 AND expires_at<=?',(queue.now(),)).fetchall():
+            event_id=row['event_id']
+            active=db.execute("SELECT 1 FROM event_requests r JOIN jobs j ON j.job_id=r.job_id WHERE r.event_id=? AND j.state IN ('collecting','analyzing')",(event_id,)).fetchone()
+            if active:
+                result['deferred'].append(event_id); continue
+            result['expired'].append(event_id)
+            if apply:
+                guard_jobs(db,queue.now())
+                db.execute("UPDATE event_requests SET state='expired',payload=NULL,fingerprint=NULL,policy_revision=NULL,created_at=NULL,reason='event_expired' WHERE event_id=?",(event_id,))
+                db.execute('UPDATE events SET expired=1,metadata=NULL,identity_hash=NULL,ends_at=NULL,received_at=NULL WHERE event_id=?',(event_id,))
+    return result

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "enabled": false,
+  "bot_token_file": "/run/ai-ops-private/slack-bot-token",
+  "signing_secret_file": "/run/ai-ops-private/slack-signing-secret",
+  "event_sources": {
+    "lab-seoul": {
+      "source_id": "am-lab",
+      "cluster_id": "practice-eks-example"
+    }
+  }
+}
