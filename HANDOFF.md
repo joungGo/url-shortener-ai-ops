@@ -1,5 +1,41 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-18 WF-02 코드 검토·CI 반영 준비
+
+`codex/incident-workflow-plan-20261118`에서 WF-02 전체를 직접 검토하고 정확 대상 인가·큐 부분 용량·반복 장부 전환의 해제/만료 처리3건을 재현·수정했다. 집중32개/큐 포함48개/전체1325개와 AST4개·diff·저장소 경계 검사 통과. 상세 `ai-ops/docs/incident-store-review-20261118.md`, 소스 해시는 `incident-store-local-validation-20261118.json`이다.
+
+사용자가 CI 통과 시 main 반영까지 요청했다. 해당 PR의 정확head/CI를 확인해 일반 squash 병합하며 최종 결과는 PR/main 기록으로 확인한다. 이 문서 작성 시 원격 결과는 미확정이다. 보호 완화·관리자 우회·실제 배포·Slack·장애 실습 없음. 기존 시간·승인·원복 및 C04/C05 미완료 유지. 다음은 WF-03 공지 참조/템플릿, 이후 WF-04 인증 사건요청/결과·정기정리 연결이다. 추천 GPT-6 SOL · High.
+
+
+## 2026-11-18 WF-02 사건 저장·큐·보관·장부 전환 로컬 검증 완료
+
+AI 작업트리 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/incident-workflow-plan-20261118` / `codex/incident-workflow-plan-20261118`(기준main36a55fd)에서 event_store 신규와 기존 queue/worker 수집 전 검사를 구현했다. canonical evt·발신원 registry·manual 기본/정확 자동 예외·원자 outbox/기존 job 연결·정책/해제 검사·발생부터7일 상세 보관/해시 tombstone·verified legacy 전환을 포함한다. 새 스키마 사용 DB만 version3이며 이전 worker를 먼저 종료해야 실물 전환할 수 있다. 원래 job/시도 보존, 전환된 legacy 대기는 새 명시 조사 필요.
+
+집중29개·사건/큐45개·전체1322개 로컬시험과 Python4개 AST/diff 검사 통과. 동시접수·프로세스 강제종료·기존 보관정리/worker 실사용 포함. 초기 bare version3 허용 회귀를 수정한 뒤 전체통과. 기존 SQLite ResourceWarning은 남아 있다. 상세 `ai-ops/docs/incident-store-local-implementation-20261118.md`와 `incident-store-local-validation-20261118.json`, 상태는 `incident-workflow-implementation-tracker.md`.
+
+WF-02 로컬검증완료, 코드/문서 미커밋·CI/main/실제DB전환/배포 없음. HTTP/Slack 새 사건 입력·결과·공지 템플릿·expire 주기 호출은 WF-03/04에서 연결한다. 실제 Slack/장애/모델/Terraform 미실행. 기존 시간·승인·원복·C04/C05 미완료 유지. 다음은 코드검토·CI/main 반영 후 WF-03/04. 추천 GPT-6 SOL · High.
+
+
+## 2026-11-18 WF-01 사건·채널·조사 정책 상세 계약 완료
+
+문서 worktree `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/incident-workflow-plan-20261118/ai-ops/docs/incident-identity-channel-policy-contract-20261118.md`에 evt(경보회차)와 기존inc/job 분리, 발신원/cluster/fingerprint/나노초startsAt canonical ID, 중복/재발/해제/충돌 규칙, 두채널 alert_ref 연결, manual기본/정확자동예외 정책을 정의했다. D1/D2는 후속로컬 설계로 채택했으며 현행 자동조사/채널설정은 미변경. 기존Webhook 공지는 독립유지·Slack message ts/history 권한을 필수로 하지 않는다. template 시각정밀도/참조일치는 WF-03 구현시험 필요.
+
+WF-01 문서완료(18개 시험명세는 아직 미실행), WF-02~12 예정. 다음은 WF-02 계약/장부/outbox/보관·기존큐 매핑 로컬구현. 작업표/전체계획 링크 갱신. 기존시간/승인/원복·C04/C05미완료 유지. 코드/실제연결/배포/Slack/장애/CI/main 변경 없음. 로컬문서 미커밋. 추천 GPT-6 SOL · High.
+
+## 2026-11-18 장애 워크플로우 문서 기반 관리 시작
+
+사용자 요청으로 개선 이유R1~R7·설계 선택D1~D5·구현 작업WF-00~12를 연결했다. 기준 문서는 AI 문서 worktree `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/incident-workflow-plan-20261118/ai-ops/docs/`의 `incident-workflow-and-improvement-plan-20261118.md`(왜/무엇을/어떻게)와 `incident-workflow-implementation-tracker.md`(상태/완료기준/증거/다음행동)다. 향후 작업마다 해당행을 갱신하고 이 HANDOFF는 진입점으로 사용한다.
+
+WF-00 문서완료, WF-01~12 예정. 다음은 WF-01 사건/채널/조사정책 계약. 자동조사 비활성화·채널통합·일반운영 시간수치·명령1종 대상/UI는 제안 또는 미정으로 구분했다. 공지→요청조사→결과의 첫 완료단위를 우선하고 복구는 PR→명령1종으로 확장한다. 기존 실습시간/승인/원복과C04/C05미완료는 보존. 문서만 변경했으며 코드/CI/main/배포/실제연결/실습 없음. 문서 변경은 현재 로컬 미커밋 상태다. 추천 GPT-6 SOL · High.
+
+## 2026-11-18 장애 공지·조사·복구 전체 워크플로우 개선 계획
+
+사용자 요청에 따라 현행/목표·재사용/변경/추가 구현·PR/명령 방식·승인/장시간 대기/실패/원복·단계별 완료 기준을 문서화했다. 문서 전용 worktree `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/incident-workflow-plan-20261118` / `codex/incident-workflow-plan-20261118`(기준main36a55fd)의 `ai-ops/docs/incident-workflow-and-improvement-plan-20261118.md`를 따른다.
+
+현재 경보 채널과 조사 #ai-ops는 다르다는 사용자 확인을 기록. 목표 권고는 먼저 관측사실 공지→사용자 요청 조사→근거 결과→별도 복구 계획 요청→PR 또는 고정 명령 작업계획→방식별 사람승인→현재상태 재검증→제한 실행/효과검증·결과회신이다. 기존5종 자동조사와 현행Slack investigate만 지원하는 사실을 구분했다. 자동조사 비활성화·채널통합·명령실행 구현/권한변경은 하지 않았다.
+
+다음 추천 P1 사건/채널/조사정책 계약→P2 공지/조사/결과 연계→P3 공통복구 장부/승인/대기→P4 Slack PR복구→P5 명령1종→P6 통합검증. 한시간 이상 사람대기와 실행기한은 분리 설계하되 숫자는 후속확정, 현행C04 3/15/120/210/240/300/120초·실행별승인/정확head리뷰/CI/잠금/ACK/원복 유지. C04/C05미완료·全경로시간부족 미해결. 계획만 작성했으며 실제배포/연결/Slack/복구/장애/Terraform/유료모델 없음. 추천 GPT-6 SOL · High.
+
 ## 2026-11-18 C04 안내 응답·왕복 예산 검토 완료
 
 직접 기능·회귀 검토 추가 결함0건. 로컬1293개 시험 당시 소스6개·로그 해시 일치. 상세 `ai-ops/docs/C4-notice-tool-roundtrip-review-20261118.md`. 사용자 요청으로 PR CI 성공 후 일반 main 병합을 진행하며 원격 최종 상태는 PR 기록으로 확인한다. 실제 배포·실습 없음. 전체 경로14.331초 부족은 별도 작업2이며 기존 시간·승인·원복 유지. C04/C05 미완료.

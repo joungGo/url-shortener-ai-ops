@@ -169,6 +169,12 @@ class Worker:
         try:
             with self._heartbeat(job) as lost:
                 payload = self._payload(job)
+                from ai_ops.event_store import guard_jobs
+                with self.queue.transaction() as db:
+                    guard_jobs(db, self.queue.now(), job_id=job["job_id"])
+                    current = db.execute("SELECT state FROM jobs WHERE job_id=?", (job["job_id"],)).fetchone()
+                if current["state"] == "cancelled":
+                    return self.queue.show(job["job_id"])
                 binding = next((b for b in self.settings.bindings.bindings if b.alias == payload["target"]), None)
                 if binding is None:
                     raise ValueError("config_changed")
