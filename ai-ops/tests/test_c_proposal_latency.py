@@ -127,7 +127,7 @@ class ProposalLatencyTest(unittest.TestCase):
             reports=[];mono[0]=0.;wall[0]=now
             try:
                 with proposal_read_timing(plan,reports.append,clock=lambda:wall[0],monotonic=lambda:mono[0]):
-                    self.assertEqual(read_timeout(180),78)
+                    self.assertEqual(read_timeout(180),57)
                     with phase('proposal.first',read=True):
                         if exception is not None:raise exception
                         wall[0]-=timedelta(seconds=20);mono[0]=91
@@ -140,7 +140,7 @@ class ProposalLatencyTest(unittest.TestCase):
 
     def test_expired_phase_does_not_start_next_sample_or_writer(self):
         now=datetime(2026,11,18,tzinfo=timezone.utc);mono=[0.];calls=[];reports=[]
-        plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:now+timedelta(seconds=133))
+        plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:now+timedelta(seconds=154))
         with self.assertRaisesRegex(ApprovalRejected,'^recovery_read_deadline_exceeded$'):
             with proposal_read_timing(plan,reports.append,clock=lambda:now,monotonic=lambda:mono[0]):
                 with phase('proposal.first',read=True):calls.append('first');mono[0]=2.
@@ -225,7 +225,7 @@ class ProposalLatencyTest(unittest.TestCase):
         plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:cutoff)
         with self.assertRaisesRegex(ApprovalRejected,'^recovery_read_deadline_exceeded$'):
             with proposal_read_timing(plan,reports.append,clock=lambda:now,monotonic=lambda:mono[0]):
-                self.assertAlmostEqual(read_timeout(180),38.277026)
+                self.assertAlmostEqual(read_timeout(180),17.277026)
                 with phase('proposal.link',read=True):mono[0]=50.740117
         self.assertEqual(reports[0]['events'][0]['status'],'error')
 
@@ -236,7 +236,7 @@ class ProposalLatencyTest(unittest.TestCase):
         executable.write_text('#!'+sys.executable+'\nimport time; time.sleep(2)\n')
         executable.chmod(0o700)
         now=datetime.now(timezone.utc);reports=[]
-        plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:now+timedelta(seconds=132.2))
+        plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:now+timedelta(seconds=153.2))
         start=time.monotonic()
         with patch.dict(os.environ,{'PATH':self.temp.name}):
             with self.assertRaises(ApprovalRejected):

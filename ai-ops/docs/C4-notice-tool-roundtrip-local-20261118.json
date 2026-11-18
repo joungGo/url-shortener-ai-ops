@@ -1,0 +1,50 @@
+{
+  "scope": "local synthetic only; no deployment, native notice, Slack or fault trial",
+  "base_commit": "272a1b2d1a7f1d08565e6dd4748a0091a22b6f90",
+  "focused_tests": {
+    "passed": 61
+  },
+  "full_tests": {
+    "passed": 1293,
+    "seconds": 79.556
+  },
+  "checks": {
+    "changed_python_ast": 6,
+    "diff_check": true,
+    "repository_boundary": true
+  },
+  "recorded_007_seconds": {
+    "proposal": 37.0987,
+    "writer": 5.843562,
+    "host_roundtrip": 21.156398,
+    "available": 49.768043,
+    "shortfall": 14.330617
+  },
+  "internal_reserves_seconds": {
+    "writer": 8,
+    "notice": 25
+  },
+  "unchanged_limits_seconds": {
+    "lease": 3,
+    "startup": 15,
+    "minimum_review": 120,
+    "review_cutoff": 210,
+    "owner_rollback": 240,
+    "independent_rollback": 300,
+    "observation": 120
+  },
+  "live_latency_resolved": false,
+  "c04_complete": false,
+  "c05_complete": false,
+  "log_sha256": "c2162319a66f8116b5fe9ee44465d134f9790816d21758831930ec8ba7c2977e",
+  "source_sha256": {
+    "ai-ops/src/ai_ops/c_recovery_read_timing.py": "54e7d38d0083d2deafb8013ef1fc0be733b976624cb746cf7edbc921d569fd06",
+    "ai-ops/src/ai_ops/c_trial_notice_host.py": "9e56c80296348c6c1a2a3751dfee3f80b5ea05a2117671d36cc6599048a8c716",
+    "ai-ops/tests/test_c_pr_notice_budget.py": "2a9a87547fd908016ccecd8f49f6282cb55b22c8e3fe6f3f074989e6882c5bff",
+    "ai-ops/tests/test_c_proposal_latency.py": "ecf681a7221303a6df5bd77da9595a82fb64cefa3dcc109867c97ed70bd57eed",
+    "ai-ops/tests/test_c_trial_notice.py": "e88feb41b136a611b8e477e7d94025df4c1b78e61d7291000310fc02073379ef",
+    "ai-ops/tests/test_c_trial_notice_host.py": "c38b3ca5da3928c06cd97255fe605fa8d5e250c5facc394963e3a391a2d247b1"
+  },
+  "known_warning": "Existing SQLite ResourceWarning observed; no test failure.",
+  "next": "Review and CI, then prove notice roundtrip and total budget without fault injection; no trial until sufficient budget."
+}
