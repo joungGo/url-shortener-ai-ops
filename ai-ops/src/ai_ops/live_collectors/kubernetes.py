@@ -269,6 +269,7 @@ def _events(builder, transport, related):
     limit = builder.settings.runtime.limits.max_events
     gathered = []
     seen = set()
+    successful_sources = 0
     for index, (uid, kind, name) in enumerate(related):
         response = _read(builder, transport, f"/api/v1/namespaces/{builder.binding.target.namespace}/events",
                          (("fieldSelector", "involvedObject.uid=" + uid), ("limit", str(limit + 1))))
@@ -288,14 +289,19 @@ def _events(builder, transport, related):
                     gathered.append(item)
             if len(gathered) > limit:
                 raise OverflowError("event total limit exceeded")
+            successful_sources += 1
         except OverflowError:
             add(builder, "events-truncated", "event", failure=ReadFailure("missing", "truncated"), context={"truncated": True})
             gathered = gathered[:limit]
             break
         except (ValueError, KeyError, TypeError, AttributeError):
             add(builder, f"events-invalid-{index}", "event", failure=ReadFailure("invalid", "scope_mismatch"))
-    if not gathered:
-        add(builder, "events-empty", "event", failure=ReadFailure("missing", "empty_response"))
+    if not gathered and successful_sources == len(related):
+        # Only a successful, complete query of every verified owner can say
+        # "no events observed". A failed/partial query is not an empty list.
+        # This stays missing evidence: event retention does not prove health.
+        key = "events-empty-observed" if related else "events-empty"
+        add(builder, key, "event", failure=ReadFailure("missing", "empty_response"))
     for index, item in enumerate(sorted(gathered, key=lambda v: (v.get("type") != "Warning", v["metadata"]["uid"]))):
         field = "eventTime" if item.get("eventTime") else "lastTimestamp"
         add(builder, f"event-{index}", "event", at=item.get(field), time_field=field,

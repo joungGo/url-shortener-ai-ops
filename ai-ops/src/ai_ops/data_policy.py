@@ -72,6 +72,13 @@ def validate_snapshot(snapshot: CapturedSnapshot, settings: BSettings | None = N
             }
             if entry.time_field not in allowed_time_fields.get(item.kind, set()):
                 raise ValueError("snapshot source time field mismatch")
+            if item.evidence_id == "ev-events-empty-observed" and (
+                item.kind != "event" or item.status != "missing"
+                or entry.reason != "empty_response"
+                or any(other.kind == "event" and other.evidence_id != item.evidence_id
+                       for other in bundle.evidence)
+            ):
+                raise ValueError("empty event observation conflicts with collection evidence")
             if entry.observed_raw is not None:
                 if len(entry.observed_raw) > 64 or normalize_source_time(entry.observed_raw)[1] != entry.observed_offset:
                     raise ValueError("invalid audit source timestamp")
