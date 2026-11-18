@@ -34,7 +34,7 @@ class NoticeBudgetTest(unittest.TestCase):
         with self.assertRaises(ApprovalRejected):
             with proposal_read_timing(self.plan(), reports.append, clock=lambda:NOW,
                                       monotonic=lambda:tick[0]):
-                self.assertAlmostEqual(read_timeout(99), available-12)
+                self.assertAlmostEqual(read_timeout(99), available-WRITER_RESERVE_SECONDS-NOTICE_RESERVE_SECONDS)
                 for name,seconds in [('first',13.192296),('second',13.150268),('third',13.884172)]:
                     with phase('proposal.'+name,read=True):
                         calls.append(name);tick[0]+=seconds
@@ -47,18 +47,31 @@ class NoticeBudgetTest(unittest.TestCase):
         with proposal_read_timing(plan,reports.append,clock=lambda:NOW+timedelta(seconds=tick[0]),monotonic=lambda:tick[0]):
             # Shorter synthetic collection, not a claim of live completion.
             for name in ['first','second','third']:
-                with phase('proposal.'+name,read=True):tick[0]+=11.
-            with phase('proposal.link',read=True):tick[0]+=3.
+                with phase('proposal.'+name,read=True):tick[0]+=4.
+            with phase('proposal.link',read=True):tick[0]+=2.
         with writer_pr_timing(plan,reports.append,clock=lambda:NOW+timedelta(seconds=tick[0]),monotonic=lambda:tick[0]):
             with phase('writer.pull',read=True):tick[0]+=7.415729
         self.assertGreaterEqual(49.808440-tick[0],NOTICE_RESERVE_SECONDS)
         tick[0]+=NOTICE_RESERVE_SECONDS
         self.assertGreaterEqual((plan.review_cutoff()-NOW).total_seconds()-tick[0],120)
 
+    def test_recorded_007_roundtrip_cannot_fit_old_notice_slack(self):
+        available=49.768043  # from fresh proposal start to minimum-review notice cutoff
+        reads=37.098700;writer_seconds=5.843562;tool_roundtrip=21.156398
+        self.assertAlmostEqual(reads+writer_seconds+tool_roundtrip-available,14.330617)
+        self.assertGreater(NOTICE_RESERVE_SECONDS,tool_roundtrip)
+        tick=[0.];calls=[]
+        with self.assertRaises(ApprovalRejected):
+            with proposal_read_timing(self.plan(seconds=120+available),lambda _:None,
+                    clock=lambda:NOW,monotonic=lambda:tick[0]):
+                with phase('proposal.first',read=True):tick[0]+=reads
+                calls.append('writer')
+        self.assertEqual(calls,[])
+
     def test_late_start_refuses_writer_even_though_original_notice_cutoff_not_reached(self):
         reports=[];entered=[]
         with self.assertRaisesRegex(ValueError,'writer_reserve_exhausted'):
-            with writer_pr_timing(self.plan(seconds=131.9),reports.append,clock=lambda:NOW):
+            with writer_pr_timing(self.plan(seconds=152.9),reports.append,clock=lambda:NOW):
                 entered.append(True)
         self.assertFalse(entered)
         self.assertEqual(reports[0]['events'][0]['status'],'error')
@@ -66,7 +79,7 @@ class NoticeBudgetTest(unittest.TestCase):
     def test_clock_rollback_does_not_extend_writer_budget_or_leak_errors(self):
         tick=[0.];wall=[NOW];reports=[]
         with self.assertRaises(ApprovalRejected):
-            with writer_pr_timing(self.plan(seconds=132),reports.append,clock=lambda:wall[0],monotonic=lambda:tick[0]):
+            with writer_pr_timing(self.plan(seconds=153),reports.append,clock=lambda:wall[0],monotonic=lambda:tick[0]):
                 with phase('writer.pull',read=True):
                     wall[0]-=timedelta(seconds=30);tick[0]=8.
         self.assertEqual(read_timeout(12),12)
@@ -75,8 +88,8 @@ class NoticeBudgetTest(unittest.TestCase):
     def test_clock_rollback_between_proposal_and_writer_cannot_reopen_reserve(self):
         tick=[0.];reports=[];wall=[NOW]
         with proposal_read_timing(self.plan(), reports.append,clock=lambda:wall[0],monotonic=lambda:tick[0]) as trace:
-            tick[0]=36.
-        tick[0]=39.;wall[0]-=timedelta(seconds=30)
+            tick[0]=15.
+        tick[0]=18.;wall[0]-=timedelta(seconds=30)
         with self.assertRaisesRegex(ValueError,'writer_reserve_exhausted'):
             with writer_pr_timing(self.plan(),reports.append,clock=lambda:wall[0],monotonic=lambda:tick[0],
                                   read_deadline=trace.end+WRITER_RESERVE_SECONDS):
@@ -93,7 +106,7 @@ class NoticeBudgetTest(unittest.TestCase):
         valid=SimpleNamespace(diagnostic={'status':'synthetic-valid'},require_current=lambda:None)
         with patch.object(writer,'api',side_effect=api),patch.object(writer,'validate_token_lifetime',return_value=valid):
             with self.assertRaises(ApprovalRejected):
-                with writer_pr_timing(self.plan(seconds=132),reports.append,clock=lambda:NOW,monotonic=lambda:tick[0]):
+                with writer_pr_timing(self.plan(seconds=153),reports.append,clock=lambda:NOW,monotonic=lambda:tick[0]):
                     with writer.installation_token('synthetic-jwt',report=lambda _:None):
                         with phase('writer.scope_base',read=True):self.fail('expired')
         self.assertEqual(calls[-1],('DELETE','/installation/token',12))

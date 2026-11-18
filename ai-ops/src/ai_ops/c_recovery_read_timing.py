@@ -142,9 +142,12 @@ def proposal_read_timing(plan, report, *, clock, monotonic=None):
 
 
 # Internal sub-budgets; neither the review cutoff nor rollback deadlines move.
-# 006 writer took 7.416 s. Reserve 8 s plus 4 s for actual host delivery.
+# 006 writer took 7.416 s; 007 host output -> response arrival took 21.156 s.
+# Reserve the whole tool round trip (25 s), not just socket forwarding. This is
+# a conservative admission floor, not proof of future latency. Slow paths stop
+# before PR creation; the 120/210/240/300 s external deadlines do not move.
 WRITER_RESERVE_SECONDS = 8
-NOTICE_RESERVE_SECONDS = 4
+NOTICE_RESERVE_SECONDS = 25
 
 
 @contextmanager

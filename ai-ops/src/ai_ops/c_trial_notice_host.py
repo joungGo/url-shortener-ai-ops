@@ -1,7 +1,8 @@
 """안내와 실행기 출력을 함께 기다린다. 실행기 대기가 안내 채널을 막지 않는다.
 
 이 모듈은 native 도구를 호출하거나 성공 응답/리뷰를 생성하지 않는다.
-호스트는 출력된 질문을 실제 도구로 전송한 뒤 그 응답만 stdin으로 돌려준다.
+호스트는 출력된 질문을 실제 도구로 전송한 뒤 그 응답만 stdin으로 돌려준다. 정확한 {"accepted":true} 응답은 호스트가
+기존 delivery_tool_response 형식으로 감싼다. 실제 도구 호출 없이 성공을 만들지 않는다.
 """
 
 from datetime import datetime, timezone
@@ -35,6 +36,8 @@ class HostTrace:
         durations = {}
         for name, first, last in (
             ('host_response_wait_seconds','notice_forwarded','host_response_forwarded'),
+            ('host_response_arrival_seconds','notice_forwarded','host_response_received'),
+            ('host_response_validation_seconds','host_response_received','host_response_forwarded'),
             ('bridge_response_observation_seconds','host_response_forwarded','bridge_ack_received')):
             if first in by and last in by:
                 durations[name] = by[last]['elapsed_seconds']-by[first]['elapsed_seconds']
@@ -74,6 +77,27 @@ def emit(stream, value):
     stream.flush()
 
 
+def host_delivery_evidence(raw):
+    """Accept the exact native tool response on host stdin, never a review approval.
+
+    Only the host boundary wraps the observed response. The bridge/receipt contract
+    stays strict; unsolicited/duplicate responses are rejected by Router first.
+    """
+    def unique_pairs(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError('notice_host_duplicate_response_field')
+            value[key] = item
+        return value
+    value = json.loads(raw, object_pairs_hook=unique_pairs)
+    if not isinstance(value, dict):
+        raise ValueError('notice_host_response_object_required')
+    if set(value) == {'accepted'} and value['accepted'] is True:
+        value = {'delivery_tool_response': value}
+    return delivery_evidence(value)
+
+
 class Router:
     """한 소유 bridge의 질문/응답만 통과시킨다. runner는 질문을 가장할 수 없다."""
     def __init__(self, bridge_input, output, trace):
@@ -110,7 +134,8 @@ class Router:
     def host_line(self, raw):
         if not self.requested or self.responded:
             raise ValueError('notice_host_unsolicited_response')
-        value = delivery_evidence(json.loads(raw))
+        self.trace.mark('host_response_received')
+        value = host_delivery_evidence(raw)
         self.bridge_input.write(json.dumps(value).encode()+b'\n')
         self.bridge_input.flush()
         self.responded = True

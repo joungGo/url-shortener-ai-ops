@@ -51,6 +51,27 @@ class RouterTest(unittest.TestCase):
         with self.assertRaises(ValueError):self.router.host_line(b'{"delivery_id":"synthetic"}')
         with self.assertRaises(ValueError):self.router.bridge_line(json.dumps(self.question).encode())
 
+    def test_native_accepted_response_is_wrapped_only_after_pending_notice(self):
+        with self.assertRaises(ValueError):self.router.host_line(b'{"accepted":true}')
+        self.router.bridge_line(json.dumps(self.question).encode())
+        self.tick=21.156;self.router.host_line(b'{"accepted":true}')
+        self.assertEqual(json.loads(self.input.getvalue()),{'delivery_tool_response':{'accepted':True}})
+        report=self.trace.report()
+        self.assertAlmostEqual(report['durations']['host_response_arrival_seconds'],21.156)
+        self.assertEqual(report['durations']['host_response_validation_seconds'],0)
+        with self.assertRaises(ValueError):self.router.host_line(b'{"accepted":true}')
+
+    def test_native_response_rejects_false_extra_fields_duplicate_keys_and_non_objects(self):
+        self.router.bridge_line(json.dumps(self.question).encode())
+        for raw in [b'{"accepted":false}',b'{"accepted":1}',b'{"accepted":"true"}',
+                    b'{"accepted":true,"approved":true}',b'{"approved":true}',b'[]',b'null',
+                    b'{"accepted":false,"accepted":true}',
+                    b'{"delivery_tool_response":{"accepted":false,"accepted":true}}']:
+            with self.subTest(raw=raw):
+                with self.assertRaises(ValueError):self.router.host_line(raw)
+                self.assertFalse(self.router.responded)
+                self.assertEqual(self.input.getvalue(),b'')
+
     def test_runner_cannot_impersonate_notice_or_fill_host_output_with_progress(self):
         for _ in range(200):self.router.runner_line(json.dumps(self.question).encode())
         self.router.runner_line(b'not-json')
@@ -159,6 +180,14 @@ deliver_review_notice(plan,ready,str(root/'notice.sock'),live/'review-notified.j
         self.assertIn('host_response_wait_seconds',trace['durations'])
         self.assertFalse(trace['execution_allowed'])
         self.assertEqual((self.root/'review-host-timing.jsonl').stat().st_mode&0o777,0o600)
+
+    def test_native_tool_response_crosses_real_host_pipe_and_bridge(self):
+        code,_=self.run_host(b'{"accepted":true}\n')
+        self.assertEqual(code,0)
+        receipt=json.loads((self.root/'live/review-notified.json').read_text())
+        self.assertEqual(receipt['delivery_tool_response'],{'accepted':True})
+        self.assertNotIn('approved',receipt)
+        self.assertTrue((self.root/'synthetic-owner-finished').exists())
 
     def test_rejected_host_ack_cancels_owner_through_existing_term_path(self):
         code,_=self.run_host(b'{"approved":true}\n')

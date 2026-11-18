@@ -89,6 +89,26 @@ class NoticeDeliveryTest(unittest.TestCase):
     def deliver(self):
         return deliver_review_notice(self.plan,self.ready,self.socket,self.output,clock=self.clock)
 
+    def test_recorded_007_late_tool_response_never_publishes_notice(self):
+        self.now=self.plan.planned_at+timedelta(seconds=83.178016)
+        def delayed(question):
+            self.now+=timedelta(seconds=21.156398)
+            return {'delivery_tool_response':{'accepted':True}}
+        self.start(host=delayed)
+        with self.assertRaises(ValueError):self.deliver()
+        self.assertFalse(self.output.exists())
+
+    def test_reserved_roundtrip_preserves_actual_120_second_review_window(self):
+        self.now=self.plan.planned_at+timedelta(seconds=64.627556)
+        def delayed(question):
+            self.now+=timedelta(seconds=21.156398)
+            return {'delivery_tool_response':{'accepted':True}}
+        self.start(host=delayed)
+        receipt=self.deliver()
+        self.assertEqual(datetime.fromisoformat(receipt['notified_at']),self.now)
+        self.assertGreaterEqual((self.plan.review_cutoff()-self.now).total_seconds(),120)
+        self.assertEqual(receipt['review_deadline'],self.plan.review_cutoff().isoformat())
+
     def test_rehearsal_delivers_a_real_host_prompt_without_requesting_pr_approval(self):
         from ai_ops.c_trial_notice import _exchange, _request
         self.start(rehearsal=True)
