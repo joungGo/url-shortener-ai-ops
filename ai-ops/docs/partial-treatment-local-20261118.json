@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-18",
+  "scope": "local_only",
+  "base": "bc398ffb5513393ef031670ffdfbc5b95ed63630",
+  "branch": "codex/partial-evidence-treatment-20261118",
+  "tests": {
+    "all": 1240,
+    "passed": 1240,
+    "new_boundary_tests": 10,
+    "elapsed_seconds": 53.758,
+    "log_sha256": "a307e6e0c483ede3e427f5158cd9d5ae80542a9016dd3e8b00d275769ff2ab22",
+    "note": "Existing unittest sqlite3 ResourceWarning observed; no failures."
+  },
+  "slack_loopback": {
+    "status": "passed",
+    "inbound": "signed_fixture_http_on_loopback",
+    "outbound": "local_slack_fixture_only",
+    "ack_elapsed_seconds": 0.00276,
+    "ack_before_queue": true,
+    "authorized_same_channel_thread": true,
+    "existing_queue_and_worker": true,
+    "verified_report": "rules_partial",
+    "restart_duplicate_reused": true,
+    "fixture_reply_posts": 1,
+    "real_slack_posts": 0,
+    "loopback_http_calls": 1,
+    "external_network_calls": 0,
+    "model_calls": 0,
+    "fault_injections": 0,
+    "recovery_executions": 0,
+    "human_read_confirmed": false,
+    "execution_allowed": false,
+    "server_closed": true
+  },
+  "deployed_baseline_reader_compatibility": "passed",
+  "public_schemas_unchanged": true,
+  "changed_file_sha256": {
+    "ai-ops/src/ai_ops/data_policy.py": "3f965cace3b125ad57d3478e6820fcb9665da17265d0986640474faeabb85c23",
+    "ai-ops/src/ai_ops/evidence_coverage.py": "4e848085982c8405721998eb1a6835ab3d7d6214ea44b80ae0f72674b47b3c3b",
+    "ai-ops/src/ai_ops/live_collectors/kubernetes.py": "5892463468176f8e2eef22f5fb2318ab3d4a25261e9973209b07f5850d0e9ec2",
+    "ai-ops/src/ai_ops/result_explanation.py": "9cde666be32ebe17e67424bc1694d17497f975986fd235fbbe9b524398c9e429",
+    "ai-ops/tests/test_partial_treatment.py": "3b70d73c6ba162983fbc61fc972db3e6a28169aa91a3c13cb132ee308e3dd1ea"
+  },
+  "unchanged_safety_file_sha256": {
+    "ai-ops/src/ai_ops/collection.py": "f1f6aa5f5c1f18d9761ce9d55a692914be9be60a8b70e4de64095488bc7e942f",
+    "ai-ops/src/ai_ops/rules.py": "565362980c849bcf98c07dfa3809b07f2146e0d40bc94fad374e2323bab9e926",
+    "ai-ops/src/ai_ops/evidence.py": "2563331492adbc2aa2c3d527a40ff5214f23c795372a9c74a60c0774723065b7",
+    "ai-ops/src/ai_ops/job_queue.py": "31cce61c86d429794deffc76b177f33e78348629674d00d9b3e14c2d94780ec5",
+    "ai-ops/src/ai_ops/worker.py": "6a7fbf7bddb33fa6c9ff7c3b8ac17e51baab03df342a97344dc0b977082d0704",
+    "ai-ops/src/ai_ops/tasks.py": "79af1ff0f14e6b9d6df04c455550f948cd7d306432069bd50ec113c4d0d580e5",
+    "ai-ops/src/ai_ops/slack_adapter.py": "21303a7ef471cc92aba986f61e78507f90e59a13b3d5828d685d5a1d240295e5",
+    "ai-ops/src/ai_ops/c_trial_execution.py": "d770c8227ca91c1a32dc502c139dcc4576a268c07d58bde88e86cfcd60d2f1ef",
+    "ai-ops/src/ai_ops/c_trial_ready.py": "37b0edc8ef2ac98e6421b66044dcaf80e908ae5373f8247cf82b1050cfd7a4c0",
+    "ai-ops/src/ai_ops/c_trial_notice.py": "10e178d6c0b93f33bb980aeb97fe97a55c45ad2c1bd138018304951ca947a225",
+    "ai-ops/config/b-runtime.example.json": "6e6130e6609fb2936e1a8af91acb49e35a5c95f100915beece584026cd82d594"
+  },
+  "infra_changes": 0,
+  "real_slack_posts": 0,
+  "fault_injections": 0,
+  "model_calls": 0,
+  "main_integrated": false,
+  "remaining_partial_policy": "unchanged",
+  "next": "code review, CI, main integration; live rollout separate",
+  "review": {
+    "method": "review-bugbot in-place fallback",
+    "findings": 1,
+    "fixed": 1,
+    "regression": "rejected sample and original count once per stream"
+  }
+}

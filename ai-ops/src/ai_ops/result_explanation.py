@@ -11,6 +11,7 @@ REASONS = (
      '수집 크기·줄 수 상한 또는 잘린 응답 때문에 전체 자료를 확보하지 못했습니다. 유효한 로그 표본이 있으면 그 범위만 분석했습니다.'),
     ({'no_traffic'}, '요청·표본이 없어 오류율과 지연 시간을 판단할 수 없습니다. 오류 0%나 정상으로 해석하지 않습니다.'),
     ({'empty_response'}, '이벤트 또는 지표 등의 조회 결과가 비어 있습니다. 문제가 없다는 증거로 해석하지 않습니다.'),
+    ({'no_events_observed'}, '관련 객체의 이벤트 조회는 성공했지만 반환된 이벤트가 없습니다. 보존 기간·관측 범위 때문에 과거 장애가 없었다는 뜻은 아닙니다.'),
     ({'missing_history'}, '판단에 필요한 배포·CI 이력을 확보하지 못했습니다.'),
     ({'outside_window'}, '조사 시간 범위 밖의 자료는 현재 상태의 근거로 사용하지 않았습니다.'),
     ({'no_diagnostic_fields'}, '수집 자료에서 지원하는 진단 항목을 찾지 못했습니다.'),
@@ -30,6 +31,16 @@ def evidence_summary(bundle, audit):
             reasons.add('truncated')
         if audit.deadline_exceeded:
             reasons.add('deadline_exceeded')
+    # A dedicated collector marker distinguishes newly verified empty queries
+    # without changing persisted reason enums or reinterpreting legacy data.
+    empty = [item for item in bundle.evidence if item.status != 'available'
+             and item.missing_reason == 'empty_response']
+    if any(item.kind == 'event' and getattr(item, 'evidence_id', '') == 'ev-events-empty-observed'
+           for item in empty):
+        reasons.add('no_events_observed')
+        if all(item.kind == 'event' and getattr(item, 'evidence_id', '') == 'ev-events-empty-observed'
+               for item in empty):
+            reasons.discard('empty_response')
     limitations = [text for codes, text in REASONS if reasons & codes]
     known = set().union(*(codes for codes, _ in REASONS))
     if reasons - known:
