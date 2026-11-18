@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-19",
+  "task": "WF-04",
+  "status": "local_validation_complete",
+  "base_commit": "ca63fcf47f17a0e02e1b1e91eb1e01bcdd2e2feb",
+  "branch": "codex/wf04-slack-events-20261119",
+  "focused": {
+    "tests": 36,
+    "passed": true
+  },
+  "full_suite": {
+    "tests": 1370,
+    "seconds": 83.71,
+    "passed": true,
+    "skipped": 0
+  },
+  "checks": {
+    "python_ast_files": 8,
+    "git_diff_check": true,
+    "repository_boundary": true
+  },
+  "full_log_sha256": "c8172633217ad4252859f0d8fe884e0e1cc72690fab1839a31e56b0836d7da82",
+  "files": {
+    "ai-ops/src/ai_ops/event_store.py": "9db48773fdb6a0c3e3bc746c4a94268bc7910292dc28c92e0f5ef046476d3378",
+    "ai-ops/src/ai_ops/slack_adapter.py": "3a8fce5e2de2690c3efa6f06c70477ded974337973a6f217770c28cfaed1673f",
+    "ai-ops/src/ai_ops/slack_events.py": "2763eb2128f2294238ad4ea751e40179ab0eeab0a85a09e4d628f1a5655587f8",
+    "ai-ops/src/ai_ops/slack_runtime.py": "171035e5a9729ce71c7ab23ae10bbbf21e3c32be6fc21ccfe6f9c7e7fe81bcb3",
+    "ai-ops/src/ai_ops/slack_server.py": "de8fdf0ebd3aaede77ff382717796cb73684e336a9e2dcc115bb8a9217166983",
+    "ai-ops/src/ai_ops/tasks.py": "65d3538a2a6524f016054a191692a3a3e35b4e1f51a1fd484f7213c1d4a445c2",
+    "ai-ops/tests/test_slack_events.py": "48087ef683b34f3c730be9e45a57cf924cdfa513339db1f7a5c1d4d779c5ad0f",
+    "ai-ops/tests/test_slack_event_runtime.py": "38db72c452d72fd4ea851c0ef82845d26c7fc953338868d5121c01920bed9960",
+    "ai-ops/config/slack-events.disabled.example.json": "55305eb18d1565a4b0db07954b1bc776a72923e653c470488e9b821159b94286"
+  },
+  "unchanged_safety_files": {
+    "ai-ops/src/ai_ops/c_trial_lease_client.py": "255d9539d32edc448ed383dcd0abb388f152dc2511616384daf7f364bb779aca",
+    "ai-ops/src/ai_ops/c_recovery.py": "33355c2a941533c2daafb13b66635844851b27475c4a9b0e15cdd22cfed668c2",
+    "ai-ops/src/ai_ops/c_recovery_read_timing.py": "54e7d38d0083d2deafb8013ef1fc0be733b976624cb746cf7edbc921d569fd06",
+    "ai-ops/src/ai_ops/c_recovery_snapshot.py": "2efd9a3b004ce22e56edcd3bcba2a0205e658d2069dbafff6fed1930e481ee04",
+    "ai-ops/src/ai_ops/c_recovery_proof.py": "5c2d1eaf19ffb330230cca999f2d3e1b397f9bc1f3334e63a7378aac4f5d6d13"
+  },
+  "external_actions": {
+    "infra": false,
+    "slack_send": false,
+    "fault_trial": false,
+    "model_call": false,
+    "deploy": false,
+    "remote_ci": false,
+    "commit": false,
+    "push": false
+  },
+  "limits_seconds": {
+    "lease_get": 3,
+    "start": 15,
+    "minimum_review_after_notice": 120,
+    "review_deadline": 210,
+    "owner_rollback": 240,
+    "independent_rollback": 300,
+    "recovery_observation": 120
+  },
+  "limits": [
+    "Local fixtures do not prove Slack delivery or live notification ordering.",
+    "C-04/C-05 remain incomplete; no trial or historical approval reuse.",
+    "Schema v2 requires coordinated receiver/worker/Slack upgrade and private DB backups.",
+    "No automatic investigation delivery enabled; only explicit scoped manual requests.",
+    "An unknown/forbidden/unbound/erased reference receives the same non-disclosing response."
+  ]
+}

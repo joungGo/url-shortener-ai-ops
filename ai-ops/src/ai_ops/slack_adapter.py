@@ -62,7 +62,7 @@ class SlackAdmissionBusy(OSError):
 
 
 class SlackAdapter:
-    def __init__(self, tasks, policy, signing_secret, *, monotonic=time.monotonic, transport_mode="local_fixture"):
+    def __init__(self, tasks, policy, signing_secret, *, monotonic=time.monotonic, transport_mode="local_fixture", event_sources=None):
         if not isinstance(signing_secret, bytes) or not 16 <= len(signing_secret) <= 128:
             raise ValueError('slack_signing_secret_rejected')
         self.tasks, self.policy = tasks, SlackPolicy.model_validate(policy).model_copy(deep=True)
@@ -80,26 +80,53 @@ class SlackAdapter:
             'config':self.config_hash,'signing_key_hash':hashlib.sha256(signing_secret).hexdigest()})
         if transport_mode == 'slack_web_api':
             self.authorization_hash = sha256_json({'mode':transport_mode,'authorization':self.authorization_hash})
+        self.events = None
+        if event_sources:
+            from ai_ops.event_store import EventStore
+            self.events = EventStore(tasks.queue, tasks.settings, sources=event_sources)
+            self.authorization_hash = sha256_json({'authorization':self.authorization_hash,
+                                                  'event_sources':self.events.sources})
+        self.event_owner = 'slack-web' if transport_mode == 'slack_web_api' else 'slack-local'
         self.directory = tasks.queue.root / ('slack-web' if transport_mode == 'slack_web_api' else 'slack')
         _private_directory(self.directory)
         self.path = self.directory / 'inbox.sqlite3'
         fd = os.open(self.path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600); os.close(fd)
-        with self._lock(), self._db() as db:
-            db.execute('CREATE TABLE IF NOT EXISTS slack_installation ('
-                'singleton INTEGER PRIMARY KEY CHECK(singleton=1),identity TEXT NOT NULL,active_hash TEXT NOT NULL)')
-            identity=sha256_json({'team':self.policy.team_id,'app':self.policy.app_id,'bot':self.policy.bot_user_id})
-            prior=db.execute('SELECT identity FROM slack_installation WHERE singleton=1').fetchone()
-            if prior is not None and prior['identity']!=identity:raise ValueError('slack_installation_mismatch')
-            db.execute('INSERT INTO slack_installation VALUES (1,?,?) ON CONFLICT(singleton) DO UPDATE '
-                       'SET active_hash=excluded.active_hash',(identity,self.authorization_hash))
-            db.execute('CREATE TABLE IF NOT EXISTS slack_requests ('
-                'request_id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,user_id TEXT NOT NULL,'
-                'channel_id TEXT NOT NULL,thread_ts TEXT NOT NULL,target TEXT NOT NULL,question TEXT,'
-                'policy_hash TEXT NOT NULL,config_hash TEXT NOT NULL,state TEXT NOT NULL,'
-                'job_id TEXT UNIQUE,created_at REAL NOT NULL)')
-            db.execute('CREATE TABLE IF NOT EXISTS slack_replies ('
-                'request_id TEXT PRIMARY KEY,payload_hash TEXT NOT NULL,state TEXT NOT NULL,'
-                'attempts INTEGER NOT NULL,retry_at REAL NOT NULL,message_ts TEXT,updated_at REAL NOT NULL)')
+        with self._lock():
+            with self._db() as db:
+                db.execute('CREATE TABLE IF NOT EXISTS slack_installation ('
+                    'singleton INTEGER PRIMARY KEY CHECK(singleton=1),identity TEXT NOT NULL,active_hash TEXT NOT NULL)')
+                identity=sha256_json({'team':self.policy.team_id,'app':self.policy.app_id,'bot':self.policy.bot_user_id})
+                prior=db.execute('SELECT identity,active_hash FROM slack_installation WHERE singleton=1').fetchone()
+                if prior is not None and prior['identity']!=identity:raise ValueError('slack_installation_mismatch')
+                # Fail closed across the two SQLite commits. Retire the previous
+                # authority durably BEFORE exposing a changed Slack policy; a crash
+                # leaves old jobs fenced. Hold the processing lock through activation
+                # so a concurrent constructor cannot overwrite a newer authority.
+                if prior is None or prior['active_hash']!=self.authorization_hash or self.events is None:
+                    with tasks.queue.transaction() as queue_db:
+                        if queue_db.execute("SELECT 1 FROM sqlite_master WHERE name='event_request_authorities'").fetchone():
+                            queue_db.execute('DELETE FROM event_request_authorities WHERE owner=?',(self.event_owner,))
+                db.execute('INSERT INTO slack_installation VALUES (1,?,?) ON CONFLICT(singleton) DO UPDATE '
+                           'SET active_hash=excluded.active_hash',(identity,self.authorization_hash))
+                db.execute('CREATE TABLE IF NOT EXISTS slack_requests ('
+                    'request_id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,user_id TEXT NOT NULL,'
+                    'channel_id TEXT NOT NULL,thread_ts TEXT NOT NULL,target TEXT NOT NULL,question TEXT,'
+                    'policy_hash TEXT NOT NULL,config_hash TEXT NOT NULL,state TEXT NOT NULL,'
+                    'job_id TEXT UNIQUE,created_at REAL NOT NULL)')
+                db.execute('CREATE TABLE IF NOT EXISTS slack_replies ('
+                    'request_id TEXT PRIMARY KEY,payload_hash TEXT NOT NULL,state TEXT NOT NULL,'
+                    'attempts INTEGER NOT NULL,retry_at REAL NOT NULL,message_ts TEXT,updated_at REAL NOT NULL)')
+
+                db.execute('CREATE TABLE IF NOT EXISTS slack_request_formats (request_id TEXT PRIMARY KEY,version INTEGER NOT NULL)')
+                db.execute('CREATE TABLE IF NOT EXISTS slack_event_requests ('
+                    'request_id TEXT PRIMARY KEY,command TEXT NOT NULL,event_id TEXT NOT NULL,'
+                    'context TEXT,reply_text TEXT)')
+            if self.events is not None:
+                self.events.set_request_authority(self.event_owner,self.authorization_hash)
+
+    def _event_bridge(self):
+        from ai_ops.slack_events import SlackEventBridge
+        return SlackEventBridge(self)
 
     @contextmanager
     def _db(self):
@@ -196,11 +223,17 @@ class SlackAdapter:
                 or not isinstance(thread, str) or not STAMP.fullmatch(thread)
                 or not isinstance(text, str) or len(text.encode()) > 16384):
             raise ValueError('slack_event_fields_rejected')
-        command = re.fullmatch(re.escape('<@' + self.policy.bot_user_id + '>') + r'\s+investigate\s+([a-z0-9-]+)(?:\s+(.+))?', text, re.DOTALL)
+        command = re.fullmatch(re.escape('<@' + self.policy.bot_user_id + '>') + r'\s+(investigate|investigate-event|status-event)\s+(\S+)(?:\s+(.+))?', text, re.DOTALL)
         if command is None: raise ValueError('slack_command_rejected')
-        target = command.group(1)
-        if not self.policy.allows(user, channel, target): raise ValueError('slack_principal_target_rejected')
-        question, _ = sanitize_question(command.group(2) or '현재 상태를 확인해줘')
+        action, reference, question = command.groups()
+        event_command = None
+        if action == 'investigate':
+            target = reference
+            if not self.policy.allows(user, channel, target): raise ValueError('slack_principal_target_rejected')
+        else:
+            event_command = self._event_bridge().parse(action, reference, user, channel, thread)
+            target = ''  # resolve only in relay; ACK never claims a queued investigation
+        question, _ = sanitize_question(question or '현재 상태를 확인해줘')
         identity = {'team':self.policy.team_id,'app':self.policy.app_id,'event':event_id}
         if self.transport_mode == 'slack_web_api':
             identity['transport'] = self.transport_mode
@@ -222,6 +255,10 @@ class SlackAdapter:
                 if count >= 5 or pending >= 100: raise SlackAdmissionBusy('slack_admission_limit')
                 db.execute('INSERT INTO slack_requests VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
                            (request_id,fingerprint,user,channel,thread,target,question,self.policy_hash,self.config_hash,'accepted',None,now))
+                db.execute('INSERT INTO slack_request_formats VALUES (?,1)',(request_id,))
+                if event_command is not None:
+                    db.execute('INSERT INTO slack_event_requests VALUES (?,?,?,NULL,NULL)',
+                               (request_id,*event_command))
         # 늦은 ACK는 성공으로 위장하지 않는다. durable event ID로 재전송을 조정한다.
         if self.monotonic()-started >= 2.5: raise TimeoutError('slack_ack_deadline')
         return {'accepted':True,'request_id':request_id,'duplicate':row is not None,
@@ -240,7 +277,7 @@ class SlackAdapter:
                 and row['policy_hash']==self.policy_hash and row['config_hash']==self.config_hash
                 and sha256_json(self.policy.model_dump())==self.policy_hash
                 and self.tasks.settings.config_hash==self.config_hash
-                and self.policy.allows(row['user_id'],row['channel_id'],row['target']) and self._active())
+                and self._event_bridge().authorized(row) and self._active())
 
     def drain_one(self):
         """접수 relay 역할만 수행한다. 실제 조사는 기존 Worker가 별도로 담당한다."""
@@ -254,6 +291,8 @@ class SlackAdapter:
                 with self._db() as db:db.execute('UPDATE slack_requests SET state="failed",question=NULL WHERE request_id=?',(row['request_id'],))
                 return {'state':'rejected','execution_allowed':False}
             try:
+                if self._event_bridge().entry(row['request_id']) is not None:
+                    return self._event_bridge().drain(row)
                 receipt=self.tasks.submit({'request_id':row['request_id'],
                     'conversation_id':'slack:'+sha256_json({'team':self.policy.team_id,'channel':row['channel_id'],'thread':row['thread_ts']}),
                     'target':row['target'],'question':row['question']})
@@ -267,12 +306,19 @@ class SlackAdapter:
                            (receipt['task_id'],row['request_id']))
             return {'request_id':row['request_id'],'state':'queued','task_id':receipt['task_id'],'execution_allowed':False}
 
+    def _task_result(self, row):
+        if self._event_bridge().entry(row['request_id']) is None:
+            return self.tasks.result(row['job_id'])
+        return self.tasks.result(row['job_id'],include_observation=True)
+
     def _payload(self, row):
+        if row['state']=='ready' and self._authorized(row):
+            return self._event_bridge().status_payload(row)
         if row['state']!='queued' or not row['job_id'] or not self._authorized(row): raise ValueError('slack_reply_scope_rejected')
-        result=self.tasks.result(row['job_id'])
+        result=self._task_result(row)
         if result['state'] in ('pending','expired'):raise ValueError('slack_result_not_ready')
         from ai_ops.result_explanation import result_text
-        text=result_text(row['target'], result)
+        text=self._event_bridge().prefix(row, result)+result_text(row['target'], result)
         if result.get('runbook_context'):
             context=result['runbook_context']
             text+=f"런북 참고 상태: {context['status']} (현재 소스/실환경 미검증)\n"
@@ -284,7 +330,7 @@ class SlackAdapter:
             text+=f"근거: {result['reference']['incident_id']} / {result['reference']['run_id']}\n"
         text+='저장된 증거 기준이며 변경·복구를 실행하지 않았습니다. 사람 승인 결과가 아닙니다.'
         if not self._authorized(row):raise ValueError('slack_reply_scope_changed')
-        if result.get('runbook_context') and self.tasks.result(row['job_id']) != result:
+        if result.get('runbook_context') and self._task_result(row) != result:
             raise ValueError('slack_runbook_scope_changed')
         return {'channel':row['channel_id'],'thread_ts':row['thread_ts'],'text':text,
                 'mrkdwn':False,'parse':'none','unfurl_links':False,'unfurl_media':False,'reply_broadcast':False}
@@ -398,4 +444,21 @@ class SlackAdapter:
                 for row in rows:
                     db.execute('UPDATE slack_requests SET state="expired",question=NULL,user_id="",channel_id="",thread_ts="",target="" WHERE request_id=?',(row['request_id'],))
                     db.execute('UPDATE slack_replies SET state="expired",message_ts=NULL WHERE request_id=?',(row['request_id'],))
+                    db.execute('UPDATE slack_event_requests SET event_id="",context=NULL,reply_text=NULL WHERE request_id=?',(row['request_id'],))
+            from ai_ops.event_store import expire_events
+            # Maintenance is independent of whether new event commands are enabled.
+            expire_events(self.tasks.queue,apply=True)
+            with self.tasks.queue.transaction() as db:
+                has_events=db.execute("SELECT 1 FROM sqlite_master WHERE name='events'").fetchone()
+                expired={r[0] for r in db.execute('SELECT event_id FROM events WHERE expired=1')} if has_events else set()
+            if expired:
+                with self._db() as db:
+                    linked=db.execute('SELECT request_id,event_id FROM slack_event_requests WHERE context IS NOT NULL').fetchall()
+                    for item in linked:
+                        if item['event_id'] not in expired:
+                            continue
+                        db.execute('UPDATE slack_requests SET state="expired",question=NULL,user_id="",channel_id="",thread_ts="",target="" WHERE request_id=?',(item['request_id'],))
+                        db.execute('UPDATE slack_replies SET state="expired",message_ts=NULL WHERE request_id=?',(item['request_id'],))
+                        db.execute('UPDATE slack_event_requests SET event_id="",context=NULL,reply_text=NULL WHERE request_id=?',(item['request_id'],))
+                        rows.append(item)
         return {'expired_requests':len(rows)}

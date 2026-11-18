@@ -52,7 +52,7 @@ def make_ingress(tasks, policy, config):
         raise ValueError('slack_web_disabled')
     # Deliberately never construct SlackRuntime / transport or read bot_token_file.
     secret = read_private_secret(config.signing_secret_file)
-    return SlackEventsApp(SlackAdapter(tasks, policy, secret, transport_mode='slack_web_api'))
+    return SlackEventsApp(SlackAdapter(tasks, policy, secret, transport_mode='slack_web_api',event_sources=config.sources()))
 
 
 class ManagedIngress:

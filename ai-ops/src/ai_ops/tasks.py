@@ -137,7 +137,7 @@ class TaskService:
                 'delivery': {'state': 'expired', 'transport': 'local_mailbox'} if expired else self._delivery(job),
                 'recovery': {'state': 'not_connected', 'execution_allowed': False}}
 
-    def result(self, job):
+    def result(self, job, *, include_observation=False):
         view = self.show(job)
         if view['result']['state'] != 'available':
             return {'task_id': job, **view['result'], 'execution_allowed': False}
@@ -166,6 +166,9 @@ class TaskService:
                 'limitation_count': len(report.limitations), 'execution_allowed': False}
         from ai_ops.result_explanation import evidence_summary
         result['evidence_summary'] = evidence_summary(record.bundle, record.collection_audit)
+        if include_observation:
+            result['observation'] = {'window':record.bundle.window.model_dump(mode='json'),
+                                     'collected_at':record.bundle.created_at.isoformat()}
         if record.runbook_context is not None:
             from ai_ops.runbook_context import withheld
             result['runbook_context'] = (withheld() if self.settings.runbooks is None else
