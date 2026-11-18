@@ -1,5 +1,14 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-18 C04 재검증 지연 · 검토 및 CI 반영 준비
+
+직접 Bugbot 방식 검토 추가 오류0건. 로컬1276시험 소스8개 해시 일치, 기존 시간·승인·원복 조건 유지. 상세 `ai-ops/docs/C4-proposal-latency-review-20261118.md`. 원격CI/main 반영은 해당 PR 기록으로 확인한다. 실제배포·감시·실습은 수행하지 않는다.
+
+## 2026-11-18 C04 복구안 재검증 지연 · 로컬 개선 완료
+
+005의50.740초 구간은 세번 원본수집+초안+Git/Helm연결을 포함하며 기존에는 내부 timing context가 비활성이라 실제 서비스별 비중은 미확정이다. 전용 `codex/c04-proposal-latency-local-20261118` worktree(기준 AI651cdc6)에서 PR전 단계계측/잔여리뷰예산 적용, 독립 CI·신원/ECR·Pod 조회 병렬화, full-SHA Git객체만 재사용하도록 수정했다. 세번 신선수집·전후원본비교·main두번재조회 유지. 합성 로컬 조회947→634ms, Git연결 GET14→8회; 실환경50.7초 개선수치로 해석하지 않는다. 전체1276시험(신규9)·문법·diff 통과. 기존시간/승인/원복 유지, 실제연결/배포/원격CI/실습 없음. 다음은 코드검토·CI·main반영→장애없는 연결검증이며 새실습 자동반복 금지. 코드/결과: `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/c04-proposal-latency/ai-ops/docs/C4-proposal-latency-local-20261118.md` 및 같은이름JSON. C04/C05미완료. 추천 GPT-6 SOL · High.
+
+
 ## 2026-11-18 Lease401 수정 검토·CI 반영 준비
 
 직접 코드 검토 추가 발견0건, 로컬 검증 파일 hash 동일. GET의401만 1회·총3초 재조회, PUT/오류/취소는 중단하며 기존 시간·승인·원복 유지. 상세 `ai-ops/docs/C4-lease-auth-refresh-review-20261118.md`. 원격CI/main 반영 여부는 이 문서를 포함한 PR 기록으로 확인한다. 실제 배포·연결·실습 없음. 첫401 원인은 미확정, 실제 연결 검증 전 실습 금지.

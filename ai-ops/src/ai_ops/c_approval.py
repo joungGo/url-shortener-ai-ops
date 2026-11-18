@@ -72,7 +72,8 @@ class ApprovalGitHubReader:
     def get(self, endpoint):
         _require(endpoint in ("user", self.update_ruleset_path) or self.read_path.fullmatch(endpoint),
                  "github_read_path_rejected")
-        deadline = min(self.deadline, time.monotonic() + 8)
+        from ai_ops.c_recovery_read_timing import read_timeout
+        deadline = min(self.deadline, time.monotonic() + read_timeout(8))
         _require(time.monotonic() < deadline, "github_read_timeout")
         # 호출부는 고정 저장소·경로와 검증된 정수 또는 SHA만 전달한다.
         try:

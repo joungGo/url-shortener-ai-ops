@@ -13,6 +13,7 @@ from ai_ops.c_trial_source import TrialSource
 from ai_ops.c_trial_transport import C4TrialTransport
 from ai_ops.c_recovery import (IncidentProjection,RecoveryRequest,RecoveryDraftStore,draft_verified_proposal,_encoded_values)
 from ai_ops.c_recovery_proof import assess_proposal_recheck
+from ai_ops.c_recovery_read_timing import phase, proposal_read_timing
 from ai_ops.c_approval import prepare_pr_link,verify_review,ApprovalRejected,ApprovalGitHubReader
 from ai_ops.path_policy import write_private_json
 from ai_ops.c_trial_request_time import wait_for_request_projection
@@ -108,17 +109,29 @@ def main():
         transport=C4TrialTransport(context.kubeconfig,image_check=lambda p:False,guard_check=lambda p:False,merge_session=None)
         source=TrialSource(context,handoff,transport,clock=lambda:datetime.now(timezone.utc),**caches)
         state['stage']='fresh_c02_proposal_recheck';save('post-state.json',state)
-        first,_=source.collect();second,snapshot=source.collect()
-        save('proposal-inputs.json',{'first':first,'refreshed':second})
-        readiness=assess_proposal_recheck(first,second)
-        if not readiness.get('proposal_ready'):save('proposal-blocked.json',readiness);raise ValueError('fresh_proposal_not_ready')
-        proposal=draft_verified_proposal(request,projection,readiness,snapshot['values_bytes'])
-        drafts=RecoveryDraftStore(op);drafts.save(request,proposal)
-        write_private_json(P/'proposal.json',proposal.model_dump(mode='json'));write_private_json(P/'proposal-audit.json',readiness)
-        third,_=source.collect();refreshed=assess_proposal_recheck(second,third)
-        decision,link=prepare_pr_link(proposal,readiness,refreshed)
-        assert decision['status']=='pr_candidate' and link is not None and link.pr_base_sha==plan.seed_main
-        write_private_json(P/'pr-link.json',link.model_dump(mode='json'))
+        with proposal_read_timing(plan, lambda report: save('proposal-timing.json', report),
+                                  clock=lambda: datetime.now(timezone.utc)):
+            with phase('proposal.first', read=True):
+                first,_=source.collect()
+            with phase('proposal.second', read=True):
+                second,snapshot=source.collect()
+            save('proposal-inputs.json',{'first':first,'refreshed':second})
+            with phase('proposal.assess', read=True):
+                readiness=assess_proposal_recheck(first,second)
+                if not readiness.get('proposal_ready'):save('proposal-blocked.json',readiness);raise ValueError('fresh_proposal_not_ready')
+            with phase('proposal.draft', read=True):
+                proposal=draft_verified_proposal(request,projection,readiness,snapshot['values_bytes'])
+                drafts=RecoveryDraftStore(op);drafts.save(request,proposal)
+                write_private_json(P/'proposal.json',proposal.model_dump(mode='json'));write_private_json(P/'proposal-audit.json',readiness)
+            with phase('proposal.third', read=True):
+                third,_=source.collect()
+                refreshed=assess_proposal_recheck(second,third)
+            with phase('proposal.link', read=True):
+                # New mutable-read budget; only verified full-SHA objects are reused.
+                link_reader=source.git_reader.renew(ApprovalGitHubReader(repository=context.recovery_repository))
+                decision,link=prepare_pr_link(proposal,readiness,refreshed,reader=link_reader)
+                assert decision['status']=='pr_candidate' and link is not None and link.pr_base_sha==plan.seed_main
+                write_private_json(P/'pr-link.json',link.model_dump(mode='json'))
         state['stage']='creating_writer_pr';state['proposal_id']=proposal.proposal_id;save('post-state.json',state)
         deadline=plan.review_cutoff()
         def review_window():
