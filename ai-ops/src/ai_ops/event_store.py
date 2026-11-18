@@ -249,7 +249,7 @@ class EventStore:
             raise ValueError('event expired')
         return row
 
-    def resolve_reference(self, reference):
+    def reference_id(self, reference):
         if isinstance(reference,str) and re.fullmatch(r'evt-[0-9a-f]{64}',reference):
             event_id = reference
         else:
@@ -258,9 +258,22 @@ class EventStore:
                 raise ValueError('invalid event reference')
             starts,_ = alert_time(parts[3])
             event_id = 'evt-'+sha256_json({'schema_version':1,**self.sources[parts[1]],'fingerprint':parts[2],'starts_at':starts})
+        return event_id
+
+    def resolve_reference(self, reference):
+        event_id = self.reference_id(reference)
         with self.queue.transaction() as db:
             self._event(db,event_id)
         return event_id
+
+    def reference_state(self, reference):
+        """Internal lookup, not user authorization or proof of Slack delivery."""
+        event_id = self.reference_id(reference)
+        with self.queue.transaction() as db:
+            row = db.execute('SELECT status,expired,expires_at FROM events WHERE event_id=?',(event_id,)).fetchone()
+            state = 'pending' if row is None else 'expired' if row['expired'] or row['expires_at']<=self.queue.now() else 'registered'
+            return {'event_id':event_id,'registration':state,'notification':'unknown',
+                    'alert_status':row['status'] if state=='registered' else None}
 
     def _reserve(self, db, event_id, kind, key, question, revision, subject):
         event = self._event(db,event_id)

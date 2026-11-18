@@ -40,6 +40,12 @@
 
 [사건 ID·두 채널·조사 정책 상세 계약](incident-identity-channel-policy-contract-20261118.md)을 작성했다. D1은 manual 기본+명시적 자동 예외, D2는 두 채널 유지+alert_ref/evt 연결을 로컬 구현 설계로 채택했다. 아래 최초 제안 기록에서의 미확정 상태는 이 구체화로 갱신하며 실환경 정책 적용은 아직 하지 않았다. 현재 변경은 문서뿐이고 다음은 WF-02 로컬 계약·저장 구현이다.
 
+## WF-02/03 구현 상태 갱신 · 2026-11-18
+
+WF-02는 [PR #30](https://github.com/joungGo/url-shortener-ai-ops/pull/30)과 main9c9f3fc CI를 통과했다. WF-03은 기존 공지와 별도 사건 접수의 라우팅 후보·안전한 사실 템플릿·나노초 참조·인증 수신/unknown 상태를 로컬 구현·검증했다. [WF-03 기록](incident-notice-local-20261118.md), [작업표](incident-workflow-implementation-tracker.md)를 최신 상태 기준으로 사용한다.
+
+원본 Slack message ts나 history 권한 없이 사건 참조로 연결한다. 기존 장부를 재사용하고 수신 성공을 Slack 전달 성공으로 기록하지 않는다. 실제 배포 설정은 그대로이며 새 Slack 사건 명령은 WF-04다. WF-03 코드 검토·CI/main과 실제 연결은 아직 하지 않았다. 아래 최초 현행/제안 설명은 설계 작성 당시 상태이며 실제 운영 정책을 변경한 기록이 아니다.
+
 ## 1. 목표와 현재 차이
 
 사용자가 원하는 기본 경험은 **장애 사실을 Slack에 먼저 공지 → 사용자가 조사 요청 → 기존 큐·worker가 조사 → 근거와 한계를 Slack으로 회신 → 필요한 경우 별도로 복구 요청 → 계획 검토·승인 → 실행·검증·결과 회신**이다.

@@ -20,3 +20,7 @@ AI 구현·테스트·모델/규칙 조사·전용 chart와 AI Terraform root의
 5. 기존 새 실습 승인/새 PR 정확 head 사람 리뷰·독립 원복·기한을 유지해 C04를 재검증한다. 전환 확인 뒤에만 플랫폼 저장소의 AI 레거시 복사본을 별도 PR로 제거한다.
 
 이관은 코드 관리 분리다. 실습 성공·인프라 설치/정리·운영 실행기 전환 완료를 의미하지 않는다.
+
+## WF-03 경보 template 교차 검증
+
+`wf03-platform-source.json`은 플랫폼 PR163의 검토한 전체 SHA와 파일 해시를 고정한다. `.github/workflows/ai-ops-ci.yml`의 notice job은 해당 공개 경로만 읽고 검증한 amtool로 합성 TLS/사건 참조 시험을 실행한다. `check_notice_platform_local.py`는 다른 revision/파일·잘못된 도구 버전·skip을 거절한다. 기존 `platform-source.json`의 배포 chart/실행 소유 pin은 변경하지 않는다. 이 pin은 읽기 전용 시험 의존성이며 운영 배포나 live control 전환을 의미하지 않는다.

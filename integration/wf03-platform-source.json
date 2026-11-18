@@ -1,0 +1,11 @@
+{
+  "repository": "f-lab-edu/F-Lab-DevOps",
+  "revision": "d6c2c8fca50feb8453948be284e7b9b7cccb5284",
+  "purpose": "read-only WF-03 local template/event reference checks; no live cutover",
+  "files": {
+    "cluster-addons/prometheus/wf03/prepare.py": "3f7aee47bd7ebf7bc7c65b6f2fd75ab4fe4ce8efadee27077c645c3f01afd413",
+    "cluster-addons/prometheus/wf03/notice.tmpl": "bb0f5418b84892db65b5de73ab784f528bc9d04ba52e4e7e3a073e06aad07f6e",
+    "cluster-addons/prometheus/wf03/test_notice.py": "87066cb189d18fc6d70f8801860bb98c82c45c3d46f085655ef05161a83d0474",
+    "cluster-addons/prometheus/wf03/requirements.lock": "d9775aec1dd3e117a49c2ec04c97774d714328209a09bd72cd7fb3cef5fdce66"
+  }
+}
