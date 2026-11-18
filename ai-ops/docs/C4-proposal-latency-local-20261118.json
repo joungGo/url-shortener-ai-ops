@@ -1,0 +1,518 @@
+{
+  "scope": "synthetic local reads; not live latency or C04 success",
+  "audit": {
+    "injected_leaf_delay_ms": 100,
+    "milliseconds": {
+      "serial": 946.588,
+      "parallel": 633.685
+    },
+    "read_counts": {
+      "application": 6,
+      "lease": 6,
+      "deployment": 6,
+      "history": 3,
+      "eks": 3,
+      "sts": 3,
+      "normal_image": 3,
+      "failure_image": 3,
+      "pods": 3,
+      "replicaset": 3
+    },
+    "timings": {
+      "serial": {
+        "record_type": "c04_recovery_read_timing",
+        "schema_version": 1,
+        "events": [
+          {
+            "stage": "proposal.total",
+            "status": "ok",
+            "started_ms": 0.015,
+            "duration_ms": 946.536,
+            "remaining_before_ms": 89999.698,
+            "remaining_after_ms": 89053.161
+          },
+          {
+            "stage": "proposal.first",
+            "status": "ok",
+            "started_ms": 0.022,
+            "duration_ms": 317.216,
+            "remaining_before_ms": 89999.691,
+            "remaining_after_ms": 89682.47
+          },
+          {
+            "stage": "audit.initial",
+            "status": "ok",
+            "started_ms": 0.37,
+            "duration_ms": 0.372,
+            "remaining_before_ms": 89999.343,
+            "remaining_after_ms": 89998.966
+          },
+          {
+            "stage": "audit.values",
+            "status": "ok",
+            "started_ms": 0.759,
+            "duration_ms": 0.005,
+            "remaining_before_ms": 89998.954,
+            "remaining_after_ms": 89998.947
+          },
+          {
+            "stage": "audit.identity_history",
+            "status": "ok",
+            "started_ms": 0.926,
+            "duration_ms": 105.002,
+            "remaining_before_ms": 89998.787,
+            "remaining_after_ms": 89893.776
+          },
+          {
+            "stage": "audit.images_pods",
+            "status": "ok",
+            "started_ms": 106.048,
+            "duration_ms": 104.952,
+            "remaining_before_ms": 89893.665,
+            "remaining_after_ms": 89788.71
+          },
+          {
+            "stage": "audit.normal_image",
+            "status": "ok",
+            "started_ms": 106.133,
+            "duration_ms": 104.55,
+            "remaining_before_ms": 89893.58,
+            "remaining_after_ms": 89789.022
+          },
+          {
+            "stage": "audit.failure_image",
+            "status": "ok",
+            "started_ms": 106.253,
+            "duration_ms": 104.516,
+            "remaining_before_ms": 89893.46,
+            "remaining_after_ms": 89788.922
+          },
+          {
+            "stage": "audit.replicaset",
+            "status": "ok",
+            "started_ms": 211.019,
+            "duration_ms": 104.834,
+            "remaining_before_ms": 89788.694,
+            "remaining_after_ms": 89683.842
+          },
+          {
+            "stage": "audit.final",
+            "status": "ok",
+            "started_ms": 316.218,
+            "duration_ms": 0.882,
+            "remaining_before_ms": 89683.495,
+            "remaining_after_ms": 89682.604
+          },
+          {
+            "stage": "proposal.second",
+            "status": "ok",
+            "started_ms": 317.261,
+            "duration_ms": 313.615,
+            "remaining_before_ms": 89682.452,
+            "remaining_after_ms": 89368.831
+          },
+          {
+            "stage": "audit.initial",
+            "status": "ok",
+            "started_ms": 317.857,
+            "duration_ms": 0.938,
+            "remaining_before_ms": 89681.856,
+            "remaining_after_ms": 89680.906
+          },
+          {
+            "stage": "audit.values",
+            "status": "ok",
+            "started_ms": 318.844,
+            "duration_ms": 0.015,
+            "remaining_before_ms": 89680.869,
+            "remaining_after_ms": 89680.851
+          },
+          {
+            "stage": "audit.identity_history",
+            "status": "ok",
+            "started_ms": 320.211,
+            "duration_ms": 102.03,
+            "remaining_before_ms": 89679.501,
+            "remaining_after_ms": 89577.465
+          },
+          {
+            "stage": "audit.images_pods",
+            "status": "ok",
+            "started_ms": 422.317,
+            "duration_ms": 101.084,
+            "remaining_before_ms": 89577.396,
+            "remaining_after_ms": 89476.31
+          },
+          {
+            "stage": "audit.normal_image",
+            "status": "ok",
+            "started_ms": 422.386,
+            "duration_ms": 100.774,
+            "remaining_before_ms": 89577.327,
+            "remaining_after_ms": 89476.549
+          },
+          {
+            "stage": "audit.failure_image",
+            "status": "ok",
+            "started_ms": 422.479,
+            "duration_ms": 100.588,
+            "remaining_before_ms": 89577.234,
+            "remaining_after_ms": 89476.639
+          },
+          {
+            "stage": "audit.replicaset",
+            "status": "ok",
+            "started_ms": 523.416,
+            "duration_ms": 105.262,
+            "remaining_before_ms": 89476.297,
+            "remaining_after_ms": 89371.021
+          },
+          {
+            "stage": "audit.final",
+            "status": "ok",
+            "started_ms": 629.129,
+            "duration_ms": 1.615,
+            "remaining_before_ms": 89370.583,
+            "remaining_after_ms": 89368.959
+          },
+          {
+            "stage": "proposal.third",
+            "status": "ok",
+            "started_ms": 630.901,
+            "duration_ms": 315.639,
+            "remaining_before_ms": 89368.811,
+            "remaining_after_ms": 89053.171
+          },
+          {
+            "stage": "audit.initial",
+            "status": "ok",
+            "started_ms": 631.78,
+            "duration_ms": 0.711,
+            "remaining_before_ms": 89367.932,
+            "remaining_after_ms": 89367.214
+          },
+          {
+            "stage": "audit.values",
+            "status": "ok",
+            "started_ms": 632.518,
+            "duration_ms": 0.012,
+            "remaining_before_ms": 89367.195,
+            "remaining_after_ms": 89367.18
+          },
+          {
+            "stage": "audit.identity_history",
+            "status": "ok",
+            "started_ms": 632.935,
+            "duration_ms": 106.415,
+            "remaining_before_ms": 89366.778,
+            "remaining_after_ms": 89260.348
+          },
+          {
+            "stage": "audit.images_pods",
+            "status": "ok",
+            "started_ms": 739.531,
+            "duration_ms": 101.727,
+            "remaining_before_ms": 89260.181,
+            "remaining_after_ms": 89158.452
+          },
+          {
+            "stage": "audit.normal_image",
+            "status": "ok",
+            "started_ms": 739.809,
+            "duration_ms": 101.267,
+            "remaining_before_ms": 89259.904,
+            "remaining_after_ms": 89158.627
+          },
+          {
+            "stage": "audit.failure_image",
+            "status": "ok",
+            "started_ms": 740.016,
+            "duration_ms": 101.121,
+            "remaining_before_ms": 89259.697,
+            "remaining_after_ms": 89158.573
+          },
+          {
+            "stage": "audit.replicaset",
+            "status": "ok",
+            "started_ms": 841.27,
+            "duration_ms": 104.684,
+            "remaining_before_ms": 89158.443,
+            "remaining_after_ms": 89053.752
+          },
+          {
+            "stage": "audit.final",
+            "status": "ok",
+            "started_ms": 946.126,
+            "duration_ms": 0.355,
+            "remaining_before_ms": 89053.587,
+            "remaining_after_ms": 89053.226
+          }
+        ],
+        "dropped_events": 0
+      },
+      "parallel": {
+        "record_type": "c04_recovery_read_timing",
+        "schema_version": 1,
+        "events": [
+          {
+            "stage": "proposal.total",
+            "status": "ok",
+            "started_ms": 0.008,
+            "duration_ms": 633.648,
+            "remaining_before_ms": 89053.082,
+            "remaining_after_ms": 88419.433
+          },
+          {
+            "stage": "proposal.first",
+            "status": "ok",
+            "started_ms": 0.012,
+            "duration_ms": 217.266,
+            "remaining_before_ms": 89053.078,
+            "remaining_after_ms": 88835.811
+          },
+          {
+            "stage": "audit.initial",
+            "status": "ok",
+            "started_ms": 0.603,
+            "duration_ms": 0.497,
+            "remaining_before_ms": 89052.487,
+            "remaining_after_ms": 89051.986
+          },
+          {
+            "stage": "audit.values",
+            "status": "ok",
+            "started_ms": 1.116,
+            "duration_ms": 0.004,
+            "remaining_before_ms": 89051.973,
+            "remaining_after_ms": 89051.968
+          },
+          {
+            "stage": "audit.identity_history",
+            "status": "ok",
+            "started_ms": 1.423,
+            "duration_ms": 109.904,
+            "remaining_before_ms": 89051.667,
+            "remaining_after_ms": 88941.757
+          },
+          {
+            "stage": "audit.images_pods",
+            "status": "ok",
+            "started_ms": 1.531,
+            "duration_ms": 109.922,
+            "remaining_before_ms": 89051.559,
+            "remaining_after_ms": 88941.633
+          },
+          {
+            "stage": "audit.normal_image",
+            "status": "ok",
+            "started_ms": 1.824,
+            "duration_ms": 109.002,
+            "remaining_before_ms": 89051.266,
+            "remaining_after_ms": 88942.256
+          },
+          {
+            "stage": "audit.failure_image",
+            "status": "ok",
+            "started_ms": 1.892,
+            "duration_ms": 109.033,
+            "remaining_before_ms": 89051.198,
+            "remaining_after_ms": 88942.16
+          },
+          {
+            "stage": "audit.replicaset",
+            "status": "ok",
+            "started_ms": 111.473,
+            "duration_ms": 105.179,
+            "remaining_before_ms": 88941.617,
+            "remaining_after_ms": 88836.431
+          },
+          {
+            "stage": "audit.final",
+            "status": "ok",
+            "started_ms": 216.899,
+            "duration_ms": 0.344,
+            "remaining_before_ms": 88836.191,
+            "remaining_after_ms": 88835.844
+          },
+          {
+            "stage": "proposal.second",
+            "status": "ok",
+            "started_ms": 217.283,
+            "duration_ms": 211.24,
+            "remaining_before_ms": 88835.807,
+            "remaining_after_ms": 88624.566
+          },
+          {
+            "stage": "audit.initial",
+            "status": "ok",
+            "started_ms": 217.576,
+            "duration_ms": 0.229,
+            "remaining_before_ms": 88835.514,
+            "remaining_after_ms": 88835.282
+          },
+          {
+            "stage": "audit.values",
+            "status": "ok",
+            "started_ms": 217.814,
+            "duration_ms": 0.004,
+            "remaining_before_ms": 88835.276,
+            "remaining_after_ms": 88835.27
+          },
+          {
+            "stage": "audit.identity_history",
+            "status": "ok",
+            "started_ms": 218.047,
+            "duration_ms": 101.814,
+            "remaining_before_ms": 88835.043,
+            "remaining_after_ms": 88733.226
+          },
+          {
+            "stage": "audit.images_pods",
+            "status": "ok",
+            "started_ms": 218.112,
+            "duration_ms": 104.733,
+            "remaining_before_ms": 88834.978,
+            "remaining_after_ms": 88730.243
+          },
+          {
+            "stage": "audit.normal_image",
+            "status": "ok",
+            "started_ms": 218.392,
+            "duration_ms": 101.204,
+            "remaining_before_ms": 88834.698,
+            "remaining_after_ms": 88733.487
+          },
+          {
+            "stage": "audit.failure_image",
+            "status": "ok",
+            "started_ms": 218.468,
+            "duration_ms": 104.231,
+            "remaining_before_ms": 88834.622,
+            "remaining_after_ms": 88730.385
+          },
+          {
+            "stage": "audit.replicaset",
+            "status": "ok",
+            "started_ms": 322.858,
+            "duration_ms": 105.121,
+            "remaining_before_ms": 88730.232,
+            "remaining_after_ms": 88625.105
+          },
+          {
+            "stage": "audit.final",
+            "status": "ok",
+            "started_ms": 428.21,
+            "duration_ms": 0.279,
+            "remaining_before_ms": 88624.88,
+            "remaining_after_ms": 88624.598
+          },
+          {
+            "stage": "proposal.third",
+            "status": "ok",
+            "started_ms": 428.529,
+            "duration_ms": 205.121,
+            "remaining_before_ms": 88624.561,
+            "remaining_after_ms": 88419.439
+          },
+          {
+            "stage": "audit.initial",
+            "status": "ok",
+            "started_ms": 428.819,
+            "duration_ms": 0.25,
+            "remaining_before_ms": 88624.271,
+            "remaining_after_ms": 88624.018
+          },
+          {
+            "stage": "audit.values",
+            "status": "ok",
+            "started_ms": 429.083,
+            "duration_ms": 0.004,
+            "remaining_before_ms": 88624.007,
+            "remaining_after_ms": 88624.001
+          },
+          {
+            "stage": "audit.identity_history",
+            "status": "ok",
+            "started_ms": 429.292,
+            "duration_ms": 103.712,
+            "remaining_before_ms": 88623.798,
+            "remaining_after_ms": 88520.081
+          },
+          {
+            "stage": "audit.images_pods",
+            "status": "ok",
+            "started_ms": 429.37,
+            "duration_ms": 102.917,
+            "remaining_before_ms": 88623.719,
+            "remaining_after_ms": 88520.796
+          },
+          {
+            "stage": "audit.normal_image",
+            "status": "ok",
+            "started_ms": 429.84,
+            "duration_ms": 102.19,
+            "remaining_before_ms": 88623.25,
+            "remaining_after_ms": 88521.054
+          },
+          {
+            "stage": "audit.failure_image",
+            "status": "ok",
+            "started_ms": 429.907,
+            "duration_ms": 101.073,
+            "remaining_before_ms": 88623.183,
+            "remaining_after_ms": 88522.101
+          },
+          {
+            "stage": "audit.replicaset",
+            "status": "ok",
+            "started_ms": 532.31,
+            "duration_ms": 100.595,
+            "remaining_before_ms": 88520.78,
+            "remaining_after_ms": 88420.178
+          },
+          {
+            "stage": "audit.final",
+            "status": "ok",
+            "started_ms": 633.218,
+            "duration_ms": 0.384,
+            "remaining_before_ms": 88419.872,
+            "remaining_after_ms": 88419.485
+          }
+        ],
+        "dropped_events": 0
+      }
+    }
+  },
+  "link": {
+    "injected_get_delay_ms": 10,
+    "cold_gets": 14,
+    "reused_gets": 8,
+    "main_gets": 2,
+    "cold_ms": 519.505,
+    "reused_ms": 331.092
+  },
+  "base_commit": "651cdc6016af1e7b7dcc507aa0804591927bd5e9",
+  "historical_interval_seconds": 50.740117,
+  "historical_substage_attribution": "unavailable: timing context was not activated before PR creation",
+  "live_trial_executed": false,
+  "validation": {
+    "unit_tests": 1276,
+    "unit_result": "passed",
+    "new_regression_tests": 9,
+    "compileall": "passed",
+    "diff_check": "passed",
+    "live_connections": false,
+    "deployment": false,
+    "fault_trial": false
+  },
+  "source_sha256": {
+    "scripts/audit_c2_live_preflight.py": "d540556188745293a1e62db5931c7c0af2d57cb9cd98d5476ac6429c40e8d170",
+    "scripts/prepare_c4_recovery_pr.py": "a412459c423f59cb57249d845c65a33d4f3ba0091a3a84331f9926f30c9708a1",
+    "scripts/check_c4_proposal_latency_local.py": "161304d216b1ee5bfb97242716089307fce7c2f6bdb892e3252a9fa38b485f98",
+    "src/ai_ops/c_approval.py": "9ffd36cf9209b0ccdd645e57d01b7d2e1645d8d018fdbef3e3c620cb2a80ee33",
+    "src/ai_ops/c_pr_link.py": "9f36de535dbb9026aef2a34cbd09d24c860737f8593a0adbab07aaca1a408ccd",
+    "src/ai_ops/c_recovery_read_timing.py": "63547590a1c183d0e94340e035e96a49ff90d5e7e47a085cd3b91cd267ef48c2",
+    "src/ai_ops/c_trial_read_cache.py": "e8300c52e4351fe1f6bfa2c99a10d3fab24a6e8b5dbde6d6c0c8e2c613cab0b7",
+    "tests/test_c_proposal_latency.py": "ab7053bcf5c77082ff8cc43e8d3da79948c9eb247c290fe6405c9d1e3f0c40d3"
+  }
+}

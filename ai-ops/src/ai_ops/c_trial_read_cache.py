@@ -17,6 +17,12 @@ class ImmutableGitReader:
     def deadline(self):
         return self.reader.deadline
 
+    def renew(self, reader):
+        """Keep only verified SHA objects; use a fresh bounded reader for mutable GETs."""
+        renewed = ImmutableGitReader(reader, enforce_deadline=True)
+        renewed.cache = deepcopy(self.cache)
+        return renewed
+
     def get(self, path):
         if self.enforce_deadline and time.monotonic() >= self.deadline:
             from ai_ops.c_approval import ApprovalRejected

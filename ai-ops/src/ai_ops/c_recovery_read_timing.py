@@ -11,6 +11,10 @@ from ai_ops.contracts import _utc_datetime
 
 _ACTIVE = ContextVar('c_recovery_read_timing', default=None)
 _PHASES = frozenset({
+    'proposal.total', 'proposal.first', 'proposal.second', 'proposal.third',
+    'proposal.assess', 'proposal.draft', 'proposal.link', 'proposal.render',
+    'audit.command', 'audit.cluster', 'audit.account', 'audit.operator_identity',
+    'audit.kubeconfig', 'audit.normal_image', 'audit.failure_image',
     'recovery.total', 'review.initial', 'merge.session', 'merge.open', 'github.app', 'preflight.locked',
     'merge.plan', 'merge.verify', 'sync.plan', 'sync.wait', 'handoff.verify',
     'source.before', 'source.audit', 'source.after', 'live.collect',
@@ -114,3 +118,20 @@ def github_phase(path):
     if '/branches/main/protection' in path or '/rulesets/' in path: return 'github.protection'
     if '/pulls/' in path: return 'github.pull'
     return 'github.other'
+
+
+@contextmanager
+def proposal_read_timing(plan, report, *, clock, monotonic=None):
+    """PR preparation may only use time before the existing minimum review window.
+
+    Always persist bounded, value-free timing, including timeout/cancellation paths.
+    Exiting this scope restores the context so token cleanup is not budget-blocked.
+    """
+    from datetime import timedelta
+    deadline = plan.review_cutoff() - timedelta(seconds=plan.minimum_review_seconds or 30)
+    trace = RecoveryReadTiming(deadline, clock=clock, monotonic=monotonic)
+    try:
+        with trace.activate(), trace.phase('proposal.total', read=True):
+            yield trace
+    finally:
+        report(trace.report())

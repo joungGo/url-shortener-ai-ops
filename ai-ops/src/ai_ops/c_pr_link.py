@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+from ai_ops.c_recovery_read_timing import phase, read_timeout
 import tempfile
 
 from pydantic import Field, model_validator
@@ -133,10 +134,11 @@ def check_rendered_image_change(chart_files, before_digest, after_digest):
 
         def render(digest):
             (chart / "values.yaml").write_text(_encoded_values(digest), encoding="utf-8")
-            output = subprocess.run(
-                ["helm", "template", "lab-target", str(chart), "--namespace", "ai-ops-lab"],
-                capture_output=True, timeout=10, check=True,
-            ).stdout
+            with phase('proposal.render', read=True):
+                output = subprocess.run(
+                    ["helm", "template", "lab-target", str(chart), "--namespace", "ai-ops-lab"],
+                    capture_output=True, timeout=read_timeout(10), check=True,
+                ).stdout
             if not 0 < len(output) <= 65536:
                 raise ValueError("unexpected_lab_render_size")
             lines = output.decode().splitlines()

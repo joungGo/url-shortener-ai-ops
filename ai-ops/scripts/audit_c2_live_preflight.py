@@ -25,6 +25,16 @@ from ai_ops.path_policy import cli_paths, permitted_path, write_private_json
 
 
 def _run(*args: str) -> str:
+    label = 'audit.command'
+    if args[:3] == ('aws', 'eks', 'describe-cluster'): label = 'audit.cluster'
+    elif args[:3] == ('aws', 'sts', 'get-caller-identity'): label = 'audit.account'
+    elif args[:3] == ('gh', 'api', 'user'): label = 'audit.operator_identity'
+    elif args[0] == 'kubectl' and 'config' in args: label = 'audit.kubeconfig'
+    with phase(label, read=True):
+        return _run_command(*args)
+
+
+def _run_command(*args: str) -> str:
     output = subprocess.run(args, capture_output=True, text=True, timeout=read_timeout(15), check=True).stdout
     if len(output.encode()) > 2 * 1024 * 1024:
         raise ValueError("복구 근거 조회 응답이 너무 큽니다")
@@ -62,26 +72,32 @@ def _collect(args, *, expected_lease_holder=None, include_snapshot=False,
         if args.normal_binding.stat().st_size > 8192:
             raise ValueError("정상 CI 결합값 파일이 너무 큽니다")
         binding = NormalCIBinding.model_validate_json(args.normal_binding.read_bytes())
-        with phase('audit.identity_history', read=True), ThreadPoolExecutor(max_workers=4) as pool:
-            history_read = submit(pool, verify_normal_ci_history, args.normal_run_id, args.normal_head, binding)
-            cluster_read = submit(pool, _run, "aws", "eks", "describe-cluster", "--region", "ap-northeast-2",
-                                       "--name", "urlshortener", "--output", "json")
-            account_read = submit(pool, _run, "aws", "sts", "get-caller-identity", "--output", "json")
-            kube_read = submit(pool, _run, "kubectl", "--kubeconfig", kubeconfig, "config", "view",
-                                    "--minify", "--raw", "-o", "json")
-            history = history_read.result()
-            cluster = json.loads(cluster_read.result())["cluster"]
-            account = json.loads(account_read.result())
-            kube = json.loads(kube_read.result())
-        connection = kube["clusters"][0]["cluster"]
-        fingerprint = sha256_json({"arn": cluster["arn"], "endpoint": cluster["endpoint"],
-                                   "ca": cluster["certificateAuthority"]["data"]})
-        if (account["Account"] != "764428911194" or cluster["status"] != "ACTIVE"
-                or cluster["arn"] != binding.cluster_arn or fingerprint != binding.cluster_fingerprint
-                or connection.get("server") != cluster["endpoint"]
-                or connection.get("certificate-authority-data") != cluster["certificateAuthority"]["data"]):
-            raise ValueError("정상 CI와 현재 클러스터의 동일성을 확인하지 못했습니다")
+        def identity_history():
+            with phase('audit.identity_history', read=True), ThreadPoolExecutor(max_workers=4) as pool:
+                history_read = submit(pool, verify_normal_ci_history, args.normal_run_id, args.normal_head, binding)
+                cluster_read = submit(pool, _run, "aws", "eks", "describe-cluster", "--region", "ap-northeast-2",
+                                           "--name", "urlshortener", "--output", "json")
+                account_read = submit(pool, _run, "aws", "sts", "get-caller-identity", "--output", "json")
+                kube_read = submit(pool, _run, "kubectl", "--kubeconfig", kubeconfig, "config", "view",
+                                        "--minify", "--raw", "-o", "json")
+                history = history_read.result()
+                cluster = json.loads(cluster_read.result())["cluster"]
+                account = json.loads(account_read.result())
+                kube = json.loads(kube_read.result())
+            connection = kube["clusters"][0]["cluster"]
+            fingerprint = sha256_json({"arn": cluster["arn"], "endpoint": cluster["endpoint"],
+                                       "ca": cluster["certificateAuthority"]["data"]})
+            if (account["Account"] != "764428911194" or cluster["status"] != "ACTIVE"
+                    or cluster["arn"] != binding.cluster_arn or fingerprint != binding.cluster_fingerprint
+                    or connection.get("server") != cluster["endpoint"]
+                    or connection.get("certificate-authority-data") != cluster["certificateAuthority"]["data"]):
+                raise ValueError("정상 CI와 현재 클러스터의 동일성을 확인하지 못했습니다")
+            return history
         def ecr_lookup(digest: str) -> tuple[dict, bool]:
+            with phase('audit.normal_image' if digest == old_digest else 'audit.failure_image', read=True):
+                return ecr_command(digest)
+
+        def ecr_command(digest: str) -> tuple[dict, bool]:
             command = ("aws", "ecr", "describe-images", "--region", "ap-northeast-2",
                        "--repository-name", "urlshortener", "--image-ids",
                        "imageDigest=" + digest, "--output", "json")
@@ -93,18 +109,27 @@ def _collect(args, *, expected_lease_holder=None, include_snapshot=False,
             return json.loads(response.stdout), False
         old_digest = binding.app.image.removeprefix(IMAGE_REPOSITORY + "@")
         bad_digest = _values(values)["api"]["image"]["digest"]
-        with phase('audit.images_pods', read=True), ThreadPoolExecutor(max_workers=3) as pool:
-            normal_read = submit(pool, ecr_lookup, old_digest)
-            failure_read = submit(pool, ecr_lookup, bad_digest)
-            pods_read = submit(pool, _run, "kubectl", "--kubeconfig", kubeconfig, "-n", "ai-ops-lab",
-                                    "get", "pods", "-l", "app=lab-api", "-o", "json")
-            ecr, _ = normal_read.result()
-            _, bad_absent = failure_read.result()
-            pods = json.loads(pods_read.result())["items"]
-        owners = pods[0].get("metadata", {}).get("ownerReferences", []) if len(pods) == 1 else []
-        with phase('audit.replicaset', read=True):
-            replica_set = get("ai-ops-lab", "replicaset", owners[0]["name"]) if len(owners) == 1 \
-                and owners[0].get("kind") == "ReplicaSet" else {}
+        def images_pods():
+            with phase('audit.images_pods', read=True), ThreadPoolExecutor(max_workers=3) as pool:
+                normal_read = submit(pool, ecr_lookup, old_digest)
+                failure_read = submit(pool, ecr_lookup, bad_digest)
+                pods_read = submit(pool, _run, "kubectl", "--kubeconfig", kubeconfig, "-n", "ai-ops-lab",
+                                        "get", "pods", "-l", "app=lab-api", "-o", "json")
+                ecr, _ = normal_read.result()
+                _, bad_absent = failure_read.result()
+                pods = json.loads(pods_read.result())["items"]
+            owners = pods[0].get("metadata", {}).get("ownerReferences", []) if len(pods) == 1 else []
+            with phase('audit.replicaset', read=True):
+                replica_set = get("ai-ops-lab", "replicaset", owners[0]["name"]) if len(owners) == 1 \
+                    and owners[0].get("kind") == "ReplicaSet" else {}
+            return ecr, bad_absent, pods, replica_set
+        # Both lanes depend on the same initial objects/values, not on each other.
+        # Join both before proof assessment; final object comparison remains below.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            identity_read = submit(pool, identity_history)
+            images_read = submit(pool, images_pods)
+            history = identity_read.result()
+            ecr, bad_absent, pods, replica_set = images_read.result()
         result = assess_recovery_proof(app, deployment, lease, values, replica_set, pods,
                                        binding, history, ecr, bad_absent,
                                        expected_lease_holder=expected_lease_holder, repository=repository)
