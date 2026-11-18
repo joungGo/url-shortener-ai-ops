@@ -110,30 +110,31 @@ def _collect(args, *, expected_lease_holder=None, include_snapshot=False,
         old_digest = binding.app.image.removeprefix(IMAGE_REPOSITORY + "@")
         bad_digest = _values(values)["api"]["image"]["digest"]
         def images_pods():
-            with phase('audit.images_pods', read=True), ThreadPoolExecutor(max_workers=3) as pool:
+            # Pod and ReplicaSet lists are independent reads. Match both name and UID,
+            # reject pagination, and retain the same proof and final object barriers.
+            with phase('audit.images_pods', read=True), ThreadPoolExecutor(max_workers=4) as pool:
                 normal_read = submit(pool, ecr_lookup, old_digest)
                 failure_read = submit(pool, ecr_lookup, bad_digest)
                 pods_read = submit(pool, _run, "kubectl", "--kubeconfig", kubeconfig, "-n", "ai-ops-lab",
                                         "get", "pods", "-l", "app=lab-api", "-o", "json")
+                sets_read = submit(pool, _run, "kubectl", "--kubeconfig", kubeconfig, "-n", "ai-ops-lab",
+                                        "get", "replicasets", "-l", "app=lab-api", "-o", "json")
                 ecr, _ = normal_read.result()
                 _, bad_absent = failure_read.result()
-                pods = json.loads(pods_read.result())["items"]
+                pod_list, set_list = json.loads(pods_read.result()), json.loads(sets_read.result())
+            if any(v.get("metadata", {}).get("continue") for v in (pod_list, set_list)):
+                raise ValueError("잘린 Kubernetes 원본은 사용할 수 없습니다")
+            pods = pod_list["items"]
             owners = pods[0].get("metadata", {}).get("ownerReferences", []) if len(pods) == 1 else []
-            with phase('audit.replicaset', read=True):
-                replica_set = get("ai-ops-lab", "replicaset", owners[0]["name"]) if len(owners) == 1 \
-                    and owners[0].get("kind") == "ReplicaSet" else {}
+            matching = [item for item in set_list["items"] if len(owners) == 1
+                        and owners[0].get("kind") == "ReplicaSet"
+                        and item["metadata"]["uid"] == owners[0].get("uid")
+                        and item["metadata"]["name"] == owners[0].get("name")]
+            replica_set = matching[0] if len(matching) == 1 else {}
             return ecr, bad_absent, pods, replica_set
-        # Both lanes depend on the same initial objects/values, not on each other.
-        # Join both before proof assessment; final object comparison remains below.
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            identity_read = submit(pool, identity_history)
-            images_read = submit(pool, images_pods)
-            history = identity_read.result()
-            ecr, bad_absent, pods, replica_set = images_read.result()
-        result = assess_recovery_proof(app, deployment, lease, values, replica_set, pods,
-                                       binding, history, ecr, bad_absent,
-                                       expected_lease_holder=expected_lease_holder, repository=repository)
-        if args.operator_state_root is not None and result["proof_ready"]:
+
+        def incident_inputs():
+            # Read-only inputs can overlap proof reads; assessment still waits for proof.
             with phase('audit.incident', read=True):
                 shown = _client(args.operator_state_root / "operator.sock", "show",
                                 args.incident_id, args.incident_run_id)
@@ -144,7 +145,21 @@ def _collect(args, *, expected_lease_holder=None, include_snapshot=False,
                 github_id = _run("gh", "api", "user", "--jq", ".id").strip()
                 if not github_id.isdecimal() or request.requester_github_id != int(github_id):
                     raise ValueError("현재 운영자와 해결 요청의 GitHub ID가 다릅니다")
-                result = assess_incident_request(result, projection, request)
+                return projection, request
+
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            identity_read = submit(pool, identity_history)
+            images_read = submit(pool, images_pods)
+            incident_read = submit(pool, incident_inputs) if args.operator_state_root is not None else None
+            history = identity_read.result()
+            ecr, bad_absent, pods, replica_set = images_read.result()
+            if incident_read is not None:
+                projection, request = incident_read.result()
+        result = assess_recovery_proof(app, deployment, lease, values, replica_set, pods,
+                                       binding, history, ecr, bad_absent,
+                                       expected_lease_holder=expected_lease_holder, repository=repository)
+        if args.operator_state_root is not None and result["proof_ready"]:
+            result = assess_incident_request(result, projection, request)
     if include_snapshot:
         # C-03은 이 자료로 실행 경계를 판단한다. 긴 CI/ECR 조회 중 대상이나
         # 공유 잠금이 바뀌었다면 한 번의 수집 안에서도 닫힌 상태로 끝낸다.

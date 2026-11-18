@@ -11,6 +11,9 @@ from ai_ops.contracts import _utc_datetime
 
 _ACTIVE = ContextVar('c_recovery_read_timing', default=None)
 _PHASES = frozenset({
+    'writer.total', 'writer.identity', 'writer.scope_base', 'writer.commit_diff',
+    'writer.branch', 'writer.commit', 'writer.pull', 'writer.pull_verify', 'writer.revoke',
+    'writer.token', 'writer.jwt',
     'proposal.total', 'proposal.first', 'proposal.second', 'proposal.third',
     'proposal.assess', 'proposal.draft', 'proposal.link', 'proposal.render',
     'audit.command', 'audit.cluster', 'audit.account', 'audit.operator_identity',
@@ -122,16 +125,48 @@ def github_phase(path):
 
 @contextmanager
 def proposal_read_timing(plan, report, *, clock, monotonic=None):
-    """PR preparation may only use time before the existing minimum review window.
+    """Reserve PR creation and delivery before the existing minimum review window.
 
     Always persist bounded, value-free timing, including timeout/cancellation paths.
     Exiting this scope restores the context so token cleanup is not budget-blocked.
     """
     from datetime import timedelta
-    deadline = plan.review_cutoff() - timedelta(seconds=plan.minimum_review_seconds or 30)
+    deadline = plan.review_cutoff() - timedelta(
+        seconds=(plan.minimum_review_seconds or 30) + WRITER_RESERVE_SECONDS + NOTICE_RESERVE_SECONDS)
     trace = RecoveryReadTiming(deadline, clock=clock, monotonic=monotonic)
     try:
         with trace.activate(), trace.phase('proposal.total', read=True):
+            yield trace
+    finally:
+        report(trace.report())
+
+
+# Internal sub-budgets; neither the review cutoff nor rollback deadlines move.
+# 006 writer took 7.416 s. Reserve 8 s plus 4 s for actual host delivery.
+WRITER_RESERVE_SECONDS = 8
+NOTICE_RESERVE_SECONDS = 4
+
+
+@contextmanager
+def without_read_budget():
+    """Revocation must still run when the preparation budget has expired."""
+    token = _ACTIVE.set(None)
+    try:
+        yield
+    finally:
+        _ACTIVE.reset(token)
+
+
+@contextmanager
+def writer_pr_timing(plan, report, *, clock, monotonic=None, read_deadline=None):
+    from datetime import timedelta
+    deadline = plan.review_cutoff() - timedelta(
+        seconds=(plan.minimum_review_seconds or 30) + NOTICE_RESERVE_SECONDS)
+    trace = RecoveryReadTiming(deadline, clock=clock, monotonic=monotonic, read_deadline=read_deadline)
+    try:
+        with trace.activate(), trace.phase('writer.total', read=True):
+            if trace.remaining() < WRITER_RESERVE_SECONDS:
+                raise ValueError('manual_recovery_writer_reserve_exhausted')
             yield trace
     finally:
         report(trace.report())
