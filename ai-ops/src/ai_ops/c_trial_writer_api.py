@@ -1,6 +1,7 @@
 """승인된 작성 App으로 단일 격리 저장소의 정상 기준선 PR만 생성한다."""
 
 from contextlib import contextmanager
+from ai_ops.c_recovery_read_timing import read_timeout, phase, without_read_budget
 
 import base64
 import hashlib
@@ -38,7 +39,7 @@ class ApiError(ValueError):
 def api(method, path, credential, payload=None, missing=False):
     """고정 GitHub HTTPS에만 요청하며 자격·오류 본문을 저장하거나 출력하지 않는다."""
     sent_at, sent_tick = utcnow(), time.monotonic()
-    connection = http.client.HTTPSConnection('api.github.com', timeout=12)
+    connection = http.client.HTTPSConnection('api.github.com', timeout=read_timeout(12))
     try:
         connection.request(method, path, body=None if payload is None else json.dumps(payload).encode(),
             headers={'Authorization':'Bearer '+credential,'Accept':'application/vnd.github+json',
@@ -76,7 +77,7 @@ def jwt():
     message=b'.'.join((encoded(b'{"alg":"RS256","typ":"JWT"}'),
         encoded(json.dumps({'iat':now-60,'exp':now+540,'iss':str(APP_ID)},separators=(',',':')).encode())))
     signature=subprocess.run(['openssl','dgst','-sha256','-sign',str(KEY)],input=message,
-        stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=10,check=True).stdout
+        stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=read_timeout(10),check=True).stdout
     return (message+b'.'+encoded(signature)).decode()
 
 
@@ -101,8 +102,9 @@ def installation_token(assertion, *, report):
     token = None
     grant = None
     try:
-        issued = api('POST', f'/app/installations/{INSTALLATION_ID}/access_tokens',
-            assertion, {'repository_ids': [REPO_ID], 'permissions': PERMISSIONS})
+        with phase('writer.token'):
+            issued = api('POST', f'/app/installations/{INSTALLATION_ID}/access_tokens',
+                assertion, {'repository_ids': [REPO_ID], 'permissions': PERMISSIONS})
         token = issued['token']
         require(isinstance(token, str) and bool(token) and issued.get('permissions') == PERMISSIONS)
         try:
@@ -118,4 +120,5 @@ def installation_token(assertion, *, report):
         if grant is not None:
             grant._token = None
         if token is not None:
-            api('DELETE', '/installation/token', token)
+            with phase('writer.revoke'), without_read_budget():
+                api('DELETE', '/installation/token', token)

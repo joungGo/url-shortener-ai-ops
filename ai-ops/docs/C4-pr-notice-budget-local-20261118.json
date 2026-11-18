@@ -1,0 +1,48 @@
+{
+  "scope": "synthetic local API only; not live latency or C04 completion",
+  "injected_api_delay_ms": 25,
+  "writer": {
+    "serial": {
+      "duration_ms": 382.176,
+      "api_calls": 13
+    },
+    "parallel": {
+      "duration_ms": 272.031,
+      "api_calls": 13
+    }
+  },
+  "same_api_calls_and_gates": true,
+  "recorded_006": {
+    "proposal_seconds": 43.423622,
+    "writer_seconds": 7.415729,
+    "remaining_at_proposal_start_seconds": 49.80844,
+    "old_notice_deficit_seconds": 1.030911
+  },
+  "sub_budgets": {
+    "writer_minimum_seconds": 8,
+    "notice_minimum_seconds": 4,
+    "proposal_available_in_006_seconds": 37.80844
+  },
+  "base_sha": "680568b6191299842d0d30f4ff4dab947d953580",
+  "branch": "codex/c04-pr-notice-budget-20261118",
+  "tests": {
+    "total": 1287,
+    "new": 11,
+    "status": "passed",
+    "duration_seconds": 80.207
+  },
+  "source_sha256": {
+    "ai-ops/scripts/audit_c2_live_preflight.py": "b3cdc41f0b6abbd85b931a5aaf41e237e03cadd7a0a20705693bfbad2eb23d2b",
+    "ai-ops/scripts/prepare_c4_recovery_pr.py": "5098d1b3c1082c4fa91281efb5db7accc395cf4c4f588d340c8025a351c80ead",
+    "ai-ops/scripts/check_c4_pr_notice_budget_local.py": "0032e413b4c61cffb4790323f77de625b3effcfeef2600f961104e1ab19d5451",
+    "ai-ops/src/ai_ops/c_recovery_read_timing.py": "c72a03ac8a3120bd0957266e0d351af4c6edc206b427d4765ab3b00f9410116b",
+    "ai-ops/src/ai_ops/c_trial_writer_api.py": "8a720ee652fdeb7060469efa17246cd35379fd082fef7aaa9cff5a65c7e9e43c",
+    "ai-ops/src/ai_ops/c_trial_pr_creation.py": "9ef507eed8e5c66aa021cbf3575d0a6d50db5c074a4017e23e6b67d44e209c7e",
+    "ai-ops/tests/test_c_proposal_latency.py": "c4b6de824bfc19efb5554caec34a2b834d9062693178e36a4130c52e3d08d450",
+    "ai-ops/tests/test_c_trial_writer_path.py": "7c4b842e9813254f7440dbe98ec94831a760c0b411849bd98c5184c5d876ff17",
+    "ai-ops/tests/test_c_pr_notice_budget.py": "e328fe7228669bb7bb4280848aaf8e48fd32c8dc5b493c4fd31057421a8df274"
+  },
+  "full_test_log_sha256": "cc523c6c85e7ee8e68907a2f389f5ffe719be56269d63e5d3c2523aeb6245f3d",
+  "remote_actions": false,
+  "live_validation": false
+}

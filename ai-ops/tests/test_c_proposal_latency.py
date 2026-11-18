@@ -51,8 +51,8 @@ class ProposalLatencyTest(unittest.TestCase):
                 'certificate-authority-data':'synthetic-ca'}}]})
         kind=args[6]; n=self.count(kind)
         data={'application':self.f.app,'deployment':self.f.deployment,'lease':self.f.lease,
-              'pods':{'items':self.f.pods},'replicaset':self.f.rs}[kind]
-        if kind=='replicaset':time.sleep(self.delay)
+              'pods':{'items':self.f.pods},'replicasets':{'items':[self.f.rs]}}[kind]
+        if kind=='replicasets':time.sleep(self.delay)
         data=deepcopy(data)
         if self.change==kind and n%2==0:data['metadata']['uid']='replacement'
         return json.dumps(data)
@@ -93,7 +93,7 @@ class ProposalLatencyTest(unittest.TestCase):
     def test_independent_lanes_overlap_but_all_three_fresh_samples_and_final_reads_remain(self):
         self.barrier=threading.Barrier(2)
         for _ in range(3):self.assertTrue(self.collect()[0]['proof_ready'])
-        for key in ['history','eks','sts','normal_image','failure_image','pods','replicaset']:
+        for key in ['history','eks','sts','normal_image','failure_image','pods','replicasets']:
             self.assertEqual(self.calls[key],3,key)
         for key in ['application','deployment','lease']:self.assertEqual(self.calls[key],6,key)
 
@@ -127,7 +127,7 @@ class ProposalLatencyTest(unittest.TestCase):
             reports=[];mono[0]=0.;wall[0]=now
             try:
                 with proposal_read_timing(plan,reports.append,clock=lambda:wall[0],monotonic=lambda:mono[0]):
-                    self.assertEqual(read_timeout(180),90)
+                    self.assertEqual(read_timeout(180),78)
                     with phase('proposal.first',read=True):
                         if exception is not None:raise exception
                         wall[0]-=timedelta(seconds=20);mono[0]=91
@@ -140,7 +140,7 @@ class ProposalLatencyTest(unittest.TestCase):
 
     def test_expired_phase_does_not_start_next_sample_or_writer(self):
         now=datetime(2026,11,18,tzinfo=timezone.utc);mono=[0.];calls=[];reports=[]
-        plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:now+timedelta(seconds=121))
+        plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:now+timedelta(seconds=133))
         with self.assertRaisesRegex(ApprovalRejected,'^recovery_read_deadline_exceeded$'):
             with proposal_read_timing(plan,reports.append,clock=lambda:now,monotonic=lambda:mono[0]):
                 with phase('proposal.first',read=True):calls.append('first');mono[0]=2.
@@ -225,7 +225,7 @@ class ProposalLatencyTest(unittest.TestCase):
         plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:cutoff)
         with self.assertRaisesRegex(ApprovalRejected,'^recovery_read_deadline_exceeded$'):
             with proposal_read_timing(plan,reports.append,clock=lambda:now,monotonic=lambda:mono[0]):
-                self.assertAlmostEqual(read_timeout(180),50.277026)
+                self.assertAlmostEqual(read_timeout(180),38.277026)
                 with phase('proposal.link',read=True):mono[0]=50.740117
         self.assertEqual(reports[0]['events'][0]['status'],'error')
 
@@ -236,7 +236,7 @@ class ProposalLatencyTest(unittest.TestCase):
         executable.write_text('#!'+sys.executable+'\nimport time; time.sleep(2)\n')
         executable.chmod(0o700)
         now=datetime.now(timezone.utc);reports=[]
-        plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:now+timedelta(seconds=120.2))
+        plan=SimpleNamespace(minimum_review_seconds=120,review_cutoff=lambda:now+timedelta(seconds=132.2))
         start=time.monotonic()
         with patch.dict(os.environ,{'PATH':self.temp.name}):
             with self.assertRaises(ApprovalRejected):

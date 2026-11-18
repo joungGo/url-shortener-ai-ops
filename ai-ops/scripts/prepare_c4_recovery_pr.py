@@ -13,7 +13,7 @@ from ai_ops.c_trial_source import TrialSource
 from ai_ops.c_trial_transport import C4TrialTransport
 from ai_ops.c_recovery import (IncidentProjection,RecoveryRequest,RecoveryDraftStore,draft_verified_proposal,_encoded_values)
 from ai_ops.c_recovery_proof import assess_proposal_recheck
-from ai_ops.c_recovery_read_timing import phase, proposal_read_timing
+from ai_ops.c_recovery_read_timing import phase, proposal_read_timing, writer_pr_timing, WRITER_RESERVE_SECONDS
 from ai_ops.c_approval import prepare_pr_link,verify_review,ApprovalRejected,ApprovalGitHubReader
 from ai_ops.path_policy import write_private_json
 from ai_ops.c_trial_request_time import wait_for_request_projection
@@ -110,7 +110,7 @@ def main():
         source=TrialSource(context,handoff,transport,clock=lambda:datetime.now(timezone.utc),**caches)
         state['stage']='fresh_c02_proposal_recheck';save('post-state.json',state)
         with proposal_read_timing(plan, lambda report: save('proposal-timing.json', report),
-                                  clock=lambda: datetime.now(timezone.utc)):
+                                  clock=lambda: datetime.now(timezone.utc)) as proposal_trace:
             with phase('proposal.first', read=True):
                 first,_=source.collect()
             with phase('proposal.second', read=True):
@@ -139,39 +139,17 @@ def main():
             if datetime.now(timezone.utc)>=deadline-timedelta(seconds=plan.minimum_review_seconds or 30):
                 raise ValueError('manual_recovery_review_window_too_short')
         review_window()
-        from ai_ops import c_trial_writer_api as api
-        assertion=api.jwt();reg=api.api('GET','/app',assertion);install=api.api('GET','/app/installations/180499782',assertion)
-        perms={'contents':'write','pull_requests':'write','metadata':'read'}
-        assert reg['id']==5696038 and reg['slug']=='c03-execution-lab-writer' and reg['permissions']==perms
-        assert install['app_id']==5696038 and install['repository_selection']=='selected' and install.get('suspended_at') is None and install['permissions']==perms
+        from ai_ops.c_trial_pr_creation import create_recovery_pr
         def report_token_time(value):
             state['writer_token_time'] = value
             save('post-state.json',state)
-        with api.installation_token(assertion,report=report_token_time) as grant:
-            repos=grant.api('GET','/installation/repositories?per_page=100');assert repos['total_count']==1 and repos['repositories'][0]['id']==1452572723
-            prefix='/repos/joungGo/c03-execution-lab'
-            assert grant.api('GET',prefix+'/git/ref/heads/main')['object']['sha']==link.pr_base_sha
-            branch='codex/c04-recovery-'+str(plan.trial_id)+'-'+proposal.proposal_id[-8:]
-            review_window()
-            grant.api('POST',prefix+'/git/refs',{'ref':'refs/heads/'+branch,'sha':link.pr_base_sha})
-            before=grant.api('GET',prefix+'/contents/ai-ops/lab/values.yaml?ref='+link.pr_base_sha)
-            assert base64.b64decode(before['content'])==_encoded_values(proposal.current_digest).encode()
-            review_window()
-            created=grant.api('PUT',prefix+'/contents/ai-ops/lab/values.yaml',{
-              'message':'C-04 격리 실습 이미지 복구\n\nRecovery-Proposal-SHA256: '+link.link_hash,
-              'content':base64.b64encode(_encoded_values(proposal.desired_digest).encode()).decode(),
-              'sha':before['sha'],'branch':branch})
-            head=created['commit']['sha'];commit=grant.api('GET',prefix+'/commits/'+head)
-            assert commit['author']['id']==354870297 and [p['sha'] for p in commit['parents']]==[link.pr_base_sha]
-            comp=grant.api('GET',prefix+'/compare/'+link.pr_base_sha+'...'+head)
-            assert comp['total_commits']==1 and len(comp['files'])==1 and comp['files'][0]['filename']=='ai-ops/lab/values.yaml'
-            assert comp['files'][0]['additions']==comp['files'][0]['deletions']==1
-            review_window()
-            pr=grant.api('POST',prefix+'/pulls',{'title':'C-04 격리 실습 이미지 복구 '+str(plan.trial_id),'head':branch,'base':'main',
-              'body':'격리 실습 lab-api의 이미지 digest 한 필드를 정상 이미지로 복구합니다.\n\nRecovery-Proposal-SHA256: '+link.link_hash+'\n\nReview deadline '+deadline.isoformat()+'.'})
-            pull=grant.api('GET',prefix+'/pulls/'+str(pr['number']))
-            assert pull['user']['id']==354870297 and pull['head']['sha']==head and pull['base']['sha']==link.pr_base_sha and pull['state']=='open'
-            state.update(stage='pr_created_waiting_notice',pull_number=pr['number'],url=pr['html_url'],head_sha=head,review_deadline_utc=deadline.isoformat(),minimum_review_seconds=plan.minimum_review_seconds)
+        with writer_pr_timing(plan, lambda report: save('writer-timing.json', report),
+                              clock=lambda: datetime.now(timezone.utc),
+                              read_deadline=proposal_trace.end + WRITER_RESERVE_SECONDS):
+            ready = create_recovery_pr(plan, proposal, link, review_window=review_window,
+                                       report_token_time=report_token_time,
+                                       record_created=lambda value: save('pr-created.json', value))
+            state.update(ready)
             save('pr-ready.json',state);save('post-state.json',state)
         from ai_ops.c_trial_notice import deliver_review_notice
         deliver_review_notice(plan,state,args.review_notifier_socket,P/'review-notified.json')
