@@ -61,8 +61,11 @@ class JobQueue:
         os.close(fd)
         with self.transaction() as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2):
+            if version not in (0, 1, 2, 3):
                 raise ValueError("지원하지 않는 큐 버전입니다")
+            if version == 3:
+                from ai_ops.event_store import _exists
+                _exists(db)  # Reject a bare version bump without the event schema.
             db.execute("CREATE TABLE IF NOT EXISTS episodes (episode_key TEXT PRIMARY KEY, job_id TEXT UNIQUE NOT NULL, created_at REAL NOT NULL)")
             db.execute("CREATE TABLE IF NOT EXISTS jobs (job_id TEXT PRIMARY KEY, episode_key TEXT UNIQUE NOT NULL, fingerprint TEXT NOT NULL, payload TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','collecting','analyzing','completed','partial','failed','cancelled','needs_review')), generation INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0, lease_until REAL, available_at REAL NOT NULL, created_at REAL NOT NULL, updated_at REAL NOT NULL, reason TEXT, snapshot_hash TEXT, incident_id TEXT, run_id TEXT, bundle_hash TEXT)")
             db.execute("CREATE TABLE IF NOT EXISTS attempts (job_id TEXT NOT NULL, generation INTEGER NOT NULL, parent_generation INTEGER, request_id TEXT UNIQUE NOT NULL, state TEXT NOT NULL, started_at REAL NOT NULL, finished_at REAL, reason TEXT, PRIMARY KEY(job_id,generation))")
@@ -70,7 +73,7 @@ class JobQueue:
             # v1의 작업·시도·중복 키는 그대로 두고 삭제 재개 장부만 추가한다.
             # v2를 모르는 이전 worker는 저장소를 열지 못해 삭제된 키의 재접수를 막는다.
             db.execute("CREATE TABLE IF NOT EXISTS purges (job_id TEXT PRIMARY KEY, created_at REAL NOT NULL, deadline REAL NOT NULL, plan TEXT NOT NULL, completed_at REAL)")
-            db.execute("PRAGMA user_version=2")
+            db.execute("PRAGMA user_version=" + str(max(version, 2)))
 
     def now(self) -> float:
         value = self.clock()
@@ -301,6 +304,8 @@ class JobQueue:
             if db.execute("SELECT 1 FROM jobs WHERE state IN ('collecting','analyzing')").fetchone():
                 return None
             now = self.now()
+            from ai_ops.event_store import guard_jobs
+            guard_jobs(db, now)
             row = db.execute("SELECT * FROM jobs WHERE state='queued' AND available_at<=? ORDER BY created_at,job_id LIMIT 1", (now,)).fetchone()
             if row is None:
                 return None

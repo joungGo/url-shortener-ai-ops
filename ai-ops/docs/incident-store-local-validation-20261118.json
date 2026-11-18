@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-18",
+  "task": "WF-02",
+  "status": "review_fixes_locally_validated",
+  "base_sha": "36a55fdb59ec63c34cd7bcb339cada39ec0b515b",
+  "focused_tests": 32,
+  "event_and_queue_regression_tests": 48,
+  "full_tests": 1325,
+  "full_result": "passed",
+  "full_seconds": 80.638,
+  "source_sha256": {
+    "ai-ops/src/ai_ops/event_store.py": "21983fce2c2d3a3072a352a58863420c28ae1e487befc9991f6634d5085a25d4",
+    "ai-ops/src/ai_ops/job_queue.py": "605426b013ca709f1eb0c9ff900d585957780df437e820a325c54f2ce6967c1d",
+    "ai-ops/src/ai_ops/worker.py": "4833a1c32f73b32c544f4968547fd0159219e7b874bf9338c1efd657fa6892b8",
+    "ai-ops/tests/test_event_store.py": "c8090058ee90997b1fb6e90f01be232b811a4129c55b298652ead81e783f5cae"
+  },
+  "test_log_sha256": "6948e09b599d64a814bdb8940b551e7415647ccdb834316558c1480a0a8a0206",
+  "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=ai-ops/src <existing-venv>/bin/python -m unittest discover -s ai-ops/tests -p test_*.py -q",
+  "schema": {
+    "queue_without_events": 2,
+    "queue_with_events": 3,
+    "event_extension": 1
+  },
+  "limits": {
+    "event_details_days_from_occurrence": 7,
+    "max_events_including_tombstones": 10000,
+    "max_requests_including_tombstones": 10000,
+    "existing_queue_waiting": 100
+  },
+  "external_actions": [],
+  "not_verified": [
+    "authenticated HTTP intake",
+    "Slack event command and result delivery",
+    "automatic maintenance scheduling",
+    "live DB migration",
+    "C04/C05 live verification"
+  ],
+  "notes": [
+    "Initial full run caught bare queue version3 without schema; fixed startup validation; final full suite passed.",
+    "Existing SQLite ResourceWarning appeared in full tests; not evidence of live service failure.",
+    "Local test TCP/Unix sockets authorized; no cloud/Slack calls or deployment."
+  ],
+  "initial_implementation": {
+    "focused_tests": 29,
+    "full_tests": 1322,
+    "full_result": "passed"
+  },
+  "review_findings_fixed": 3
+}
