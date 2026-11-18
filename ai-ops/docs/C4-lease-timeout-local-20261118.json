@@ -1,0 +1,82 @@
+{
+  "scope": "local_only",
+  "base_revision": "d9be347a2d7c98988c2dd4f03a052fd39a00f431",
+  "branch": "codex/c04-lease-timeout-20261118",
+  "unit_tests": 1257,
+  "new_tests": 10,
+  "unit_tests_passed": true,
+  "stage_cases": [
+    {
+      "scenario": "authentication",
+      "elapsed_seconds": 3.001447,
+      "outer_phase": "response_headers",
+      "last_observed": {
+        "phase": "authentication",
+        "state": "start"
+      },
+      "secret_canary_absent": true,
+      "closed": true
+    },
+    {
+      "scenario": "tls",
+      "elapsed_seconds": 3.001334,
+      "outer_phase": "response_headers",
+      "last_observed": {
+        "phase": "tls",
+        "state": "start"
+      },
+      "secret_canary_absent": true,
+      "closed": true
+    },
+    {
+      "scenario": "response_wait",
+      "elapsed_seconds": 3.001314,
+      "outer_phase": "response_headers",
+      "last_observed": {
+        "phase": "response_wait",
+        "state": "start"
+      },
+      "secret_canary_absent": true,
+      "closed": true
+    }
+  ],
+  "cloud_calls": 0,
+  "live_trials": 0,
+  "actual_deployments": 0,
+  "paid_model_calls": 0,
+  "timeouts_seconds": {
+    "lease_request": 3,
+    "start": 15,
+    "review_minimum": 120,
+    "review_deadline": 210,
+    "owner_restore": 240,
+    "independent_restore": 300,
+    "observe": 120
+  },
+  "source_sha256": {
+    "ai-ops/scripts/run_c4_ready_guard.py": "3a2b41b1474e1d6e12e8e358a8bdee01ec4b4825c94a31407b05f1c81da46be1",
+    "ai-ops/scripts/run_c4_ready_trial.py": "226af2cf289073a76ff716683ece63d8274de206f4b1a9faae233778f268a896",
+    "ai-ops/src/ai_ops/c_trial_lease_client.py": "c9242261d19a144579d5de3eb47d0bb6eb252fd7299bed6fd96b45f0da9e753e",
+    "ai-ops/src/ai_ops/c_trial_ready_transport.py": "e4dfc3fd1aafd2fe216f684f32bd6ff93d3395c0154e33814a7de06b2c64dc9d",
+    "ai-ops/tests/test_c4_guard_timeout_local.py": "37d530ba07a3bcaaf146546f50a26ce64a0c7832ee3026a24e90ba0e3be013ac"
+  },
+  "unchanged_control_files": [
+    "ai-ops/src/ai_ops/c_trial_ready.py",
+    "ai-ops/src/ai_ops/c_trial_ready_guard.py",
+    "ai-ops/src/ai_ops/c_trial_execution.py",
+    "ai-ops/src/ai_ops/c2_rollback_guard.py",
+    "ai-ops/src/ai_ops/c_trial_schedule.py"
+  ],
+  "actual_underlying_timeout_cause": "not_proven",
+  "live_trial_repeat_allowed": false,
+  "deployment_status": "not_deployed",
+  "fix_scope": [
+    "guard_trace_option_wiring",
+    "bound_failure_record",
+    "diagnostic_propagation_without_retry"
+  ],
+  "platform_unit_tests": 915,
+  "review_fixed": [
+    "diagnostic_integer_overflow"
+  ]
+}

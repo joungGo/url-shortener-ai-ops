@@ -62,3 +62,10 @@ Python socket 3초와 기존 CLI 플래그, 기존 인증/갱신/요청 처리, 
 빌더는 핵심 Kubernetes 모듈 6개의 v0.35.8 일치·사전 replace 부재를 확인한다. source/checksum/의존성 잠금을 갱신했으며 자동 실행 시에는 readonly 검사를 유지한다. manifest의 `build_seconds`는 캐시 상태에 의존하는 이번 빌드 표본이다.
 
 로컬 proxy 검사의 `--expected-reference-version v1.35.8`은 시험 전에 공식 비교 버전을 확인한다. `binary_pin_check_seconds`는 실제 소유권/해시 검사, `preparation_seconds`는 그 검사를 다시 포함한 proxy 기동·최초 가짜 인증·TLS·UID 조회 비용이다. `first_request_trace`는 best effort 단계 관측이며 누락을 0초로 해석하지 않는다. 시간값은 로컬 표본이고 AWS 인증·네트워크 비용이나 15초 시작 성공을 보장하지 않는다. 빌드/다운로드와 최초 인증은 준비 단계에서 완료해야 하며 승인 후 기존 현재 상태/ACK 재검증을 생략하지 않는다. 실제 실행기 연결은 별도 후속 작업이다.
+
+
+## 2026-11-18 감시 CLI 연결 · 로컬 검증
+
+`run_c4_ready_guard.py`는 이제 `--lease-trace-binary /absolute/private/kubectl-c04-trace --lease-trace-sha256 VERIFIED_SHA256` 쌍을 TrialLeaseClient에 전달한다. 기존 바이너리 고정 검증을 통과해야 하며 기본 동작은 바뀌지 않는다. 준비 전 빌드/검토가 필요하고 실제 감시·원격 workflow에 자동 적용하지 않는다.
+
+Lease 오류로 종료하면 기존 marker 옆 `<marker>.failure.json`에 같은 intent/guard/role과 정제된 실패를 기록한다. 부모는 이 기록을 실패로만 처리하며 기존 성공 캐시·죽은 프로세스를 준비 성공으로 사용하지 않는다. 원복/승인/시간 제한과 재시도 금지는 그대로다. 하위 단계가 기록되지 않은 과거 사건의 원인은 추정하지 않는다. 상세는 [로컬 검증](../../docs/C4-lease-timeout-local-20261118.md)을 따른다.
