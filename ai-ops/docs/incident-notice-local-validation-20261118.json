@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "task": "WF-03",
+  "date": "2026-11-18",
+  "status": "local_validation_passed",
+  "bases": {
+    "ai": "9c9f3fc265d998be95746a09d859b02a5f0affee",
+    "platform": "01ca82bd44a6d5ad3c880ad8aff5d805162215d1"
+  },
+  "branch": "codex/wf03-alert-reference-20261118",
+  "source_sha256": {
+    "ai": {
+      "ai-ops/src/ai_ops/alert_receiver.py": "d09c55ed50cb1eedb7f56beee1be872b6353b94238bb789b5d4066848c0a9fcc",
+      "ai-ops/src/ai_ops/event_store.py": "f8998238fca4f40afde2b10c85cb33a0dca3273e8be74bcbe1d7e6b5862bc5eb",
+      "ai-ops/src/ai_ops/event_notices.py": "7a0c90db6d852a84350d9fb62014e05cde5042ed4d64e62b780e7439ef0aeee4",
+      "ai-ops/tests/test_event_notices.py": "28f92d86354caad4d433fc3802c21e8916742da80d3f7594dab5653a62fb62a3"
+    },
+    "platform": {
+      "cluster-addons/prometheus/wf03/prepare.py": "9b5dc5c84a7a1110f671811ff5f3ba370ea3852524a5dd95d657861620e07973",
+      "cluster-addons/prometheus/wf03/notice.tmpl": "bb0f5418b84892db65b5de73ab784f528bc9d04ba52e4e7e3a073e06aad07f6e",
+      "cluster-addons/prometheus/wf03/test_notice.py": "8786344a3e89f0a4084c1aa662ebc244d588dec8c18d320ea7d05528f83c536a"
+    }
+  },
+  "tests": {
+    "platform": {
+      "passed": 8,
+      "skipped": 0
+    },
+    "ai_focused": {
+      "passed": 50,
+      "skipped": 0
+    },
+    "ai_full": {
+      "passed": 1334,
+      "skipped": 0,
+      "seconds": 81.827
+    },
+    "ast_files": 6,
+    "repository_boundary": "passed",
+    "diff_checks": "passed",
+    "candidate_inline_template": "passed"
+  },
+  "logs": {
+    "ai_full": {
+      "local_path": "/tmp/wf03-ai-full.log",
+      "sha256": "c9cb7ed7cc660dd4448967aba1b6782ed8dc0d0947362e6c4484042ad55932db"
+    },
+    "ai_focused": {
+      "local_path": "/tmp/wf03-ai-focused.log",
+      "sha256": "c628baf94b02fc816bea4edc6a57fab82c0bfcfcfac7f2bd8f0fa64fcb59ee67"
+    },
+    "platform": {
+      "local_path": "/tmp/wf03-platform-tests.log",
+      "sha256": "757cc382aa15173b49856bcb15d131a236428f89ee0bf7de4678fdaeb2aadf06"
+    }
+  },
+  "amtool": {
+    "version": "0.32.0",
+    "url": "https://github.com/prometheus/alertmanager/releases/download/v0.32.0/alertmanager-0.32.0.darwin-arm64.tar.gz",
+    "archive_sha256": "8da98c4abb80fc417d41298f6b98f9d0ebf0fb41f582513ee04bb278a567b519",
+    "binary_sha256": "d6b1feaf727aef4e7538810ce0c5063a09117375d3aec9ffa2fc31cbb39fcdd7"
+  },
+  "upstream_chart_values": "https://raw.githubusercontent.com/prometheus-community/helm-charts/kube-prometheus-stack-83.7.0/charts/kube-prometheus-stack/values.yaml",
+  "unchanged_live_inputs": {
+    "cluster-addons/prometheus/values.yaml": "e24b30f6628394e0d1d0f9fe7105d479d8da104dbe364fa690a5c45b93d9fae5",
+    "cluster-addons/prometheus/application.yaml": "b5b52ef81e79eaa8701ad256549ee0934a592df71900cbeb941b7a9384a48b36"
+  },
+  "integration": {
+    "source": "explicit local WF03_PLATFORM_ROOT, not a remotely pinned WF03 revision",
+    "authentication": "synthetic tokens and loopback TLS only",
+    "reference": "actual Go template nanosecond output -> EventStore canonical evt",
+    "notice_delivery": "unknown, never inferred from intake ACK",
+    "default_endpoint": "unchanged /v1/alerts; /v1/events requires both explicit event-source options"
+  },
+  "preserved_limits_seconds": {
+    "lease_get": 3,
+    "start": 15,
+    "minimum_review_after_notice": 120,
+    "review_from_start": 210,
+    "owner_rollback_target": 240,
+    "independent_rollback_start": 300,
+    "recovery_observation": 120
+  },
+  "external_actions": {
+    "public_official_validation_tool_download": true,
+    "github_ci_or_merge": false,
+    "deployment": false,
+    "slack_send": false,
+    "fault_trial": false,
+    "terraform": false,
+    "paid_model": false
+  },
+  "limitations": [
+    "Actual Slack/Alertmanager external delivery and retry behavior not tested",
+    "Slack incident command/result path remains WF-04",
+    "Actual channels/source registry and database migration not performed",
+    "Existing SQLite ResourceWarning remains in full suite",
+    "C-04/C-05 incomplete; no historical approval reused"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-18",
+  "review": "direct review-bugbot fallback",
+  "findings_fixed": 3,
+  "source_sha256": {
+    "ai": {
+      "ai-ops/src/ai_ops/alert_receiver.py": "d09c55ed50cb1eedb7f56beee1be872b6353b94238bb789b5d4066848c0a9fcc",
+      "ai-ops/src/ai_ops/event_store.py": "f8998238fca4f40afde2b10c85cb33a0dca3273e8be74bcbe1d7e6b5862bc5eb",
+      "ai-ops/src/ai_ops/event_notices.py": "7a0c90db6d852a84350d9fb62014e05cde5042ed4d64e62b780e7439ef0aeee4",
+      "ai-ops/tests/test_event_notices.py": "28f92d86354caad4d433fc3802c21e8916742da80d3f7594dab5653a62fb62a3",
+      "ai-ops/scripts/check_notice_platform_local.py": "442ff67eac8205c592da32e939d1df9db51f03f2ef085c1ffb3acc566503708f",
+      ".github/workflows/ai-ops-ci.yml": "ec95a1705fc90233d3a5d0935c8e1132953769f1a65fb2116b1abb901f08812a",
+      "integration/wf03-platform-source.json": "67dbbab6bd02c23c7622171eaf5dbe20848ae1c0d574ac54c17e3e71c087b3ed"
+    },
+    "platform": {
+      "cluster-addons/prometheus/wf03/prepare.py": "3f7aee47bd7ebf7bc7c65b6f2fd75ab4fe4ce8efadee27077c645c3f01afd413",
+      "cluster-addons/prometheus/wf03/notice.tmpl": "bb0f5418b84892db65b5de73ab784f528bc9d04ba52e4e7e3a073e06aad07f6e",
+      "cluster-addons/prometheus/wf03/test_notice.py": "87066cb189d18fc6d70f8801860bb98c82c45c3d46f085655ef05161a83d0474",
+      "cluster-addons/prometheus/wf03/requirements.lock": "d9775aec1dd3e117a49c2ec04c97774d714328209a09bd72cd7fb3cef5fdce66",
+      ".github/workflows/ai-ops-ci.yml": "dbb1d726bfbf9a2a3541c2c39bf4ab6e973a115cb1859abc167a4f96302bcc8b"
+    }
+  },
+  "platform_pinned_revision": "d6c2c8fca50feb8453948be284e7b9b7cccb5284",
+  "tests": {
+    "platform": {
+      "passed": 10,
+      "skipped": 0
+    },
+    "ai_cross_integration": {
+      "passed": 9,
+      "skipped": 0
+    },
+    "prior_ai_full": {
+      "passed": 1334,
+      "source_files_verified_unchanged": 4
+    }
+  },
+  "logs": {
+    "platform": {
+      "path": "/tmp/wf03-review-platform.log",
+      "sha256": "5755ea1457b810582cf137b863741e20794664317e4f94feddfcf01a0a9ad332"
+    },
+    "ai_integration": {
+      "path": "/tmp/wf03-review-ai-integration.log",
+      "sha256": "85456a033be140edffecdeb4c51f98c6bf627c1c0f63dedfc691834cbf1884cf"
+    }
+  },
+  "ci_tools": {
+    "amtool_version": "0.32.0",
+    "linux_amd64_archive_sha256": "be72f50f6124ec53d944c0f100f8ec8108d969bade02fcc9f06a3068ff6c726f",
+    "pyyaml": "6.0.3, test-only hash-locked wheels"
+  },
+  "live_deployment": false,
+  "slack_send": false,
+  "fault_trial": false,
+  "approval_and_rollback_limits_changed": false
+}

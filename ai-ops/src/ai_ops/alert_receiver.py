@@ -18,6 +18,8 @@ import threading
 import time
 
 from ai_ops.alerts import AlertInbox, MAX_BODY
+from ai_ops.event_notices import EventInbox
+from ai_ops.event_store import EventStore
 from ai_ops.b_contracts import load_b_settings
 from ai_ops.job_queue import JobQueue, QueueFull
 from ai_ops.observability import log_event
@@ -64,8 +66,9 @@ class AlertServer(HTTPServer):
     request_queue_size = 8
     allow_reuse_address = True
 
-    def __init__(self, inbox: AlertInbox, identity: Path, *, address=('0.0.0.0', 9443)):
+    def __init__(self, inbox: AlertInbox | EventInbox, identity: Path, *, address=('0.0.0.0', 9443)):
         self.inbox = inbox
+        self.endpoint = '/v1/events' if isinstance(inbox, EventInbox) else '/v1/alerts'
         self.identity = identity
         read_token(identity)
         self.tls = tls_context(identity)
@@ -118,7 +121,7 @@ class AlertHandler(BaseHTTPRequestHandler):
         self.reply(code, {'error': 'invalid_http'})
 
     def do_POST(self):
-        if self.path != '/v1/alerts':
+        if self.path != self.server.endpoint:
             self.reply(404, {'error': 'not_found'})
             return
         try:
@@ -164,7 +167,7 @@ class AlertHandler(BaseHTTPRequestHandler):
 
 
 @contextmanager
-def receiver_server(inbox: AlertInbox, identity: Path, *, address=('0.0.0.0', 9443)):
+def receiver_server(inbox: AlertInbox | EventInbox, identity: Path, *, address=('0.0.0.0', 9443)):
     server = AlertServer(inbox, identity, address=address)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -182,6 +185,8 @@ def main(argv=None) -> int:
     parser.add_argument('--store', type=Path, default=Path('/data/incidents'))
     parser.add_argument('--identity', type=Path, default=Path('/etc/ai-ops-webhook'))
     parser.add_argument('--cluster-id', required=True, help='인증 발신자에게 허용한 등록 클러스터')
+    parser.add_argument('--event-source-alias', help='명시적으로 새 사건 접수 모드를 선택하는 고정 alias')
+    parser.add_argument('--event-source-id', help='HA replica가 공유하는 논리 발신원 ID')
     args = cli_paths(parser, parser.parse_args(argv), {'config':'directory','store':'store','identity':'directory'})
     os.umask(0o077)
     stopped = threading.Event()
@@ -189,7 +194,14 @@ def main(argv=None) -> int:
     signal.signal(signal.SIGINT, lambda *_: stopped.set())
     try:
         settings = load_b_settings(args.config/'bindings.json', args.config/'runtime.json', args.config/'metric-queries.json')
-        inbox = AlertInbox(JobQueue(args.store), settings, cluster_id=args.cluster_id)
+        if bool(args.event_source_alias) != bool(args.event_source_id):
+            raise ValueError('event source alias and ID must be configured together')
+        queue = JobQueue(args.store)
+        if args.event_source_alias:
+            store = EventStore(queue,settings,sources={args.event_source_alias:{'source_id':args.event_source_id,'cluster_id':args.cluster_id}})
+            inbox = EventInbox(store,source_alias=args.event_source_alias)
+        else:
+            inbox = AlertInbox(queue, settings, cluster_id=args.cluster_id)
         with receiver_server(inbox, args.identity):
             log_event('process_started', stage='alert')
             stopped.wait()

@@ -21,3 +21,4 @@ plan.out
 *.db
 **/values.*-secret.yaml
 .DS_Store
+.platform-wf03/

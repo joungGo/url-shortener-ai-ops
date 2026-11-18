@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-18 KST. 설계 기준: [전체 워크플로우·변경 이유](incident-workflow-and-improvement-plan-20261118.md). 기준 코드: AI main36a55fd. 구현 브랜치 `codex/incident-workflow-plan-20261118`. 이 작업표는 새 워크플로우 개선 작업의 상태이며 기존 조사 기능까지 미구현이라는 뜻은 아니다.
+최종 갱신: 2026-11-18 KST. 설계 기준: [전체 워크플로우·변경 이유](incident-workflow-and-improvement-plan-20261118.md). 현재 작업 기준: AI main `9c9f3fc`, 플랫폼 main `01ca82b`. WF-03 양쪽 브랜치 `codex/wf03-alert-reference-20261118`. 이 작업표는 새 워크플로우 개선 작업의 상태이며 기존 조사 기능까지 미구현이라는 뜻은 아니다.
 
 ## 상태와 완료 규칙
 
@@ -14,8 +14,8 @@
 | --- | --- | --- | --- | --- | --- |
 | WF-00 / 계획 | 문서완료 | 변경 이유·현재 격차·PR/명령 흐름·검증 범위 | 전체 계획 문서·이 작업표·양쪽 HANDOFF | 없음 | 이유R1~R7와 작업 연결, 현행/제안/실제검증 구분, 로컬 링크 유효 |
 | WF-01 / P1 | 문서완료 | 사건·발생 회차·채널·조사 정책 계약; alerts/TaskService 분석 | [WF-01 상세 계약](incident-identity-channel-policy-contract-20261118.md)·D1/D2 설계 채택; 실행 스키마는 WF-02 | WF-00 | 중복·재발·해제·다른대상 경계, 공지/조사/복구 독립 상태, 자동조사 예외와 전환안 명시 |
-| WF-02 / P1 | 로컬검증완료 | 사건 저장·보관·현재시점/발생시점 정책; 기존 큐/장부 재사용 | [사건 저장/보관/전환 구현](incident-store-local-implementation-20261118.md) · event_store/queue/worker · 32개 집중/1325개 전체 시험 | WF-01 | 재전송·프로세스중단·재시작·이전 DB 보존·동시접수·보관만료 시험, 해제 경보로 실행승인 생성0 |
-| WF-03 / P2 | 예정 | 기존 경보 통지와 사건 ID·조사 안내 연결 | 플랫폼 Alertmanager 규칙/템플릿 계약, AI 통지 참조 장부 | WF-01, WF-02 | 공지와 조사 독립, Watchdog/억제 규칙 보존, 사건 매핑 검증, 통지 불명확 처리 |
+| WF-02 / P1 | CI통과·main반영 | 사건 저장·보관·현재시점/발생시점 정책; 기존 큐/장부 재사용 | [사건 저장/보관/전환 구현](incident-store-local-implementation-20261118.md) · event_store/queue/worker · 32개 집중/1325개 전체 시험 · [PR #30](https://github.com/joungGo/url-shortener-ai-ops/pull/30), main9c9f3fc | WF-01 | 재전송·프로세스중단·재시작·이전 DB 보존·동시접수·보관만료 시험, 해제 경보로 실행승인 생성0 |
+| WF-03 / P2 | 검토중 | 기존 경보 공지와 사건 참조·조사 채널 안내 연결 | [로컬 구현·검증](incident-notice-local-20261118.md) · 플랫폼 후보/template, AI 인증 EventInbox·참조 상태 · 플랫폼8/AI집중50/전체1334 | WF-01, WF-02 | 공지·접수 독립 라우팅, Watchdog/억제 보존, 나노초 참조 매핑, pending/unknown·저장 실패 경계 통과; 실제 전송은 미검증 |
 | WF-04 / P2 | 예정 | Slack 사건 지정 조사·상태조회·기존worker 결과 연결 | AI slack_adapter/tasks/relay 및 합성 전경로 시험 | WF-02, WF-03 | 같은 사건의 요청/결과, 미허용 사용자·채널·대상 거절, 수동 기본에서 요청전 조사0, 재시작 후 중복 회신 방지 |
 | WF-05 / P3 | 예정 | 복구 계획 요청·지원 조치 목록·공통 계약 | AI 조치 registry·RecoveryPlan·Slack 의도 분리(예상) | WF-04 | 지원/미지원·증거부족 분기, 사건/대상/근거/계획해시/실패행동 명시, 요청만으로 클러스터 쓰기0 |
 | WF-06 / P3 | 예정 | 승인 대기·만료·취소·늦은 승인·재검증 | AI 승인/복구 장부·D3/D4 결정 | WF-05 | 가짜시계로1시간+대기·자연회복·UID/계획변경·승인중복·취소 경쟁 시험, 대기중 쓰기토큰/잠금0 |
@@ -30,7 +30,7 @@ WF-07과WF-08은 공통 계약이 안정되면 독립 검토할 수 있으나 �
 
 ## 설계 시 먼저 해결할 연결 문제
 
-1. 기존 incoming Webhook 알림이 메시지 ts를 제공한다고 가정하지 않는다. 서버 사건 ID와 경보 fingerprint/startsAt/Target을 같은 규칙으로 결합하고, Slack 원본 메시지 참조를 어떻게 얻을지 WF-03에서 확인한다. 메시지 조회가 필요하면 최소 권한과 사용자 채널 구성을 먼저 대조한다. 임의 history 권한 확대를 계획에 숨기지 않는다.
+1. WF-03에서는 message ts/permalink 없이 `al1/source_alias/fingerprint/startsAt`을 같은 canonical evt로 해석한다. 고정 Alertmanager의 실제 Go template과 수신 payload 간 나노초 정밀도를 로컬 검증했다. 원본 Slack 링크 조회·history 권한 확대는 하지 않으며 사건 접수만으로 Slack 전달 성공을 기록하지 않는다.
 2. 모든 경보 사실 공지를 유지하면서 조사 허용5종과 일반 경보의 사건 등록 범위를 분리한다. 기존 AlertInbox의5종 조사 허용조건을 풀어 미지원 경보를 조사 대상으로 만드는 방식은 피한다. 새 사건 접수는 저장/알림 역할이며 수집 가능한 대상과 실행 가능한 조치는 별도 인가한다.
 3. 경보 텍스트·사용자 질문을 실행 명령으로 사용하지 않는다. 사건 링크만으로 다른 채널/대상의 조회 권한이 생기지 않는다.
 4. Slack 상호작용 엔드포인트의 서명·재전송·승인자·계획해시 검증은 기존 app_mention 인증과 별도로 검토한다. 기존 설치 범위에 포함되지 않은 scope/권한은 연결 전 구체안을 제시한다.
@@ -74,10 +74,29 @@ WF-07과WF-08은 공통 계약이 안정되면 독립 검토할 수 있으나 �
 
 ## 현재 재개 지점과 보존할 한계
 
-현재 완료는 WF-00/01 문서와 WF-02 코어 로컬검증이다. WF-02 CI/main·배포는 미실행이며 WF-03~12는 예정이다. 외부 연결과 완료되지 않은 검증을 구현 완료로 계산하지 않는다. 기존 main36a55fd PR29는 안내 응답·예약 보완 완료 기록이며 이 신규 워크플로우의 구현 완료 증거가 아니다. C04/C05 미완료와007의 실측 전체시간 부족은 보존한다.
+현재 완료는 WF-00/01 문서, WF-02 CI통과·main반영, WF-03 로컬검증이다. WF-03 CI/main과 WF-04~12 구현·실제 연결은 남아 있다. WF-02/03 실물 DB·정책 전환과 배포는 미실행이다. 외부 연결과 완료되지 않은 검증을 구현 완료로 계산하지 않는다. 기존 main36a55fd PR29는 안내 응답·예약 보완 완료 기록이며 이 신규 워크플로우의 구현 완료 증거가 아니다. C04/C05 미완료와007의 실측 전체시간 부족은 보존한다.
 
-다음은 WF-02 코드 검토·CI/main 반영이다. 이어서 WF-03 공지/참조와 WF-04 인증 입력·결과·보관 maintenance 호출을 연결한다. 기존 장부는 검증한 재전송 자료가 있는 행만 전환하며 실제 DB는 아직 전환하지 않았다. D1 manual기본/정확자동예외와 D2 두채널/alert_ref 연결은 WF-01 설계로 채택했으며 실물 정책 전환은 미적용이다. WF-03 template참조 정밀도 검증과 WF-04 입력·회신 연결을 순서대로 진행한다. 기존 실습의 시간·승인·원복 조건은 실제 변경 결정 전까지 유지한다. 추천 GPT-6 SOL · High.
+다음은 WF-03 양쪽 코드 검토·CI/main 반영이다. 이어서 WF-04에서 인증된 사건 지정 Slack 요청·기존 큐/worker 결과·보관 maintenance 호출을 연결한다. 기존 장부는 검증한 재전송 자료가 있는 행만 전환하며 실제 DB는 아직 전환하지 않았다. D1 manual기본/정확자동예외와 D2 두채널/alert_ref 연결은 WF-01 설계로 채택했으며 실물 정책 전환은 미적용이다. WF-03 template 참조 정밀도는 로컬 검증했으며 실물 Slack 전달은 미검증이다. 현재 Slack 봇이 새 사건 명령을 지원한다고 안내하지 않는다. 기존 실습의 시간·승인·원복 조건은 실제 변경 결정 전까지 유지한다. 추천 GPT-6 SOL · High.
 
 ## WF-02 코드 검토 · 2026-11-18
 
 [검토 기록](incident-store-review-20261118.md): 정확 대상 인가·큐 부분 용량·반복 migration 해제/만료 처리3건을 재현·수정했다. 집중32개/큐 포함48개/전체1325개·AST4개·diff·저장소 경계 통과. 사용자 요청에 따라 이 브랜치의 PR CI 통과 후 일반 main 반영을 진행한다. 이 기록 작성 시 원격 CI/main은 아직 미확정이며 최종 상태는 PR 병합 기록과 최신 HANDOFF를 따른다. 실제 배포·Slack·장애 없음.
+
+## WF-02 main 반영 결과 · 2026-11-18
+
+[PR #30](https://github.com/joungGo/url-shortener-ai-ops/pull/30)의 검토된 head fd5d6ef가 PR CI 6종(run44317979405) 통과 후 일반 squash 병합됐다. main `9c9f3fc265d998be95746a09d859b02a5f0affee`, [main CI](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44318734083) 성공. 이전 실행 기록의 원격 미확정 상태는 이 결과로 갱신한다. 보호 변경·배포·실물 장부 전환은 없었다.
+
+## WF-03 로컬 구현·검증 · 2026-11-18
+
+- 양쪽 `codex/wf03-alert-reference-20261118` 작업트리. 기준 AI9c9f3fc/플랫폼01ca82b. 로컬 미커밋이며 WF-03 PR·CI/main 반영 없음.
+- 플랫폼: 경보 사실·발생 참조·조사 채널 Go template와 검토용 values 후보 생성기. 원래 Watchdog/억제/간격/Secret 유지. 기존 배포 values와 Application은 변경하지 않았다.
+- AI: 서버 발신원에 고정한 인증 `/v1/events` 접수, 기존 EventStore 재사용, pending/registered/expired 조회. 기본 `/v1/alerts`와 현재 배포 args 유지. notice 전달은 항상 unknown으로 구분하며 접수만으로 조사/실행 승인 생성 없음.
+- 플랫폼 8개, AI 집중 50개 및 전체 1,334개(81.827초, skip 0), AST 6개·diff·저장소 경계·실제 inline template 렌더 통과. 공식 고정 Alertmanagerv0.32.0 도구의 체크섬 검증 후 사용. [검증 JSON](incident-notice-local-validation-20261118.json).
+- T11 실제 template→수신 payload의 나노초/offset 매핑은 로컬 완료. T16의 반대 도착 순서·독립 라우팅·저장 실패503/unknown 경계는 로컬 완료지만 실제 Slack/Alertmanager의 외부 전송 실패·재시도 SLA는 미검증.
+- 제한: 사건 지정 Slack 명령·결과 회신과 정기 보관 정리는 WF-04. 실제 채널/발신원·DB 전환/정책 diff는 WF-10 연결 계획에서 다시 확인. 후보는 기존 자동조사 분기를 사건 접수로 전환하므로 검토 없이 배포하지 않는다.
+- 기존 시간·실행별 승인·정확 head 리뷰/CI·잠금/ACK·원복 조건과 C04/C05 미완료 유지. 실제 배포·Slack 전송·장애 실습·Terraform·유료 모델 없음.
+- 다음: WF-03 코드 검토·CI/main → WF-04 로컬 연결. 추천 GPT-6 SOL · High.
+
+## WF-03 검토·CI 반영 준비 · 2026-11-18
+
+[검토 기록](incident-notice-review-20261118.md): Slack 기본 fallback의 라벨 노출·대체 설정·CI 누락3건을 보완했다. 플랫폼10개/AI교차9개 통과, 기존 AI 전체1334개 검증 소스4개 해시 동일. 양쪽 C03 gate에 실제 renderer/연결 검사를 추가했다. 플랫폼 PR163 head d6c2c8f 고정, AI PR/CI와 양쪽 main 상태는 완료 후 최신 HANDOFF에 기록한다. 새 보호 변경 승인이나 실제 배포를 포함하지 않는다.
