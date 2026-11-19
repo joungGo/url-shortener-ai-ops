@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-10 후보 renderer 보강 CI/main 반영 완료 (Claude)
+
+[PR #40](https://github.com/joungGo/url-shortener-ai-ops/pull/40) head `6920a0703736b896b74fe3b643bc7d8033d91b3c`를 head 고정 일반 squash 병합해 main `1f20442e2a70eb66a6228275add9f564cdb37c06`에 반영했다. PR CI44474606794 7종(1586개)·main CI44475106909 성공, tree `ac77ac84b546f48904dea0a9f98f4c24ccc571b5` 일치. 보호 변경/우회 없음. 최종 메타데이터(이 기록·작업표·보강 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+남은 인프라 불필요 작업: A2(inventory 기존 경로 정정), A4(Slack egress 경로 설계), A5(오프라인 schema 검증), A6(전환·원복 적용안 형식), A7(WF07~09 실제 어댑터 로컬 구현), A8(WF12 문서 초안). **사용자 지침: "뭐야" 질문은 답만, 구현은 명시 허락 후 시작.** 실제 배포·Slack·장애·인프라·Terraform·유료 모델 실행 없음.
+
 ## 2026-11-19 WF-10 후보 renderer 보강·CI 반영 준비 (Claude)
 
 main4b54777 기반 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf10-renderer-hardening-20261119` / `claude/wf10-renderer-hardening-20261119`. 네 프로세스 livenessProbe(30/5/3, readiness와 같은 probe)·init resources(10m/32Mi~100m/64Mi) 추가, 시험1개. 집중83·전체1586(212.6초, skip1=WF03 환경 게이트) 통과. PR39 병합 후 메타데이터도 이 작업트리로 이관했다. 이 커밋 시점 PR CI/main 대기. 사용자 지침: "뭐야" 질문은 답만, 구현은 명시 허락 후 시작. 실제 배포·Slack·장애·인프라 없음.

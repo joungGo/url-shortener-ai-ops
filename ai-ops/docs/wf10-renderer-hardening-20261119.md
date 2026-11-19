@@ -16,3 +16,7 @@
 - 실제 입력12개·연결 승인·실물 검증은 미확정이다. 인프라 설치·실제 배포·Slack 전송·장애 실습·Terraform·유료 모델 호출은 하지 않았다. 기존 시간·승인·원복 조건은 변경하지 않았다.
 
 검증 수치는 [검증 기록](wf10-renderer-hardening-validation-20261119.json)에 있다.
+
+## 최종 반영 결과
+
+[PR #40](https://github.com/joungGo/url-shortener-ai-ops/pull/40) head `6920a0703736b896b74fe3b643bc7d8033d91b3c`를 head 고정 일반 squash 병합해 main `1f20442e2a70eb66a6228275add9f564cdb37c06`에 반영했다. [PR CI44474606794](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44474606794) 7종(1586개, skip5 기준선 동일)·[main CI44475106909](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44475106909) 성공(PR전용 gate skip은 설계대로). tree `ac77ac84b546f48904dea0a9f98f4c24ccc571b5` 일치. 보호 변경/우회 없음. 최종 메타데이터는 병합 후 로컬 갱신했다.
