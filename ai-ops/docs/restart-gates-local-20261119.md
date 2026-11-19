@@ -1,6 +1,6 @@
 # A7-3b 재시작 사전 게이트 재설계 로컬 구현 · 2026-11-19
 
-상태: **로컬 구현·검증 완료 / 미커밋.** 기준 main `8fa3ad2b38b88cbe31496ad81c1ede3644cb7bdb`. 실제 쓰기 차단(`local_fixture` 전용)은 그대로다.
+상태: **PR47로 main 반영 완료.** 기준 main `8fa3ad2b38b88cbe31496ad81c1ede3644cb7bdb`. 실제 쓰기 차단(`local_fixture` 전용)은 그대로다.
 
 **이 명령이 있는 이유:** kubelet은 liveness 실패에만 컨테이너를 재시작하고, readiness 실패만으로는 재시작하지 않는다. Running이지만 계속 NotReady인 Pod는 사람 승인으로만 재시작할 수 있는 후보다.
 
@@ -56,3 +56,7 @@ WF08의 실행 전 진단 4종(`image_available`·`dependencies_healthy`·`confi
 - 기존 복구 명령·효과 시험 73개 통과(효과 검증 fixture 재사용). 전체 결과는 [검증 기록](restart-gates-local-validation-20261119.json)에 있다.
 
 실제 클러스터·배포·Slack·장애 실습 없음. 기존 시간·실행별 승인·정확 head 리뷰/CI·잠금·원복 조건 변경 없음.
+
+## 최종 반영 결과
+
+[PR #47](https://github.com/joungGo/url-shortener-ai-ops/pull/47) head `8c86507b45c5221c15a0a5e0501cf27ee2ef508f`를 head 고정 일반 squash 병합해 main `6a6605d11b86a7b438286f8664d3341ae39e678a`에 반영했다. [PR CI44522308075](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44522308075) 7종(1639개, skip5 기준선 동일)·[main CI44523032690](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44523032690) 성공(PR전용 gate skip은 설계대로). tree `713fd3e069565d693054f1cb049d4fda0d74ae17` 일치. 보호 변경/우회 없음. 병합 후 branch를 정리했고 최종 메타데이터는 로컬 갱신했다.

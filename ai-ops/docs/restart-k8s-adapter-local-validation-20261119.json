@@ -1,0 +1,63 @@
+{
+  "status": "local_verified_uncommitted",
+  "slice": "A7-3a restart Kubernetes adapter",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "6a6605d11b86a7b438286f8664d3341ae39e678a",
+  "port_mode": "kubernetes (executor accepts only local_fixture; live write still blocked)",
+  "identities": {
+    "reader": "GET deployment lab-api, pods, pod logs, events, HPA, Argo Application",
+    "writer": "PATCH deployment lab-api, GET/PUT lease b6-scenario-lock",
+    "prometheus": "GET /api/v1/query"
+  },
+  "target_facts": {
+    "container": "api",
+    "readiness_period": 5,
+    "startup": "24x5",
+    "liveness_probe": "absent",
+    "strategy": "Recreate",
+    "dependencies": [
+      "DATABASE_URL",
+      "REDIS_URL"
+    ]
+  },
+  "defect_found_and_fixed": "PromQL placeholder via str.format broke on label-selector braces (prior_ready always unknown); replaced with literal $TEMPLATE_HASH replacement + regression test",
+  "new_tests": 15,
+  "full_suite": {
+    "count": 1654,
+    "seconds": 212.506,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/restart-k8s-adapter-full.log",
+      "sha256": "edec51b90762a140f13d52c165ec847ad1178eb1fb4b2b662258bba3d89183d3"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compileall": "passed"
+  },
+  "not_in_scope": [
+    "concrete PromQL (set at wiring against pinned platform Prometheus; unknown until then)",
+    "tokens/RBAC/VAP",
+    "evidence retention (A7-5)",
+    "shadow evaluation",
+    "WF11 live mode"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/restart_k8s.py": "c8a6b5e51028f10382bf4a47777c4e617d864c427fb9a1204312e90a6ca9a243",
+    "ai-ops/tests/test_restart_k8s.py": "675faf1d87416ab10116ab016a88f9a872a349fe89bfa465f44ed2f3bb140db5"
+  },
+  "execution_allowed": false,
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "commit_pr_ci": null
+}
