@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 기준 AI main `1bea7d6`(WF09 PR37), 플랫폼 main `bf6bcbc`. 현재 문서 작업 브랜치 `codex/wf10-connection-plan-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-19 KST. 기준 AI main `50d0c1a`(WF10 준비 PR38), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `codex/wf10-active-config-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -22,7 +22,7 @@
 | WF-07 / P4 | 로컬 코어 CI통과·main반영 | WF05/06 계획·준비 동의에서 기존 이미지 PR/리뷰/CI/잠금/동기화 검증으로 연결 | [로컬 구현·검증](recovery-pr-local-20261119.md) · recovery_pr · 같은 사건 결과 문자열 · 실제 인증/쓰기/outbox 포트 미활성 | WF-05, WF-06 | 로컬 Git/Helm·정확 head/CI/권한·유실/중단/중복/취소·잠금/동기화 경계; 실제 실행/효과/Slack은 후속 검증 |
 | WF-08 / P5 | 로컬 코어 CI통과·main반영 | 기존 후보/큐/worker·WF06 수명주기 재사용, 명령 전용 정확 계획 승인·별도 로컬 실행기 | [명령 계약/검증](recovery-command-local-20261119.md) · 고정 JSON PATCH·단일 사건 소비·읽기 조정·D5 로컬 한정 | WF-05, WF-06 | 미승인/타 scope/임의 명령 차단, CAS·취소/만료·동시 실행·응답 유실·잠금 확인; 실제 권한/전송 미연결 |
 | WF-09 / P6 | main 반영·CI완료(로컬 연결 코어) | 기존 PR/명령 적용 기록→효과/후속/회수 장부·같은 사건 결과 문자열 | [효과/원복·인계 계약](recovery-effect-local-20261119.md) · 합성 포트·실제 전송 미연결 | WF-07, WF-08 | 명령종료0/PR병합을 회복으로 오판하지 않음, 실제변경·효과·원복 구분, 자격/잠금/자기임시자원 회수 |
-| WF-10 / 연결 | 비활성 자료 로컬검증·실제입력 대기 | 공지·조사 첫 완료단위 배포 및 실제 Slack 검증 | [연결 계획](wf10-connection-plan-20261119.md)·[입력 작업표](wf10-connection-inputs-20261119.json)·버전/채널/정책/DB/원복 준비 | WF-04 로컬검증·CI/main | 합성 시험 뒤 승인 범위의 실제 통지·사용자 요청·같은사건 결과 확인. 첫 단계에 장애 주입 불필요 |
+| WF-10 / 연결 | 비활성 준비 main반영 / 활성 설정 검토완료·CI/main 진행 / 실제 연결 대기 | 공지·조사 첫 완료단위 배포 및 실제 Slack 검증 | [연결 계획](wf10-connection-plan-20261119.md)·[입력 작업표](wf10-connection-inputs-20261119.json)·버전/채널/정책/DB/원복 준비 | WF-04 로컬검증·CI/main | 합성 시험 뒤 승인 범위의 실제 통지·사용자 요청·같은사건 결과 확인. 첫 단계에 장애 주입 불필요 |
 | WF-11 / 실환경 | 예정 | PR/명령 실제 효과와 C04/C05 남은 필수 검증 | 실행별 계획·승인·결과·원복 증거 | WF-09, WF-10 및 실제준비 | 새실행 승인과 해당 방식 승인 확인, 정상/실패/취소/독립원복 필수사례, 현재지원범위 내 결과 기록 |
 | WF-12 / 인계 | 예정 | 설치·정리·재개·사용법과 지원 조치표 정리 | AI 문서/플랫폼 연결 런북/HANDOFF | 각 단계 완료에 맞춰 갱신, 최종 WF-11 | 배포 버전/검증 범위/지원·미지원·남은 한계 추적, 임의 권한확대/과거승인 재사용 없음 |
 
@@ -76,7 +76,7 @@ WF-07과WF-08은 공통 계약이 안정되면 독립 검토할 수 있으나 �
 
 WF00/01 설계와 WF02~09 로컬 구현·CI/main 반영 완료. 최신 AI main1bea7d6(PR37), 플랫폼 마지막 검증 mainbf6bcbc. WF06~09는 로컬 연결 코어이며 실제 인증/쓰기/효과·회수 adapter와 복구 결과 outbox는 미연결이다. 과거 실행 기록의 ‘미구현/CI 대기’는 해당 시점 이력이다.
 
-WF10 연결 계획 문서와 검토용 입력 작업표를 작성했다. 경보 공지와 사건 접수는 독립, 두 채널 유지, 수동조사 기본·자동예외0개, 새 빈 활성 큐가 전환안이다. 실제 경보 channel/source registry·이미지/render/원복 hash·새 UID/TLS/정상 CI·적용 승인은 미확정이다. 비활성8파일·오프라인 도구·합성 전환/원복 리허설을 준비했다. 다음은 **준비 도구/자료 검토·CI/main**이다. 실제 연결은 사용자 요청/확정안 승인 뒤 진행한다.
+WF10 연결 계획 문서와 검토용 입력 작업표를 작성했다. 경보 공지와 사건 접수는 독립, 두 채널 유지, 수동조사 기본·자동예외0개, 새 빈 활성 큐가 전환안이다. 실제 경보 channel/source registry·이미지/render/원복 hash·새 UID/TLS/정상 CI·적용 승인은 미확정이다. 비활성8파일·오프라인 도구·합성 전환/원복 리허설을 준비했다. 준비 도구/자료는 PR38로 main 반영됐다. 다음은 실제 입력과 활성 배포·전환/원복 적용안 확정이다. 실제 연결은 사용자 요청/확정안 승인 뒤 진행한다.
 
 기록상 인프라는2026-11-19 정리 완료다. 이번에 실물/원본 자격/백업 내용은 조회하지 않았다. 기존 DNS·스냅샷/KMS·state/버전·operator/로그인·원본 키·개인 자료 보존. WF11/C04/C05 실환경 완료와 WF12 최종 인계는 남아 있다. 기존 시간·승인·원복 유지, 인프라·Slack·실습 자동 재개 없음. 추천 GPT-6 SOL · High.
 
@@ -225,3 +225,17 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### WF-10 준비 코드 검토 · 2026-11-19
 
 집중21개 재실행·전체1565개 검증 해시 일치, 검토상 수정 필요 오류 없음. [검토 기록](wf10-preparation-review-20261119.md)과 [검증 JSON](wf10-preparation-review-validation-20261119.json)을 따르며 CI/main 반영 대기. 실제 배포·Slack·장애 실행 없음.
+
+### WF-10 준비 코드 최종 반영 · 2026-11-19
+
+[PR #38](https://github.com/joungGo/url-shortener-ai-ops/pull/38) head `c0fa27311f9127eb856db2bf5f348d03e8f6f182`를 일반 squash 병합해 main `50d0c1a309698320bc958eafc3d294f38b023f01`에 반영했다. [PR CI44465091658](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44465091658) 7종·push CI44465054234·[main CI44465684513](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44465684513) 성공. main의 PR전용 gate skip은 설계대로이며 실제 PR gate는 통과했다. 검토/병합 전체 tree `50452341417945dc2a13e9ab17130d4be9dee228` 및 소스 hash 일치. 보호 변경/관리자 우회 없음.
+
+준비 코드 완료와 실제 연결 미완료를 구분한다. 기존 시간·승인·원복 조건 유지.
+
+### WF-10 활성 후보 설정 로컬 구현 · 2026-11-19
+
+[활성 설정 로컬 기록](wf10-active-config-local-20261119.md): 별도 후보 renderer·미확정 입력 차단·단일 Pod/공유 PVC·역할별 Secret/통신 제한·ConfigMap/서비스/NetworkPolicy 생성. receiver의 런북 정책 포함 설정 hash를 worker/Slack과 통일. 실제 입력12개·적용 승인·실물 검증은 미확정이며 apply/전송 기능은 없다. 신규20/전체1585개·AST3·경계/diff 통과. 미커밋/원격CI/main 미반영.
+
+### WF-10 활성 후보 코드 검토 · 2026-11-19
+
+[검토 기록](wf10-active-config-review-20261119.md)·[검증 JSON](wf10-active-config-review-validation-20261119.json). P1 1건(공유 PVC `fsGroupChangePolicy: OnRootMismatch` 누락) 수정·회귀 단언 추가, receiver import 정리. 집중82개·전체1585개(skip1=WF03 환경 게이트) 통과. 이 커밋 시점 PR CI/main 대기. 실제 입력12개·연결 승인·실물 검증은 미확정이며 배포·Slack·장애 실행 없음.

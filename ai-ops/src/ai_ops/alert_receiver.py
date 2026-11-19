@@ -24,6 +24,7 @@ from ai_ops.b_contracts import load_b_settings
 from ai_ops.job_queue import JobQueue, QueueFull
 from ai_ops.observability import log_event
 from ai_ops.path_policy import cli_paths
+from ai_ops.runtime_settings import runbook_settings_kwargs
 
 
 class IdentityUnavailable(OSError):
@@ -179,6 +180,12 @@ def receiver_server(inbox: AlertInbox | EventInbox, identity: Path, *, address=(
         thread.join(timeout=5)
 
 
+def load_receiver_settings(config):
+    # Same runbook policy input as worker/Slack so event config hashes match.
+    return load_b_settings(config/'bindings.json', config/'runtime.json', config/'metric-queries.json',
+                           **runbook_settings_kwargs(config))
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description='TLS 인증된 내부 경보를 영속 큐에 접수한다')
     parser.add_argument('--config', type=Path, default=Path('/etc/ai-ops'))
@@ -193,7 +200,7 @@ def main(argv=None) -> int:
     signal.signal(signal.SIGTERM, lambda *_: stopped.set())
     signal.signal(signal.SIGINT, lambda *_: stopped.set())
     try:
-        settings = load_b_settings(args.config/'bindings.json', args.config/'runtime.json', args.config/'metric-queries.json')
+        settings = load_receiver_settings(args.config)
         if bool(args.event_source_alias) != bool(args.event_source_id):
             raise ValueError('event source alias and ID must be configured together')
         queue = JobQueue(args.store)
