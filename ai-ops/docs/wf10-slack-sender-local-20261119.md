@@ -1,6 +1,6 @@
 # WF-10 Slack sender 분리(B′) 로컬 구현 · 2026-11-19
 
-상태: **로컬 구현·검증 완료 / 미커밋 / 실클러스터 미검증.** 설계 근거는 [Slack 송신 경로 설계](wf10-slack-egress-design-20261119.md). 기준 main `1f20442e2a70eb66a6228275add9f564cdb37c06`.
+상태: **PR41로 main 반영 완료 / 실클러스터 미검증.** 설계 근거는 [Slack 송신 경로 설계](wf10-slack-egress-design-20261119.md). 기준 main `1f20442e2a70eb66a6228275add9f564cdb37c06`.
 
 ## 변경
 
@@ -30,3 +30,7 @@
 플랫폼(strict 모드·IMDS hop limit·EIP 보존)과 Slack 앱 IP 제한은 인프라 단계 작업이다. 실클러스터 음성 시험, proxy 감사 계층, 클러스터 내부 TLS, HA는 후속이다. 인프라 설치·실제 배포·Slack 전송·장애 실습·Terraform·유료 모델 호출은 하지 않았다. 기존 시간·승인·원복 조건은 변경하지 않았다.
 
 검증 수치는 [검증 기록](wf10-slack-sender-local-validation-20261119.json)에 있다.
+
+## 최종 반영 결과
+
+[PR #41](https://github.com/joungGo/url-shortener-ai-ops/pull/41) head `5ec3f9d50bd5dad1192ca644220e740d4842d326`를 head 고정 일반 squash 병합해 main `ceb6c277b6a968c5be046657dc04137695e1a836`에 반영했다. [PR CI44482224455](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44482224455) 7종(1598개, skip5 기준선 동일)·[main CI44482913902](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44482913902) 성공(PR전용 gate skip은 설계대로). tree `24a2ea8c937da307ac3a2b4fc307249198cca7cd` 일치. 보호 변경/우회 없음. PR40 squash 이력 중복을 피하려 최신 main에서 새 branch로 두 커밋을 옮겼고 tree가 로컬 검증본과 같음을 확인했다. 최종 메타데이터는 병합 후 로컬 갱신했다.

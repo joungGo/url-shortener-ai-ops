@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_uncommitted",
+  "status": "merged_main_ci_passed_live_connection_pending",
   "author": "Claude Code (Opus 5.5)",
   "decision": "B' stateless Slack sender (llm-council, user approved implementation)",
   "base": "1f20442e2a70eb66a6228275add9f564cdb37c06",
@@ -78,5 +78,27 @@
   "live_values_verified": false,
   "execution_allowed": false,
   "infrastructure_deployment_slack_trial_paid_model": false,
-  "commit_pr_ci": null
+  "commit_pr_ci": {
+    "commits": [
+      "2a9db7e",
+      "5ec3f9d50bd5dad1192ca644220e740d4842d326"
+    ],
+    "branch": "claude/wf10-slack-sender-20261119 (rebuilt from main via cherry-pick; tree equal to locally verified)",
+    "pr": 41,
+    "pr_ci": 44482224455,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1598,
+    "pr_ci_skipped": 5,
+    "main_ci": 44482913902,
+    "main_jobs_success": 6,
+    "main_pr_gate": "skipped_by_design",
+    "merge": {
+      "method": "regular_squash_match_head",
+      "main": "ceb6c277b6a968c5be046657dc04137695e1a836",
+      "tree": "24a2ea8c937da307ac3a2b4fc307249198cca7cd",
+      "head_tree_equal": true,
+      "protection_changed": false,
+      "admin_bypass": false
+    }
+  }
 }
