@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-19",
+  "task": "WF-07 review",
+  "base_commit": "59c33a9d4e4dfd8f524161ce2cc2d590e1ca1133",
+  "review_method": "review-bugbot in-place; dedicated bugbot unavailable; diff/callers and local regression",
+  "findings": [
+    {
+      "severity": "P2",
+      "location": "recovery_pr.py:305",
+      "issue": "WF06 cancellation between final source check and DB fence did not block ready",
+      "fixed": true
+    },
+    {
+      "severity": "P2",
+      "location": "recovery_pr.py:324",
+      "issue": "source retention expiry after lookup was not checked at final authority fence",
+      "fixed": true
+    },
+    {
+      "severity": "P2",
+      "location": "recovery_pr.py:310",
+      "issue": "final source/DB delay could return stale live proof",
+      "fixed": true
+    }
+  ],
+  "before": {
+    "tests": 3,
+    "failures": 3
+  },
+  "focused": {
+    "count": 31,
+    "seconds": 43.073,
+    "passed": true,
+    "skipped": 0
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_pr.py": "1d6f8b46fe638accf2bb7283b3b34c89ba378dc778e551347f6ca126cb56ef02",
+    "ai-ops/tests/test_recovery_pr.py": "c8f98a2be4943baa71dbc647832b190395cd612277d5328e39a06b1827358bcf"
+  },
+  "unchanged_c_stage_files": 75,
+  "ast_files": 2,
+  "repository_boundary": "passed",
+  "diff_check": "passed",
+  "full_suite": {
+    "count": 1471,
+    "seconds": 134.944,
+    "passed": true,
+    "skipped": 0
+  },
+  "remote_ci": "pending",
+  "main": "pending",
+  "actual_deployment": false,
+  "slack_send": false,
+  "trial": false,
+  "infrastructure": false,
+  "protection_changed": false,
+  "admin_bypass": false,
+  "log_hashes": {
+    "/tmp/wf07-review-before.log": "274c1e5925f30273ec1226e0ae32c3085d3de9b883396ba1628e35028a608af0",
+    "/tmp/wf07-review-focused.log": "9204f8c8580a9f4104da60ba680087fa8c06553d7a7a3a7954f1fd3ff93eeb24",
+    "/tmp/wf07-review-full.log": "98c263bf605e663744bd5af540381b18392d9e9a165c20071b5f6120c4a340f6"
+  }
+}

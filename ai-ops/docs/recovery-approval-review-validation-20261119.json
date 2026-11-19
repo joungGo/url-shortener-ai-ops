@@ -40,8 +40,15 @@
   "ast_files": 2,
   "diff_check": "passed",
   "repository_boundary": "passed",
-  "remote_ci": "pending",
-  "main": "pending",
+  "remote_ci": {
+    "pr_run": 44450455429,
+    "pr_checks": 7,
+    "conclusion": "success",
+    "main_run": 44450888910,
+    "main_conclusion": "success",
+    "main_pr_only_gate": "expected skip; actual PR gate passed"
+  },
+  "main": "59c33a9d4e4dfd8f524161ce2cc2d590e1ca1133",
   "deployment": false,
   "slack": false,
   "trial": false,
@@ -57,5 +64,10 @@
     "/tmp/wf06-review-before.log": "6cf02df547b6074b7f49835f35e50559e2a608f27d71af269919a9e091eb290e",
     "/tmp/wf06-review-focused.log": "25bbb5ba45130173a3fe590f7f82a2d28328f4b1a8ec0b9b48d4a981d03bbf78",
     "/tmp/wf06-review-full.log": "ab8508aa93d3c5f7115e029eabf8e34aa48d63267ce572a845d4911c14261304"
-  }
+  },
+  "reviewed_head": "18f3eb41bcebedf0a57d2e971a8c5bebe25b88a9",
+  "pr": 34,
+  "merged_at": "2026-11-19T03:21:41Z",
+  "merge_method": "normal squash; no protection change or admin bypass",
+  "merged_tree_matches_reviewed_tree": true
 }
