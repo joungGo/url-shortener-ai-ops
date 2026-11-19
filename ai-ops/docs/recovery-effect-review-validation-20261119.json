@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-19",
+  "base_commit": "6891144c6c31e29a856d701191c9eb177764204a",
+  "status": "reviewed_local_passed_ci_pending",
+  "findings_fixed": [
+    {
+      "priority": "P2",
+      "location": "recovery_effects.py:341",
+      "description": "후속 판정이 원복 관찰 결과/시도 기록을 무시하고 최초 실패로 재제안함."
+    },
+    {
+      "priority": "P2",
+      "location": "recovery_effects.py:370",
+      "description": "동시 취소를 만료 범위 판정이 덮어 새 승인을 요청함."
+    }
+  ],
+  "reproduction": {
+    "tests": 3,
+    "failed_before_fix": 3
+  },
+  "focused": {
+    "count": 39,
+    "seconds": 61.812,
+    "passed": true,
+    "skipped": 0
+  },
+  "full_suite": {
+    "count": 1544,
+    "seconds": 205.843,
+    "passed": true,
+    "skipped": 0
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_effects.py": "c39db1579cf59fd613b452ddb8d85284014fb14f2484e7e07a2367419cad93c9",
+    "ai-ops/src/ai_ops/recovery_commands.py": "00caf49ed0027931fce102017309a40d1bf096ce9bc7c619600a1a041eb4de60",
+    "ai-ops/src/ai_ops/recovery_pr.py": "f113e6e0e70469592263f0ca0e15661817f49871cb985c7d57c8c447ca4e870d",
+    "ai-ops/tests/test_recovery_effects.py": "01b769bd78cbb16ecd3672f1b4e3c4340c52421bc04b58e9085341436e885c76"
+  },
+  "logs": {
+    "/tmp/wf09-review-before.log": "a0a2a7e59b2f0e65785a1df90464f5a4108e7ee94dec896ebe024a0d888978c8",
+    "/tmp/wf09-review-focused.log": "b5d6532eca4ac282dfe06b52054d981c4b79f519730b42a6cb257384bae0db02",
+    "/tmp/wf09-review-full.log": "184594eba556678521c77bcaaa6a4bf15a18659f4cf73c44f8da2f29426c7234"
+  },
+  "ast_files": 4,
+  "unchanged_c_files": 75,
+  "shared_lease_unchanged": true,
+  "remote_ci": null,
+  "merge": null,
+  "external_deployment": false,
+  "slack_send": false,
+  "fault_trial": false,
+  "conditions_unchanged": true
+}

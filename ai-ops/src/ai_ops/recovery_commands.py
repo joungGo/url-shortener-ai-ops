@@ -53,7 +53,7 @@ class RestartSource(StrictModel):
 
 def slack_restart_source(adapter, request_id):
     """Reuse the stored WF05 request and original queue/worker evidence. No IO transport."""
-    def load(candidate_hash, actor):
+    def read_source(candidate_hash, actor, *, require_firing):
         row=adapter._row(request_id)
         if row['user_id']!=actor or not adapter._authorized(row):raise ValueError('command_source_unavailable')
         entry=adapter._event_bridge().entry(request_id)
@@ -61,7 +61,7 @@ def slack_restart_source(adapter, request_id):
         if candidate.plan_hash!=candidate_hash:raise ValueError('command_source_unavailable')
         aliases={b.alias for b in adapter.tasks.settings.bindings.bindings if b.target==candidate.target}
         event_view=adapter.events.authorized_view(candidate.event_id,allowed_targets=aliases)
-        if event_view is None or event_view['status']!='firing' or event_view['starts_at']!=candidate.event_started_at:
+        if event_view is None or (require_firing and event_view['status']!='firing') or event_view['starts_at']!=candidate.event_started_at:
             raise ValueError('command_event_changed')
         result=adapter.tasks.result(candidate.job_id)
         if result['state']!='available':raise ValueError('command_source_unavailable')
@@ -102,6 +102,20 @@ def slack_restart_source(adapter, request_id):
             raise ValueError('restart_evidence_unavailable')
         return RestartSource(candidate=candidate,bundle_hash=result['bundle_hash'],report_hash=sha256_json(body(record.report)),
                              audit_hash=sha256_json(body(record.collection_audit)),**candidates[0])
+    def load(candidate_hash, actor):
+        return read_source(candidate_hash, actor, require_firing=True)
+    # Separate read-only result access; resolving an alert never authorizes execution.
+    load.for_effects=lambda candidate_hash,actor:read_source(candidate_hash,actor,require_firing=False)
+    def image_for_effects(candidate_hash,actor):
+        source=read_source(candidate_hash,actor,require_firing=False)
+        result=adapter.tasks.result(source.candidate.job_id)
+        if result.get('state')!='available':raise ValueError('effect_source_unavailable')
+        record=adapter.tasks.queue.engine.show(**result['reference'])
+        images={e.payload.get('image') for e in record.bundle.evidence if e.kind in ('deployment','workload_status')}
+        matches=[i for i in images if isinstance(i,str) and sha256_json(i)==source.image_hash]
+        if len(matches)!=1:raise ValueError('effect_image_unavailable')
+        return matches[0]
+    load.image_for_effects=image_for_effects
     return load
 
 
@@ -278,7 +292,7 @@ class RestartCoordinator:
             if db.execute('SELECT count(*) FROM restart_runs').fetchone()[0]>=10000:raise ValueError('restart_ledger_full')
             db.execute('INSERT INTO restart_plans VALUES(?,?,?)',(plan.plan_hash,candidate_hash,plan.model_dump_json()))
             self._save(db,dict(plan_hash=plan.plan_hash,state='prepared',generation=0,cancel_requested=False,
-                applied=False,reason='exact_command_approval_required',lease=None,lease_released=False,retained_until=plan.retained_until.timestamp()))
+                applied=False,applied_at=None,reason='exact_command_approval_required',lease=None,lease_released=False,retained_until=plan.retained_until.timestamp()))
         return plan
 
     def load(self,key,actor):
@@ -401,6 +415,8 @@ class RestartCoordinator:
             approval=db.execute('SELECT document FROM restart_approvals WHERE plan_hash=?',(key,)).fetchone()
             if approval is not None and json.loads(approval[0])['state']=='cancelled':
                 r['cancel_requested']=True
+            r.setdefault('applied_at',None)
+            if r['applied_at'] is None:r['applied_at']=s.observed_at.isoformat()
             r.update(applied=True,state='cancelled' if r['cancel_requested'] else 'applied_unverified',
                      reason='patch_observed_service_not_verified',generation=r['generation']+1)
             self._save(db,r)

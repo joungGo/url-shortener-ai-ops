@@ -399,7 +399,7 @@ class ImageRecoveryPRBridge:
             if not 0<=(self.now()-observed).total_seconds()<=15:
                 raise ValueError('recovery_pr_sync_observation_expired')
             current.update(state='sync_verified',reason='service_verification_still_required',
-                           sync_result=result,generation=current['generation']+1)
+                           sync_result=result,sync_verified_at=observed.isoformat(),generation=current['generation']+1)
             self._save(db,current)
         return {**result,'event_id':record['event_id'],'execution_allowed':False}
 
