@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-10 전환·원복 변경 계획 형식(A6)·CI 반영 준비 (Claude)
+
+신규 `ai_ops.wf10_change_plan`: 검증된 후보 패키지 1개에서 적용 순서(ConfigMap→NetworkPolicy→Service→Deployment sender→main)·리소스별 hash·probe 기반 시작 허용 시간·사전/사후 확인과 역순 원복 묶음(`part-of=wf10`+기록 uid 일치 시에만 삭제, PVC·Secret·namespace·SA·RBAC·Ingress 금지, 삭제 전 DB 보존·자동 복원 없음)을 데이터로 생성한다. `rollback_bundle_sha256`·`change_plan_sha256`으로 이후 별도 실제 승인이 묶일 형식을 제공하며 명령 문자열·실행기 없음, execution_allowed=false.
+
+신규 시험7, 전체1615 통과. 상세 `ai-ops/docs/wf10-change-plan-20261119.md`·검증 JSON. 이 커밋 시점 PR CI/main 대기. 실제 hash·적용·uid 기록은 인프라 단계. 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 WF-10 manifest 오프라인 schema 검증(A5) CI/main 반영 완료 (Claude)
 
 [PR #43](https://github.com/joungGo/url-shortener-ai-ops/pull/43) head `552bb869b960eb60320c1ba66579c194708f9460`를 head 고정 일반 squash 병합해 main `5c74985973b71400000d408ae07e1cd69c410176`에 반영했다. PR CI44489431925 7종(1608개)·main CI44490014251 성공, tree `3c3fd0d427984b4b82750c8fdeb2dc4c2c3f41fc` 일치. 보호 변경/우회 없음. 최종 메타데이터(이 기록·작업표·검증 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.

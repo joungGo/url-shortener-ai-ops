@@ -275,3 +275,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### WF-10 manifest 오프라인 schema 검증 최종 반영 · 2026-11-19
 
 [PR #43](https://github.com/joungGo/url-shortener-ai-ops/pull/43) head `552bb86` → main `5c74985973b71400000d408ae07e1cd69c410176`. PR CI44489431925 7종·main CI44490014251 성공, tree `3c3fd0d` 일치, 보호 변경/우회 없음.
+
+### WF-10 전환·원복 변경 계획 형식(A6) · 2026-11-19
+
+[변경 계획 기록](wf10-change-plan-20261119.md)·[검증 JSON](wf10-change-plan-validation-20261119.json): 검증된 후보 1개 → 적용 순서·리소스 hash·사전/사후 확인·uid 일치 역순 원복 묶음·계획/원복 hash. 데이터 전용·실행 불가. 신규 시험7·전체1615 통과. 이 커밋 시점 PR CI/main 대기.
