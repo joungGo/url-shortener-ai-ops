@@ -135,6 +135,9 @@ Reading=Annotated[RuntimeEffect|HTTPReading|MetricReading|AlertReading,Field(dis
 class EffectSample(StrictModel):
     at: UTCDateTime
     reading: Reading
+    # Captured only: hash of the raw response(s) read for this sample. It binds what
+    # was seen at ``at``; it does not authenticate it (bodies are never stored).
+    source_sha256: Sha256 | None=None
 
 
 class EffectSeries(StrictModel):
@@ -155,11 +158,17 @@ class EffectSeries(StrictModel):
 
 
 class EffectBatch(StrictModel):
-    provenance: Literal['synthetic']='synthetic'
+    provenance: Literal['synthetic','captured']='synthetic'
+    run_id: str | None = Field(default=None,pattern=r'^effect-[a-f0-9]{32}$')
+    collector: str | None = Field(default=None,pattern=r'^local-restart-[a-z0-9-]{1,40}$')
     series: list[EffectSeries] = Field(max_length=32)
     @model_validator(mode='after')
     def unique(self):
         if len({(x.kind,x.name) for x in self.series})!=len(self.series):raise ValueError('effect_series_duplicate')
+        hashed=[x.source_sha256 is not None for s in self.series for x in s.samples]
+        if self.provenance=='captured':
+            if self.run_id is None or self.collector is None or not all(hashed):raise ValueError('effect_capture_unbound')
+        elif self.run_id is not None or self.collector is not None or any(hashed):raise ValueError('effect_synthetic_carries_capture')
         return self
 
 
@@ -207,7 +216,7 @@ def verify_effect(receipt,policy,batch,*,now):
     status='unresolved' if any(c['state']=='failed' for c in checks) else 'succeeded' if all(c['state']=='passed' for c in checks) and not extras else 'verification_unknown'
     return dict(status=status,service_resolved=status=='succeeded',checks=checks,unexpected_series=extras,
         execution_hash=receipt.digest_key(),policy_hash=sha256_json(body(policy)),evidence_hash=sha256_json(body(batch)),
-        evaluated_at=now.isoformat(),provenance='synthetic',execution_allowed=False)
+        evaluated_at=now.isoformat(),provenance=batch.provenance,execution_allowed=False)
 
 
 class CleanupItem(StrictModel):
