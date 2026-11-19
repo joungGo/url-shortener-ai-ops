@@ -1,6 +1,6 @@
 # WF-10 manifest 오프라인 schema 검증(A5) · 2026-11-19
 
-상태: **로컬 구현·검증 완료 / 미커밋.** 기준 main `f6e04337239a6f981745674ff390ce8b89e37f81`.
+상태: **PR43으로 main 반영 완료.** 기준 main `f6e04337239a6f981745674ff390ce8b89e37f81`.
 
 ## 목적과 방식
 
@@ -23,3 +23,7 @@ WF-10 renderer가 만드는 리소스 8개(ConfigMap·Deployment 2·Service 3·N
 - 전체 1608개(206.352초, skip1=WF03 환경 게이트) 통과. 저장소 경계·diff·compileall 통과.
 
 검증 수치는 [검증 기록](wf10-manifest-schema-validation-validation-20261119.json)에 있다. 인프라·배포·Slack·실습 실행 없음. 기존 시간·승인·원복 조건 변경 없음.
+
+## 최종 반영 결과
+
+[PR #43](https://github.com/joungGo/url-shortener-ai-ops/pull/43) head `552bb869b960eb60320c1ba66579c194708f9460`를 head 고정 일반 squash 병합해 main `5c74985973b71400000d408ae07e1cd69c410176`에 반영했다. [PR CI44489431925](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44489431925) 7종(1608개, skip5 기준선 동일)·[main CI44490014251](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44490014251) 성공(PR전용 gate skip은 설계대로). tree `3c3fd0d427984b4b82750c8fdeb2dc4c2c3f41fc` 일치. 보호 변경/우회 없음. 최종 메타데이터는 병합 후 로컬 갱신했다.

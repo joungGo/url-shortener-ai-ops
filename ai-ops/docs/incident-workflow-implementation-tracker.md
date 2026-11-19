@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 기준 AI main `f6e0433`(SQLite 보조 파일 경쟁 수정 PR42), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/recovery-flaky-test-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-19 KST. 기준 AI main `5c74985`(WF10 manifest 오프라인 schema 검증 PR43), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf10-manifest-schema-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -22,7 +22,7 @@
 | WF-07 / P4 | 로컬 코어 CI통과·main반영 | WF05/06 계획·준비 동의에서 기존 이미지 PR/리뷰/CI/잠금/동기화 검증으로 연결 | [로컬 구현·검증](recovery-pr-local-20261119.md) · recovery_pr · 같은 사건 결과 문자열 · 실제 인증/쓰기/outbox 포트 미활성 | WF-05, WF-06 | 로컬 Git/Helm·정확 head/CI/권한·유실/중단/중복/취소·잠금/동기화 경계; 실제 실행/효과/Slack은 후속 검증 |
 | WF-08 / P5 | 로컬 코어 CI통과·main반영 | 기존 후보/큐/worker·WF06 수명주기 재사용, 명령 전용 정확 계획 승인·별도 로컬 실행기 | [명령 계약/검증](recovery-command-local-20261119.md) · 고정 JSON PATCH·단일 사건 소비·읽기 조정·D5 로컬 한정 | WF-05, WF-06 | 미승인/타 scope/임의 명령 차단, CAS·취소/만료·동시 실행·응답 유실·잠금 확인; 실제 권한/전송 미연결 |
 | WF-09 / P6 | main 반영·CI완료(로컬 연결 코어) | 기존 PR/명령 적용 기록→효과/후속/회수 장부·같은 사건 결과 문자열 | [효과/원복·인계 계약](recovery-effect-local-20261119.md) · 합성 포트·실제 전송 미연결 | WF-07, WF-08 | 명령종료0/PR병합을 회복으로 오판하지 않음, 실제변경·효과·원복 구분, 자격/잠금/자기임시자원 회수 |
-| WF-10 / 연결 | 비활성 준비·활성 후보 renderer·보강·Slack sender 분리 main반영(PR38~41) / 실제 입력·연결 대기 | 공지·조사 첫 완료단위 배포 및 실제 Slack 검증 | [연결 계획](wf10-connection-plan-20261119.md)·[입력 작업표](wf10-connection-inputs-20261119.json)·버전/채널/정책/DB/원복 준비 | WF-04 로컬검증·CI/main | 합성 시험 뒤 승인 범위의 실제 통지·사용자 요청·같은사건 결과 확인. 첫 단계에 장애 주입 불필요 |
+| WF-10 / 연결 | 비활성 준비·활성 후보 renderer·보강·Slack sender 분리·오프라인 schema 검증 main반영(PR38~43) / 실제 입력·연결 대기 | 공지·조사 첫 완료단위 배포 및 실제 Slack 검증 | [연결 계획](wf10-connection-plan-20261119.md)·[입력 작업표](wf10-connection-inputs-20261119.json)·버전/채널/정책/DB/원복 준비 | WF-04 로컬검증·CI/main | 합성 시험 뒤 승인 범위의 실제 통지·사용자 요청·같은사건 결과 확인. 첫 단계에 장애 주입 불필요 |
 | WF-11 / 실환경 | 예정 | PR/명령 실제 효과와 C04/C05 남은 필수 검증 | 실행별 계획·승인·결과·원복 증거 | WF-09, WF-10 및 실제준비 | 새실행 승인과 해당 방식 승인 확인, 정상/실패/취소/독립원복 필수사례, 현재지원범위 내 결과 기록 |
 | WF-12 / 인계 | 예정 | 설치·정리·재개·사용법과 지원 조치표 정리 | AI 문서/플랫폼 연결 런북/HANDOFF | 각 단계 완료에 맞춰 갱신, 최종 WF-11 | 배포 버전/검증 범위/지원·미지원·남은 한계 추적, 임의 권한확대/과거승인 재사용 없음 |
 
@@ -271,3 +271,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### WF-10 manifest 오프라인 schema 검증(A5) · 2026-11-19
 
 [검증 기록](wf10-manifest-schema-validation-20261119.md)·[검증 JSON](wf10-manifest-schema-validation-validation-20261119.json): v1.35.8 공식 OpenAPI v3 부분집합(원본 hash 고정)으로 renderer 8개 리소스를 출력 전 strict 검증. 서버 dry-run은 live gate로 유지. 신규 시험6·전체1608 통과. 이 커밋 시점 PR CI/main 대기.
+
+### WF-10 manifest 오프라인 schema 검증 최종 반영 · 2026-11-19
+
+[PR #43](https://github.com/joungGo/url-shortener-ai-ops/pull/43) head `552bb86` → main `5c74985973b71400000d408ae07e1cd69c410176`. PR CI44489431925 7종·main CI44490014251 성공, tree `3c3fd0d` 일치, 보호 변경/우회 없음.

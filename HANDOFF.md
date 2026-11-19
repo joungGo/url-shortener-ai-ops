@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-10 manifest 오프라인 schema 검증(A5) CI/main 반영 완료 (Claude)
+
+[PR #43](https://github.com/joungGo/url-shortener-ai-ops/pull/43) head `552bb869b960eb60320c1ba66579c194708f9460`를 head 고정 일반 squash 병합해 main `5c74985973b71400000d408ae07e1cd69c410176`에 반영했다. PR CI44489431925 7종(1608개)·main CI44490014251 성공, tree `3c3fd0d427984b4b82750c8fdeb2dc4c2c3f41fc` 일치. 보호 변경/우회 없음. 최종 메타데이터(이 기록·작업표·검증 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+남은 인프라 불필요 후보: A6 전환·원복 적용안 형식, A7 WF07~09 실제 어댑터 로컬 구현, A8 WF12 문서 초안. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 WF-10 manifest 오프라인 schema 검증(A5)·CI 반영 준비 (Claude)
 
 renderer가 만드는 리소스 8개를 클러스터 없이 Kubernetes v1.35.8 구조 기준으로 검증한다. 새 바이너리·라이브러리 없이 공식 OpenAPI v3에서 4종 전이 스키마 138개만 추출해 `ai_ops/k8s_openapi_v1_35_8.json`으로 두고(원본 sha256 고정, `scripts/build_k8s_schema_subset.py --check`), `ai_ops.k8s_schema`가 strict unknown 필드·타입·필수·범위·int-or-string을 검사한다. renderer는 출력 전 전부 검증하고 실패 시 `wf10_schema_rejected`로 거절하며, live gate에 `server_side_dry_run`을 추가했다(서버 dry-run 대체 아님).

@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_uncommitted",
+  "status": "merged_main_ci_passed",
   "author": "Claude Code (Opus 5.5)",
   "base": "f6e04337239a6f981745674ff390ce8b89e37f81",
   "kubernetes_source": {
@@ -64,5 +64,27 @@
     120
   ],
   "infrastructure_deployment_slack_trial_paid_model": false,
-  "commit_pr_ci": null
+  "commit_pr_ci": {
+    "commits": [
+      "84c8cc4",
+      "552bb869b960eb60320c1ba66579c194708f9460"
+    ],
+    "branch": "claude/wf10-manifest-schema-20261119 (created from main)",
+    "pr": 43,
+    "pr_ci": 44489431925,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1608,
+    "pr_ci_skipped": 5,
+    "main_ci": 44490014251,
+    "main_jobs_success": 6,
+    "main_pr_gate": "skipped_by_design",
+    "merge": {
+      "method": "regular_squash_match_head",
+      "main": "5c74985973b71400000d408ae07e1cd69c410176",
+      "tree": "3c3fd0d427984b4b82750c8fdeb2dc4c2c3f41fc",
+      "head_tree_equal": true,
+      "protection_changed": false,
+      "admin_bypass": false
+    }
+  }
 }
