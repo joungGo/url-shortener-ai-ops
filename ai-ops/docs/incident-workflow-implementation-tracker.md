@@ -307,3 +307,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7-3b 재시작 사전 게이트 최종 반영 · 2026-11-19
 
 [PR #47](https://github.com/joungGo/url-shortener-ai-ops/pull/47) head `8c86507` → main `6a6605d11b86a7b438286f8664d3341ae39e678a`. PR CI44522308075 7종·main CI44523032690 성공, tree `713fd3e` 일치, 보호 변경/우회 없음. 다음 A7-3a 실제 K8s 어댑터는 사용자 허락 후.
+
+### A7-3a 재시작 Kubernetes 어댑터 · 2026-11-19
+
+[구현 기록](restart-k8s-adapter-local-20261119.md)·[검증 JSON](restart-k8s-adapter-local-validation-20261119.json): 고정 경로·신원 분리 클라이언트, 3b 원시 관측 도출(불확실하면 차단), 설정 PromQL만, 증거 비공개 저장, 봉인 PATCH, Lease 미탈취. mode=kubernetes로 실행기 거절(쓰기 차단 유지). 신규 시험15·전체1654 통과. 이 커밋 시점 PR CI/main 대기. 다음 A7-4 효과·원복·회수.
