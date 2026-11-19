@@ -1,0 +1,43 @@
+{
+  "status": "local_verified_uncommitted",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "5c74985973b71400000d408ae07e1cd69c410176",
+  "new_tests": 7,
+  "synthetic": {
+    "manifest_sha256": "f8908414260ec6795859032e34ac9ff752b432580bfe17e459c5aaada69cc5ef",
+    "rollback_bundle_sha256": "4e6e0d307dbcefcbde4b686e17db79e482713455b5fd02cb429ae0e49371aefe",
+    "change_plan_sha256": "b26c771ae48e730c95674b5cc530ab039da9d5cdda8cf6041f8d062f27efa73d",
+    "plan_bytes": 9183,
+    "note": "synthetic fixture values only; not real inputs"
+  },
+  "full_suite": {
+    "count": 1615,
+    "seconds": 204.526,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/wf10-change-plan-full.log",
+      "sha256": "9d4f190c532146a3040a6d50152cfa0b4f53c4946eb537a83dd854f06a1f2ab7"
+    }
+  },
+  "repository_boundary": "passed",
+  "diff_check": "passed",
+  "compileall": "passed",
+  "source_hashes": {
+    "ai-ops/src/ai_ops/wf10_change_plan.py": "36141accc7221d92d6fbac404226aa6c18388bec67f15f762351230398359de6",
+    "ai-ops/tests/test_wf10_change_plan.py": "c65f4d9e782d2d994917a24b65c9a9bd4b325ada85b35add6c642827a9a136ca"
+  },
+  "execution_allowed": false,
+  "live_verified": false,
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "commit_pr_ci": null
+}
