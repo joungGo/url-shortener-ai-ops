@@ -283,3 +283,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### WF-10 변경 계획 형식 최종 반영 · 2026-11-19
 
 [PR #44](https://github.com/joungGo/url-shortener-ai-ops/pull/44) head `5b699bc` → main `7b6dcb19caca9156c492cb51c19a5a3a35cfd76a`. PR CI44491923061 7종·main CI44492763462 성공, tree `d8a0beb` 일치, 보호 변경/우회 없음.
+
+### A7-1 복구 승인 Slack 버튼 수신 · 2026-11-19
+
+[구현 기록](recovery-slack-approval-local-20261119.md)·[검증 JSON](recovery-slack-approval-local-validation-20261119.json): 서명된 Slack 버튼 → WF06 장부 결정 기록만. 범위별 버튼·정책 쌍·결정적 request_id. 신규 시험11·전체1626 통과. 이 커밋 시점 PR CI/main 대기. A7 남은 조각: 2 결과 outbox, 3 진단·쓰기·잠금 어댑터, 4 효과·원복·회수, 5 주기 보관 정리.

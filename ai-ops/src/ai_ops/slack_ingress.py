@@ -10,6 +10,7 @@ from ai_ops.slack_adapter import BODY_LIMIT
 class SlackEventsApp:
     ACK_SECONDS = 2.5
     MAX_INFLIGHT = 4
+    PATH = '/slack/events'
 
     def __init__(self, adapter):
         if adapter.transport_mode != 'slack_web_api':
@@ -17,6 +18,10 @@ class SlackEventsApp:
         self.adapter = adapter
         self._inflight = 0
         self._tasks = set()
+
+    def _handle(self, headers, body):
+        # Looked up per request (not bound at init) so the live adapter is used.
+        return self.adapter.receive(headers, body)
 
     async def __call__(self, scope, receive, send):
         if scope['type'] == 'lifespan':
@@ -38,7 +43,7 @@ class SlackEventsApp:
         status, result = 403, {'status':'rejected'}
         reserved = False
         try:
-            if (scope.get('scheme') != 'https' or scope.get('path') != '/slack/events'
+            if (scope.get('scheme') != 'https' or scope.get('path') != self.PATH
                     or scope.get('method') != 'POST'):
                 raise ValueError('rejected')
             if self._inflight >= self.MAX_INFLIGHT:
@@ -71,7 +76,7 @@ class SlackEventsApp:
             remaining = self.ACK_SECONDS - (time.monotonic()-started)
             if remaining <= 0:
                 raise TimeoutError('deadline')
-            task = asyncio.create_task(asyncio.to_thread(self.adapter.receive,headers,bytes(body)))
+            task = asyncio.create_task(asyncio.to_thread(self._handle,headers,bytes(body)))
             self._tasks.add(task)
             reserved = False  # release only when the thread has actually finished
             def finished(done):
@@ -100,3 +105,20 @@ class SlackEventsApp:
         headers.append((b'content-length',str(len(encoded)).encode()))
         await send({'type':'http.response.start','status':status,'headers':headers})
         await send({'type':'http.response.body','body':encoded})
+
+
+class SlackInteractivityApp(SlackEventsApp):
+    """Same TLS/size/2.5s-ACK/in-flight limits for signed Slack interactivity payloads."""
+    PATH = '/slack/interactivity'
+
+    def __init__(self, receiver):
+        from ai_ops.recovery_slack_approval import SlackApprovalReceiver
+        if not isinstance(receiver, SlackApprovalReceiver):
+            raise ValueError('slack_approval_receiver_required')
+        self.adapter = None
+        self.receiver = receiver
+        self._inflight = 0
+        self._tasks = set()
+
+    def _handle(self, headers, body):
+        return self.receiver.receive(headers, body)

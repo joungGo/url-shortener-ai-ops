@@ -53,6 +53,28 @@ class SlackPolicy(StrictModel):
         return any(g.user_id == user and g.channel_id == channel and target in g.targets for g in self.grants)
 
 
+def verify_slack_request(secret, headers, body, now, content_type):
+    """Slack v0 signature, 300s timestamp window and exact content type (shared)."""
+    if not isinstance(body, bytes) or not 0 < len(body) <= BODY_LIMIT:
+        raise ValueError('slack_body_rejected')
+    pairs = list(headers.items()) if hasattr(headers, 'items') else list(headers)
+    values = {}
+    for name, value in pairs:
+        name = name.lower()
+        if name in ('x-slack-signature', 'x-slack-request-timestamp', 'content-type'):
+            if name in values or not isinstance(value, str): raise ValueError('slack_headers_rejected')
+            values[name] = value
+    timestamp = values.get('x-slack-request-timestamp', '')
+    signature = values.get('x-slack-signature', '')
+    if (values.get('content-type', '').split(';')[0].strip().lower() != content_type
+            or not re.fullmatch(r'[0-9]{1,12}', timestamp)
+            or abs(now - int(timestamp)) > 300
+            or not re.fullmatch(r'v0=[a-f0-9]{64}', signature)):
+        raise ValueError('slack_signature_rejected')
+    expected = 'v0=' + hmac.new(secret, b'v0:' + timestamp.encode() + b':' + body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature): raise ValueError('slack_signature_rejected')
+
+
 class SlackNotSent(OSError):
     """전송을 시도하지 않았음이 확실한 fixture transport 실패만 뜻한다."""
 
@@ -166,24 +188,7 @@ class SlackAdapter:
         finally: os.close(fd)
 
     def _verify(self, headers, body):
-        if not isinstance(body, bytes) or not 0 < len(body) <= BODY_LIMIT:
-            raise ValueError('slack_body_rejected')
-        pairs = list(headers.items()) if hasattr(headers, 'items') else list(headers)
-        values = {}
-        for name, value in pairs:
-            name = name.lower()
-            if name in ('x-slack-signature', 'x-slack-request-timestamp', 'content-type'):
-                if name in values or not isinstance(value, str): raise ValueError('slack_headers_rejected')
-                values[name] = value
-        timestamp = values.get('x-slack-request-timestamp', '')
-        signature = values.get('x-slack-signature', '')
-        if (values.get('content-type', '').split(';')[0].strip().lower() != 'application/json'
-                or not re.fullmatch(r'[0-9]{1,12}', timestamp)
-                or abs(self.tasks.queue.now() - int(timestamp)) > 300
-                or not re.fullmatch(r'v0=[a-f0-9]{64}', signature)):
-            raise ValueError('slack_signature_rejected')
-        expected = 'v0=' + hmac.new(self._secret, b'v0:' + timestamp.encode() + b':' + body, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(expected, signature): raise ValueError('slack_signature_rejected')
+        verify_slack_request(self._secret, headers, body, self.tasks.queue.now(), 'application/json')
 
     def _active(self):
         with self._db() as db:

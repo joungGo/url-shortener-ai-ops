@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 A7-1 복구 승인 Slack 버튼 수신·CI 반영 준비 (Claude)
+
+A7(WF07~09 실제 어댑터)을 5조각으로 나눠 하나씩 진행한다(사용자 결정). 1조각: 신규 `ai_ops.recovery_slack_approval`이 서명된 Slack interactivity(`block_actions`)를 서명·시각·form·팀/App/채널·정책 (사용자, 채널) 쌍으로 검증한 뒤 WF06 장부 `decide`만 호출한다. 버튼 값에 정확한 장부 대상(plan/approval hash·generation)과 범위(준비/명령 실행)를 담고, request_id는 Slack 식별자 hash로 멱등이다. 재검증·실행·전송 없음, execution_allowed=false. `SlackInteractivityApp`(/slack/interactivity)은 기존 ACK 제약을 재사용하고 서명 검증은 `verify_slack_request`로 공용화했다(동작 동일).
+
+진행 중 회귀(adapter.receive를 생성 시 바인딩해 기존 시험이 멈춤)를 발견·수정했다. 신규 시험11, 전체1626 통과. 상세 `ai-ops/docs/recovery-slack-approval-local-20261119.md`·검증 JSON. 승인 요청 메시지 전송은 A7-2, 프로세스·Slack App 연결은 이후 조각. 이 커밋 시점 PR CI/main 대기. 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 WF-10 전환·원복 변경 계획 형식(A6) CI/main 반영 완료 (Claude)
 
 [PR #44](https://github.com/joungGo/url-shortener-ai-ops/pull/44) head `5b699bc5356cd2f66f51a1efef9e3b2c47100196`를 head 고정 일반 squash 병합해 main `7b6dcb19caca9156c492cb51c19a5a3a35cfd76a`에 반영했다. PR CI44491923061 7종(1615개)·main CI44492763462 성공, tree `d8a0beb9eb36336bf920b6503b393cb51e79245f` 일치. 보호 변경/우회 없음. 최종 메타데이터(이 기록·작업표·계획 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
