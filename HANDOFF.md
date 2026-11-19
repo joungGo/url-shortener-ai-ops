@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 A7-4 재시작 효과 관찰·봉인·Lease 회수 확인 CI/main 반영 완료 (Claude)
+
+[PR #49](https://github.com/joungGo/url-shortener-ai-ops/pull/49) head `6e4f5ef147ca2d0f3a32781700ae0bdcd846224d`를 head 고정 일반 squash 병합해 main `3c00eeecc97a2b273b713bfd247f997c94461a93`에 반영했다. PR CI44532528034 7종(1671개)·main CI44533398664 성공, tree `0e976753b4ff9ed92d9669b161748de0dca7ca95` 일치. 보호 변경/우회 없음. 병합 후 branch 정리(복구용 SHA는 inventory). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+A7 남은 조각: 5 주기 보관 정리(증거·봉인 파일 포함), PR 경로 원복 관측(GitHub/Argo), 프로세스 연결(승인 정책·수신기·outbox·관찰 시작·실제 PromQL/규칙·`pods/proxy` RBAC). 조각별 PR. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 A7-4 재시작 효과 관찰·봉인·Lease 회수 확인·CI 반영 준비 (Claude)
 
 llm-council로 최초 혼합 리더안(Prometheus range query + K8s 1회 조회)을 철회했다: 1회 스냅샷 복제는 증거 위조, query_range step은 lookback 보간이라 45초 간격 검사를 거짓 통과, HTTP 응답계약·경보 평가상태는 과거 재구성 불가, 15초는 읽기 1회 제한. 신규 `ai_ops.restart_effects`: `RestartEffectObserver`(mode=kubernetes, 잠금 없음 — WF08이 검증 전 Lease 반납)가 적용+`probe_window` 이후 구간에서 간격(5~20초)마다 K8s runtime(종료 중 Pod 포함·실행 이미지 digest·marker)·API 서버 Pod proxy `/readyz`·`/items`(C-04 `valid_body`, 비200은 unknown)·설정 PromQL(C-04 `metric_value` 신선도)·설정 경보 규칙(`/api/v1/rules`, 정의 hash 기록)을 읽는다. 간격+읽기≤gap·span 도달·보관 기한·창 시작 조건은 수집 전에 거절하고, 실패한 series만 collection_failed, 대상 UID 변경·취소는 전부 unknown. 원시 응답은 sha256만(본문 미저장). `EffectCaptureStore`(0700/0600 sha256 봉인)·`SealedEffectReader`(mode=sealed_capture, O_NOFOLLOW·hash·영수증 결합)·`LeaseCleanupPort`/`restart_lease_item`(반납 확인, 자기 것만 resourceVersion으로 비움). WF09 `EffectBatch.provenance`에 `captured`(run_id·collector·표본 hash 필수) 추가, 판정 규칙 불변. WF09 조정기는 여전히 local_fixture만 받아 실제 읽기/회수 차단 유지.
