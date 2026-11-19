@@ -118,3 +118,46 @@ class SlackApprovalReceiver:
                                decision=subject['decision'])
         return {'status': 'recorded', 'scope': subject['scope'], 'state': record['state'],
                 'execution_allowed': False}
+
+
+LABELS = {'approve': '승인', 'reject': '거절', 'cancel': '취소'}
+BLOCK_ID = 'recovery_approval'
+
+
+def approval_blocks(text, scope, plan_hash, approval_hash, generation, decisions):
+    """Canonical Block Kit for one ledger subject: fixed labels, no user text in buttons."""
+    if not isinstance(text, str) or not 1 <= len(text) <= 3000:
+        raise ValueError('approval_blocks_rejected')
+    if not decisions or len(set(decisions)) != len(decisions) or any(d not in DECISIONS for d in decisions):
+        raise ValueError('approval_blocks_rejected')
+    value = button_value(scope, plan_hash, approval_hash, generation)
+    elements = []
+    for decision in decisions:
+        button = {'type': 'button', 'action_id': action_id(scope, decision), 'value': value,
+                  'text': {'type': 'plain_text', 'text': LABELS[decision], 'emoji': False}}
+        if decision == 'approve':
+            button['style'] = 'primary'
+        elif decision in ('reject', 'cancel'):
+            button['style'] = 'danger'
+        elements.append(button)
+    return [{'type': 'section', 'text': {'type': 'plain_text', 'text': text, 'emoji': False}},
+            {'type': 'actions', 'block_id': BLOCK_ID, 'elements': elements}]
+
+
+def blocks_valid(blocks, text):
+    """Accept only blocks that re-render exactly from their own buttons and the fallback text."""
+    try:
+        elements = blocks[1]['elements']
+        if not isinstance(elements, list) or not elements:
+            return False
+        subjects, decisions = set(), []
+        for element in elements:
+            parsed = parse_button(element['action_id'], element['value'])
+            subjects.add((parsed['scope'], parsed['plan_hash'], parsed['approval_hash'], parsed['generation']))
+            decisions.append(parsed['decision'])
+        if len(subjects) != 1:
+            return False
+        scope, plan_hash, approval_hash, generation = subjects.pop()
+        return blocks == approval_blocks(text, scope, plan_hash, approval_hash, generation, decisions)
+    except (ValueError, TypeError, KeyError, IndexError):
+        return False

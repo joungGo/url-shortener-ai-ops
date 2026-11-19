@@ -1,0 +1,57 @@
+{
+  "status": "local_verified_uncommitted",
+  "slice": "A7-2 recovery result outbox",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "0619651393b5792da03f9a86d561e502560d5e81",
+  "new_tests": 8,
+  "tampered_block_cases_rejected": 8,
+  "related_regression": {
+    "count": 224,
+    "passed": true
+  },
+  "full_suite": {
+    "count": 1634,
+    "seconds": 209.111,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/recovery-outbox-full.log",
+      "sha256": "309333812a1942f1b978e7679e573b86260e63e711ec0fb5a2bafed0ec814166"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compileall": "passed"
+  },
+  "delivery_rules": {
+    "429": "retry up to 3 after retry_after",
+    "4xx_or_ok_false": "failed",
+    "matched": "delivered",
+    "ambiguous_or_exception": "needs_review (no resend)",
+    "interrupted_sending": "needs_review (no resend)",
+    "unauthorized_or_thread_changed": "withdrawn"
+  },
+  "not_in_scope": [
+    "wiring enqueue/deliver into processes with approval policy config",
+    "WF08/WF09 result notices (A7-3/A7-4)"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_outbox.py": "2348231783c283867ce7e51126e40650a94fc12d147c9159332af9f14b681206",
+    "ai-ops/src/ai_ops/recovery_slack_approval.py": "e6ff72254bf3b15486ff99a4c45fb2c9616b4131dc89e775becf42743ddd1bd8",
+    "ai-ops/src/ai_ops/slack_web.py": "d0eac194016e628c2ac1f0a5c475bf4cf1e6746094a95823ca2e9b48e99dde1d",
+    "ai-ops/tests/test_recovery_outbox.py": "d50b37dc496529720082da2118e40eee7c95803fe2bf23925f5cfdfc1c4bf363"
+  },
+  "execution_allowed": false,
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "commit_pr_ci": null
+}

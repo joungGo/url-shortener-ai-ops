@@ -54,8 +54,18 @@ METHODS = frozenset({('POST','auth.test'), ('GET','bots.info'), ('POST','chat.po
 
 
 def post_payload_valid(policy, payload):
-    """Shared fixed reply contract: granted channel, existing thread, bounded text, fixed flags."""
-    return (isinstance(payload,dict) and set(payload) == {'channel','thread_ts','text',*FLAGS}
+    """Shared fixed reply contract: granted channel, existing thread, bounded text, fixed flags.
+
+    Optional ``blocks`` are only the canonical recovery approval buttons that
+    re-render exactly from their own subject and the same fallback text.
+    """
+    base = {'channel','thread_ts','text',*FLAGS}
+    if isinstance(payload,dict) and set(payload) == base | {'blocks'}:
+        from ai_ops.recovery_slack_approval import blocks_valid
+        if not blocks_valid(payload['blocks'], payload.get('text')):
+            return False
+        payload = {k: v for k, v in payload.items() if k != 'blocks'}
+    return (isinstance(payload,dict) and set(payload) == base
             and payload.get('channel') in {g.channel_id for g in policy.grants}
             and isinstance(payload.get('thread_ts'),str) and bool(STAMP.fullmatch(payload['thread_ts']))
             and isinstance(payload.get('text'),str) and 1 <= len(payload['text']) <= 4000
