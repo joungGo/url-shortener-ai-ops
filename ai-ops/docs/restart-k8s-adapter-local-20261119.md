@@ -1,6 +1,6 @@
 # A7-3a 재시작 Kubernetes 어댑터 로컬 구현 · 2026-11-19
 
-상태: **로컬 구현·검증 완료 / 미커밋.** 기준 main `6a6605d11b86a7b438286f8664d3341ae39e678a`. 실제 쓰기는 계속 막혀 있다. 어댑터의 mode는 `kubernetes`이고, WF08 실행기는 `local_fixture` 포트만 받는다.
+상태: **PR48로 main 반영 완료.** 기준 main `6a6605d11b86a7b438286f8664d3341ae39e678a`. 실제 쓰기는 계속 막혀 있다. 어댑터의 mode는 `kubernetes`이고, WF08 실행기는 `local_fixture` 포트만 받는다.
 
 ## 목적
 
@@ -62,3 +62,7 @@ lab-api(`ai-ops/lab/templates/deployment.yaml`): 컨테이너 `api`, readiness 5
 - 전체 결과는 [검증 기록](restart-k8s-adapter-local-validation-20261119.json)에 있다.
 
 실제 클러스터·배포·Slack·장애 실습 없음. 기존 시간·실행별 승인·정확 head 리뷰/CI·잠금·원복 조건 변경 없음.
+
+## 최종 반영 결과
+
+[PR #48](https://github.com/joungGo/url-shortener-ai-ops/pull/48) head `9124203650e859cdb18de4793ba800e904179f3a`를 head 고정 일반 squash 병합해 main `13d94e9a3efc8432480291ef9bbc1461e6899c60`에 반영했다. [PR CI44525442506](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44525442506) 7종(1654개, skip5 기준선 동일)·[main CI44526171563](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44526171563) 성공(PR전용 gate skip은 설계대로). tree `d075338c571214f4a4fa8fdfdf7191620501cb59` 일치. 보호 변경/우회 없음. 병합 후 branch를 정리했고 최종 메타데이터는 로컬 갱신했다.

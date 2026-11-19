@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 A7-3a 재시작 Kubernetes 어댑터 CI/main 반영 완료 (Claude)
+
+[PR #48](https://github.com/joungGo/url-shortener-ai-ops/pull/48) head `9124203650e859cdb18de4793ba800e904179f3a`를 head 고정 일반 squash 병합해 main `13d94e9a3efc8432480291ef9bbc1461e6899c60`에 반영했다. PR CI44525442506 7종(1654개)·main CI44526171563 성공, tree `d075338c571214f4a4fa8fdfdf7191620501cb59` 일치. 보호 변경/우회 없음. 병합 후 branch 정리(복구용 SHA는 inventory). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+A7 남은 조각: 4 효과·원복·회수 어댑터, 5 주기 보관 정리(증거 파일 포함), 프로세스 연결(승인 정책·수신기·outbox·실제 PromQL). 조각별 PR. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 A7-3a 재시작 Kubernetes 어댑터·CI 반영 준비 (Claude)
 
 신규 `ai_ops.restart_k8s`: 고정 경로 `ApiClient`(토큰 요청별 재읽기·CA TLS·리다이렉트 미추종·2MiB·deadline)로 읽기(Deployment·Pod·로그·이벤트·HPA·Argo GET)/쓰기(lab-api PATCH·Lease GET/PUT)/Prometheus(query) 신원을 분리했다. `derive_snapshot`이 3b 원시 관측값(restartCount·Ready 실패 시작·probe 창·전략·restart annotation 제외 revision hash 등)을 만들고, Argo를 못 읽으면 자동 동기화로 간주하는 등 불확실하면 차단한다. `PrometheusSignals`는 설정 PromQL만(미구성·빈 결과=unknown), 증거는 0700/0600 파일에 저장하고 바이트 hash만 반환, PATCH는 봉인 형태만, Lease는 비었을 때만 획득·자기 것만 반환. mode=`kubernetes`라 WF08 실행기가 거절해 실제 쓰기는 계속 차단.
