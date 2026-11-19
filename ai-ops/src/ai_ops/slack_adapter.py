@@ -135,8 +135,9 @@ class SlackAdapter:
             p = Path(str(self.path) + suffix)
             try: info = p.lstat()
             except FileNotFoundError: continue
-            if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.getuid()
-                    or stat.S_IMODE(info.st_mode) & 0o077):
+            # Sidecar nlink 0 = in-flight SQLite unlink (see JobQueue._safe_files).
+            if (not stat.S_ISREG(info.st_mode) or info.st_nlink not in ((0, 1) if suffix else (1,))
+                    or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) & 0o077):
                 raise ValueError('slack_storage_rejected')
         db = sqlite3.connect(self.path.as_uri() + '?mode=rw', uri=True, timeout=.25, isolation_level=None)
         db.row_factory = sqlite3.Row

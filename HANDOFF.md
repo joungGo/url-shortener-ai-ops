@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 SQLite 보조 파일 삭제 경쟁 수정·CI 반영 준비 (Claude)
+
+간헐 실패하던 `test_recovery_commands` 동시 실행 시험을 부하 재현·예외 추적한 결과 **제품 경쟁 조건**이었다. SQLite가 마지막 연결 종료 때 `-wal`/`-shm`을 지우는 순간 다른 스레드·프로세스의 `lstat`이 `nlink 0`을 보고, 안전 검사가 위험 파일로 오판해 정상 작업을 거절했다(fail-safe였지만 무작위 거절). 사용자에게 보고·허락 후 4곳(`job_queue`, `slack_adapter`, `observability`, `continuous_model`)에서 보조 파일 `nlink 0`만 부재로 간주(하드링크·권한·소유자·형식 검사와 본 DB 엄격 유지), `continuous_model` exists/lstat 경쟁 수정.
+
+신규 시험4(수정 전 코드에서 실패 확인), 부하 재현 160/160 정상(이전 80회 중 실패1·오판 거절3), 관련122·전체1602 통과. 상세 `ai-ops/docs/sqlite-sidecar-race-fix-20261119.md`·검증 JSON. 이 커밋 시점 PR CI/main 대기. 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 WF-10 Slack sender 분리(B′) CI/main 반영 완료 (Claude)
 
 [PR #41](https://github.com/joungGo/url-shortener-ai-ops/pull/41) head `5ec3f9d50bd5dad1192ca644220e740d4842d326`를 head 고정 일반 squash 병합해 main `ceb6c277b6a968c5be046657dc04137695e1a836`에 반영했다. PR CI44482224455 7종(1598개)·main CI44482913902 성공, tree `24a2ea8c937da307ac3a2b4fc307249198cca7cd` 일치. 보호 변경/우회 없음. 최신 main에서 새 branch `claude/wf10-slack-sender-20261119`로 두 커밋을 옮겨 PR40 이력 중복을 피했다(이전 branch는 원격에 보존). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.

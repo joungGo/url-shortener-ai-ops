@@ -62,7 +62,8 @@ class Telemetry:
                 info = path.lstat()
             except FileNotFoundError:
                 continue
-            if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+            # Sidecar nlink 0 = in-flight SQLite unlink (see JobQueue._safe_files).
+            if (not stat.S_ISREG(info.st_mode) or info.st_nlink not in ((0, 1) if suffix else (1,))
                     or info.st_uid != os.geteuid() or info.st_mode & 0o077):
                 raise ValueError("관측 파일 권한 또는 링크가 유효하지 않습니다")
 

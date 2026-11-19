@@ -87,7 +87,8 @@ class JobQueue:
                 info = Path(str(self.path) + suffix).lstat()
             except FileNotFoundError:
                 continue
-            if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+            # SQLite unlinks -wal/-shm/-journal when the last connection closes; a concurrent lstat can observe that in-flight unlink as nlink 0. Such a sidecar is no longer reachable by path, so it is absent, not a hard link. The main file stays strict.
+            if (not stat.S_ISREG(info.st_mode) or info.st_nlink not in ((0, 1) if suffix else (1,))
                     or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) & 0o077):
                 raise ValueError("큐 파일 권한 또는 링크가 안전하지 않습니다")
 

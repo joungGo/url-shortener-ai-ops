@@ -115,11 +115,15 @@ class ContinuousModelStore:
         def open_db():
             for suffix in ("", "-wal", "-shm", "-journal"):
                 path = Path(str(self.path) + suffix)
-                if path.is_symlink() or path.exists():
+                # A single lstat: exists()-then-lstat() raced with SQLite's unlink.
+                try:
                     info = path.lstat()
-                    if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
-                            info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) & 0o077):
-                        raise ValueError("model_store_permissions")
+                except FileNotFoundError:
+                    continue
+                # Sidecar nlink 0 = in-flight SQLite unlink (see JobQueue._safe_files).
+                if (not stat.S_ISREG(info.st_mode) or info.st_nlink not in ((0, 1) if suffix else (1,)) or
+                        info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) & 0o077):
+                    raise ValueError("model_store_permissions")
             db = sqlite3.connect(self.path.as_uri() + "?mode=rw", uri=True, isolation_level=None, timeout=5)
             db.row_factory = sqlite3.Row
             try:

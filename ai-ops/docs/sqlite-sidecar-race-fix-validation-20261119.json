@@ -1,0 +1,62 @@
+{
+  "status": "local_verified_uncommitted",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "ceb6c277b6a968c5be046657dc04137695e1a836",
+  "root_cause": "concurrent lstat observes SQLite's in-flight unlink of -wal/-shm/-journal as st_nlink==0; checks required nlink==1",
+  "user_approval": "reported before product change; user approved fix",
+  "repro_before": {
+    "runs": 80,
+    "cpu_load": "8x yes",
+    "write0_failures": 1,
+    "spurious_unsafe_rejections": 3,
+    "nlink0_observed": true
+  },
+  "repro_after": {
+    "runs": 160,
+    "cpu_load": "8x yes",
+    "all_exactly_one_write_and_correct_rejection": true
+  },
+  "new_tests": 4,
+  "new_tests_fail_on_pre_fix_code": true,
+  "related_modules": {
+    "count": 122,
+    "passed": true
+  },
+  "full_suite": {
+    "count": 1602,
+    "seconds": 205.063,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/sqlite-sidecar-race-full.log",
+      "sha256": "e04bab1d747ac1c9a9525bd7381a25591275e3af2be989022a4bce3ed8bb58c3"
+    }
+  },
+  "repository_boundary": "passed",
+  "diff_check": "passed",
+  "source_hashes": {
+    "ai-ops/src/ai_ops/job_queue.py": "273859cd22e1278217b8e6b635b1cb9f3e2a48b54bf300fe81ab3c5e64bd1aaa",
+    "ai-ops/src/ai_ops/slack_adapter.py": "f8122d7b04dff44f01da9a4cbed39927b0bbed2c3bd406d2b299db63e4babb79",
+    "ai-ops/src/ai_ops/observability.py": "0f7c0297e0df54fa6056b50ff138cee378ba26a6787d90658016ca19dc234164",
+    "ai-ops/src/ai_ops/continuous_model.py": "d5e95290fb1ffd9ee07e87ad7bdeafe7026154c08c0282035c3e3b6225d5cbe2",
+    "ai-ops/tests/test_sqlite_sidecar_race.py": "ff691a0ec6f19afee8445b9a3ccb9a6fc1dbccf2cc5eef1f88c17fe217f1294a"
+  },
+  "security_conditions_kept": [
+    "sidecar nlink>1 rejected",
+    "non-regular/symlink rejected",
+    "foreign uid rejected",
+    "group/other bits rejected",
+    "main db nlink==1 only"
+  ],
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "commit_pr_ci": null
+}

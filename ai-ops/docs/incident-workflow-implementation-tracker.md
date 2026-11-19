@@ -259,3 +259,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### WF-10 Slack sender 분리 최종 반영 · 2026-11-19
 
 [PR #41](https://github.com/joungGo/url-shortener-ai-ops/pull/41) head `5ec3f9d` → main `ceb6c277b6a968c5be046657dc04137695e1a836`. PR CI44482224455 7종·main CI44482913902 성공, tree `24a2ea8` 일치, 보호 변경/우회 없음. 플랫폼·Slack 쪽 통제와 실클러스터 음성 시험은 인프라 단계. 다음 인프라 불필요 후보는 사용자 허락 후 시작.
+
+### SQLite 보조 파일 삭제 경쟁 수정 · 2026-11-19
+
+[수정 기록](sqlite-sidecar-race-fix-20261119.md)·[검증 JSON](sqlite-sidecar-race-fix-validation-20261119.json): 동시 접근 시 SQLite가 지우는 중인 `-wal`/`-shm`(`nlink 0`)을 위험 파일로 오판하던 4개 저장소 검사 수정. 보안 조건 유지. 신규 시험4·부하 재현160·전체1602 통과. 이 커밋 시점 PR CI/main 대기.
