@@ -45,3 +45,10 @@ Docker Desktop containerd의 로컬 descriptor는 OCI index이며 archive의 con
 Alpine 3.24 공식 x86_64 APKINDEX가 zlib `1.4-r0`을 제공하고 과거 고정 버전의 설치가 실패하는 것을 확인해 Dockerfile의 설치·검증 고정값을 함께 갱신했다. 위 과거 검사 결과는 당시 기록이며 이번 이미지의 검사 결과로 재사용하지 않는다. 새 이미지 빌드와 ECR 검사를 별도로 확인한다.
 
 이번 재설치 ECR 검사에서 `musl 1.2.6-r2`의 `CVE-2026-107891` HIGH 1건을 확인했다. Alpine 3.24 공식 security DB가 수정 버전으로 명시한 `1.2.6-r3`을 설치하고 빌드 중 버전을 검증한다. 재등록 후 검사 지적 0건을 확인해야 AI 배포를 진행한다.
+
+
+## 2026-11-19 WF-05 CI 빌드 의존성 고정 보완
+
+PR33 이미지 검사에서 apk가 간접 의존성 libssl3/libcrypto3를 `3.5.9-r1`로 갱신했지만 기존 assertion이 `3.5.9-r0`에 고정돼 빌드가 중단됐다. Alpine3.24 공식 main APKINDEX의 x86_64/aarch64 모두 r1과 libssl3→동일 libcrypto3 의존성을 확인했다. 두 패키지의 **설치 버전과 검사 버전을 r1로 함께 명시**해 간접 의존성의 조용한 갱신을 막는다. OpenSSL3.5.9·TLS CA·SQLite·zlib 기능 검사와 기존 베이스 digest/다른 보안 고정은 유지한다.
+
+이는 이미지 빌드 검증용 변경이며 ECR 등록·취약점 재검사·실제 배포를 수행한 것이 아니다. 과거 ECR 지적0 기록을 새 이미지 결과로 재사용하지 않는다. 최종 CI/해시는 `recovery-plan-review-validation-20261119.json`을 따른다.

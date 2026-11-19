@@ -223,7 +223,7 @@ class SlackAdapter:
                 or not isinstance(thread, str) or not STAMP.fullmatch(thread)
                 or not isinstance(text, str) or len(text.encode()) > 16384):
             raise ValueError('slack_event_fields_rejected')
-        command = re.fullmatch(re.escape('<@' + self.policy.bot_user_id + '>') + r'\s+(investigate|investigate-event|status-event)\s+(\S+)(?:\s+(.+))?', text, re.DOTALL)
+        command = re.fullmatch(re.escape('<@' + self.policy.bot_user_id + '>') + r'\s+(investigate|investigate-event|status-event|plan-recovery)\s+(\S+)(?:\s+(.+))?', text, re.DOTALL)
         if command is None: raise ValueError('slack_command_rejected')
         action, reference, question = command.groups()
         event_command = None
@@ -233,6 +233,9 @@ class SlackAdapter:
         else:
             event_command = self._event_bridge().parse(action, reference, user, channel, thread)
             target = ''  # resolve only in relay; ACK never claims a queued investigation
+        if action == 'plan-recovery':
+            from ai_ops.recovery_plans import parse_plan_arguments
+            parse_plan_arguments(question)
         question, _ = sanitize_question(question or '현재 상태를 확인해줘')
         identity = {'team':self.policy.team_id,'app':self.policy.app_id,'event':event_id}
         if self.transport_mode == 'slack_web_api':
@@ -441,6 +444,22 @@ class SlackAdapter:
             with self._db() as db:
                 rows=db.execute('SELECT request_id FROM slack_requests WHERE created_at<=? AND state!="expired"',
                                 (self.tasks.queue.now()-RETENTION_SECONDS,)).fetchall()
+                # Frozen plans may expire before their newer Slack request/event.
+                # This also runs when new event commands have been disabled.
+                from ai_ops.recovery_plans import RecoveryPlan
+                from ai_ops.evidence import _json_object
+                selected={r['request_id'] for r in rows}
+                for item in db.execute('SELECT e.request_id,e.context FROM slack_event_requests e '
+                        'JOIN slack_requests r USING(request_id) WHERE e.command="plan-recovery" '
+                        'AND e.context IS NOT NULL AND r.state!="expired"').fetchall():
+                    context=_json_object(item['context'].encode())
+                    if 'recovery_plan' not in context:
+                        continue
+                    plan=RecoveryPlan.model_validate(context['recovery_plan'])
+                    if (self.tasks.queue.now()>=plan.retained_until.timestamp()
+                            or self.tasks.show(plan.job_id)['result']['state']=='expired'):
+                        if item['request_id'] not in selected:
+                            rows.append(item);selected.add(item['request_id'])
                 for row in rows:
                     db.execute('UPDATE slack_requests SET state="expired",question=NULL,user_id="",channel_id="",thread_ts="",target="" WHERE request_id=?',(row['request_id'],))
                     db.execute('UPDATE slack_replies SET state="expired",message_ts=NULL WHERE request_id=?',(row['request_id'],))

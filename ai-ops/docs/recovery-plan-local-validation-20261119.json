@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "task": "WF-05 local recovery planning",
+  "date": "2026-11-19",
+  "base_commit": "e3a4efab193bac143d598044e5d011329263d484",
+  "branch": "codex/wf05-recovery-plans-20261119",
+  "focused_tests": {
+    "tests": 27,
+    "passed": true
+  },
+  "full_suite": {
+    "tests": 1399,
+    "seconds": 83.307,
+    "passed": true,
+    "skipped": 0
+  },
+  "python_ast_files": 4,
+  "diff_check": true,
+  "repository_boundary_check": true,
+  "files": {
+    "ai-ops/src/ai_ops/recovery_plans.py": "38bce57dabd28d03bc1315bbb7548a94f79741adcac29b0809ee308e614fdc4c",
+    "ai-ops/src/ai_ops/slack_adapter.py": "2438fa4e2cfde89ac614e3acd0a748ecce798e661d67de491fba1b9743e7dd69",
+    "ai-ops/src/ai_ops/slack_events.py": "3f088ae9d10bec3af73dfcdab00a48e2334c1dc0905a375aa5eb7a6a971f23f4",
+    "ai-ops/tests/test_recovery_plans.py": "67a5fbc1229a3437591bc929d9ae74b80230ef12c37d63cf230d09b6dc8205d4"
+  },
+  "unchanged_c_stage_sources": {
+    "count": 47,
+    "manifest_sha256": "c077599e65927ca7164a369ecfa1f2a769354229501a67b2345d8945ed549c7d",
+    "compared_to": "e3a4efab193bac143d598044e5d011329263d484",
+    "all_equal": true
+  },
+  "logs": {
+    "/tmp/wf05-focused.log": "caa1bedcad44361f00f4ba53d18ceab8bc7488f2c24a9b3a31bd353d1d360b20",
+    "/tmp/wf05-full.log": "1e6bc23bb6a410c68894d311589a319b1e76af6e1d65f0cd10bac29d3ea839ba"
+  },
+  "scope": {
+    "infrastructure": false,
+    "deployment": false,
+    "real_slack": false,
+    "fault_trial": false,
+    "model_api": false,
+    "recovery_pr_created": false,
+    "command_executed": false,
+    "remote_ci": false,
+    "commit_or_push": false
+  },
+  "known_limits": [
+    "supported means stored evidence matches a planning template; never an executable proposal",
+    "known-good image/current UID-revision/diff/approval/execution remain WF-06/07",
+    "deployment restart is a disabled candidate pending D5 and WF-08",
+    "no live Slack or DB transition performed; C04/C05 incomplete",
+    "existing SQLite ResourceWarning retained in full log"
+  ],
+  "next": "WF-05 review, CI and main; then WF-06 local approval-wait/expiry/cancel/revalidation"
+}

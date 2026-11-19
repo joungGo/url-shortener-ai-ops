@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "task": "WF-05 review",
+  "date": "2026-11-19",
+  "base_commit": "e3a4efab193bac143d598044e5d011329263d484",
+  "review_method": "in-place diff/caller review; dedicated Bugbot unavailable",
+  "findings": [
+    {
+      "severity": "P2",
+      "problem": "nanosecond event start truncated to microseconds accepts preceding evidence",
+      "status": "fixed",
+      "regression_tests": [
+        "test_review_nanosecond_event_boundary_rejects_earlier_observation",
+        "test_review_rehashed_plan_cannot_claim_pre_event_evidence_supported"
+      ]
+    }
+  ],
+  "focused_tests": {
+    "count": 29,
+    "passed": true
+  },
+  "full_suite_first_run": {
+    "count": 1401,
+    "seconds": 82.817,
+    "errors": 1,
+    "skipped": 0,
+    "error": "temporary WF03_AMTOOL missing; template case did not execute"
+  },
+  "remediation": {
+    "official_amtool": "0.32.0",
+    "darwin_arm64_archive_sha256": "8da98c4abb80fc417d41298f6b98f9d0ebf0fb41f582513ee04bb278a567b519",
+    "notice_integration_tests": 9,
+    "passed": true,
+    "source_change": false
+  },
+  "final_local_coverage": {
+    "unique_tests": 1401,
+    "passed": true,
+    "note": "1400 passed in full run; missing template test passed in pinned notice suite; no skipped tests"
+  },
+  "files": {
+    "ai-ops/src/ai_ops/recovery_plans.py": "29c8d855f7825d32ddd3e831e57a1021d1f1e9ea7450ca1d7fbf8f0d3dd0d32e",
+    "ai-ops/src/ai_ops/slack_adapter.py": "2438fa4e2cfde89ac614e3acd0a748ecce798e661d67de491fba1b9743e7dd69",
+    "ai-ops/src/ai_ops/slack_events.py": "3f088ae9d10bec3af73dfcdab00a48e2334c1dc0905a375aa5eb7a6a971f23f4",
+    "ai-ops/tests/test_recovery_plans.py": "6d77adfad29ba104bb512a08971a1126641e4b46d975577c149fc7348c9b3d5d",
+    "ai-ops/Dockerfile": "4f1650ea7ddbd320127ac2b0346f0f66e63e9afe5ea6a920c73e99697d8126c3"
+  },
+  "ast_files": 4,
+  "diff_check": true,
+  "repository_boundary": true,
+  "unchanged_c_sources": {
+    "count": 47,
+    "manifest_sha256": "c077599e65927ca7164a369ecfa1f2a769354229501a67b2345d8945ed549c7d",
+    "equal_to_base": true
+  },
+  "logs": {
+    "/tmp/wf05-review-focused.log": "c2c2461d2f88fe6259467e9b590fe3427e68f65123d8e2e06cfd39780a9eb6f2",
+    "/tmp/wf05-review-full.log": "c928f82bc1bc08aab9ebd49fd6378855425beae83c02361d1fdf53c39db63a87",
+    "/tmp/wf05-review-notice.log": "97d0c816d6bdd7dd163c0e4a99e4da03a102fcc9821b0032b45e462c6d585aac"
+  },
+  "remote_ci": "pending",
+  "main": "pending",
+  "deployment": false,
+  "slack_sent": false,
+  "infra_installed": false,
+  "fault_trial": false,
+  "model_called": false,
+  "ci_first_attempt": {
+    "pr_run": 44446235573,
+    "head": "8f2c3918f6ee2c447187f07052a8fff1309d1f48",
+    "contracts": "success",
+    "image": "failure",
+    "gate": "failure",
+    "reason": "implicit libssl3/libcrypto3 upgrade r0 to r1 conflicts with old assertion"
+  },
+  "image_build_fix": {
+    "install_and_assert_version": "3.5.9-r1",
+    "official_alpine_3_24_indexes": {
+      "x86_64": {
+        "index_sha256": "94180a794fe26f46154356ce22f1984a474048874a784758a74ee0963b4bf08e",
+        "packages": {
+          "libcrypto3": {
+            "V": "3.5.9-r1",
+            "o": "openssl",
+            "D": "so:libc.musl-x86_64.so.1",
+            "C": "Q1I05gx2S9sTHg77/A+WuZaCWiHJo="
+          },
+          "libssl3": {
+            "V": "3.5.9-r1",
+            "o": "openssl",
+            "D": "libcrypto3=3.5.9-r1 so:libc.musl-x86_64.so.1 so:libcrypto.so.3",
+            "C": "Q1liSMx7iQMBbzF6s3hvx1ksKDoFw="
+          }
+        }
+      },
+      "aarch64": {
+        "index_sha256": "51c71530adc9c57931c918bc6c6d00de0ad75f72ca88c1deb860de91300a76ee",
+        "packages": {
+          "libcrypto3": {
+            "V": "3.5.9-r1",
+            "o": "openssl",
+            "D": "so:libc.musl-aarch64.so.1",
+            "C": "Q1j5FX8zPYDUksvHpLIk6b6ymqKZM="
+          },
+          "libssl3": {
+            "V": "3.5.9-r1",
+            "o": "openssl",
+            "D": "libcrypto3=3.5.9-r1 so:libc.musl-aarch64.so.1 so:libcrypto.so.3",
+            "C": "Q1KNkgX8ENzbEIhoMADjj6YaImHMI="
+          }
+        }
+      }
+    },
+    "local_image_build": "Docker daemon unavailable; exact-head CI required",
+    "ecr_scan": "not_run"
+  }
+}
