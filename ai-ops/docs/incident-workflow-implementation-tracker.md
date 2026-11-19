@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 기준 AI main `6a6605d`(A7-3b 재시작 사전 게이트 PR47), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 없음(main detached, 다음 조각에서 새 branch). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-19 KST. 기준 AI main `13d94e9`(A7-3a 재시작 Kubernetes 어댑터 PR48), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/recovery-effects-adapter-20261119`(A7-4). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -311,3 +311,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7-3a 재시작 Kubernetes 어댑터 · 2026-11-19
 
 [구현 기록](restart-k8s-adapter-local-20261119.md)·[검증 JSON](restart-k8s-adapter-local-validation-20261119.json): 고정 경로·신원 분리 클라이언트, 3b 원시 관측 도출(불확실하면 차단), 설정 PromQL만, 증거 비공개 저장, 봉인 PATCH, Lease 미탈취. mode=kubernetes로 실행기 거절(쓰기 차단 유지). 신규 시험15·전체1654 통과. 이 커밋 시점 PR CI/main 대기. 다음 A7-4 효과·원복·회수.
+
+### A7-3a 재시작 Kubernetes 어댑터 최종 반영 · 2026-11-19
+
+[PR #48](https://github.com/joungGo/url-shortener-ai-ops/pull/48) head `9124203` → main `13d94e9a3efc8432480291ef9bbc1461e6899c60`. PR CI44525442506 7종·main CI44526171563 성공, tree `d075338` 일치, 보호 변경/우회 없음. 다음 A7-4 효과·원복·회수는 사용자 허락 후.
+
+### A7-4 재시작 효과 관찰·봉인·Lease 회수 확인 · 2026-11-19
+
+[구현 기록](restart-effects-adapter-local-20261119.md)·[검증 JSON](restart-effects-adapter-local-validation-20261119.json): llm-council로 혼합 리더 철회 → 실행 1회 관찰 수집기(창=적용+기동 허용, 간격+읽기≤gap, K8s·Pod proxy HTTP·설정 PromQL·설정 규칙), sha256 봉인 묶음만 WF09 판정, provenance `captured`, Lease 반납 확인·자기 것만 해제. 실제 읽기/회수 차단 유지. 신규 시험17·변형 6/6·전체1671 통과. 이 커밋 시점 PR CI/main 대기. 다음 A7-5 주기 보관 정리(증거·봉인 파일 포함).

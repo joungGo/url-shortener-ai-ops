@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_uncommitted",
+  "status": "merged_main_ci_passed",
   "slice": "A7-3a restart Kubernetes adapter",
   "author": "Claude Code (Opus 5.5)",
   "base": "6a6605d11b86a7b438286f8664d3341ae39e678a",
@@ -59,5 +59,27 @@
     120
   ],
   "infrastructure_deployment_slack_trial_paid_model": false,
-  "commit_pr_ci": null
+  "commit_pr_ci": {
+    "commits": [
+      "90dfd79",
+      "9124203650e859cdb18de4793ba800e904179f3a"
+    ],
+    "branch": "claude/recovery-k8s-adapter-20261119 (created from main; deleted after merge)",
+    "pr": 48,
+    "pr_ci": 44525442506,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1654,
+    "pr_ci_skipped": 5,
+    "main_ci": 44526171563,
+    "main_jobs_success": 6,
+    "main_pr_gate": "skipped_by_design",
+    "merge": {
+      "method": "regular_squash_match_head",
+      "main": "13d94e9a3efc8432480291ef9bbc1461e6899c60",
+      "tree": "d075338c571214f4a4fa8fdfdf7191620501cb59",
+      "head_tree_equal": true,
+      "protection_changed": false,
+      "admin_bypass": false
+    }
+  }
 }

@@ -1,0 +1,79 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "A7-4 restart effect observation, sealing and Lease cleanup confirmation",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "13d94e9a3efc8432480291ef9bbc1461e6899c60",
+  "decision": {
+    "method": "llm-council (5 advisors, 5 anonymous peer reviews, chairman)",
+    "rejected": "hybrid reader (Prometheus range query + single K8s read): copying one snapshot across the window fabricates evidence; query_range steps are lookback-filled and pass the 45s gap check falsely; HTTP contract and alert evaluation state cannot be reconstructed; 15s is a per-read limit, not a whole-verdict limit",
+    "adopted": "bounded in-run observation -> sealed batch -> WF09 reads sealed bytes only",
+    "adjustments": [
+      "window start = applied_at + probe_window allowance (Pod never Ready => unresolved, not merely unknown)",
+      "sealed batch stored like A7-3a evidence (0700/0600, ledger keeps hash only)"
+    ]
+  },
+  "modes": {
+    "observer": "kubernetes",
+    "sealed_reader": "sealed_capture",
+    "lease_cleanup": "kubernetes",
+    "wf09_coordinator_accepts": "local_fixture only (live read/cleanup still blocked)"
+  },
+  "identities": {
+    "reader": "GET deployments/lab-api, pods list, pods/proxy GET :8000/readyz and /items only (pods/proxy is a new RBAC need at wiring)",
+    "prometheus": "GET /api/v1/query, /api/v1/rules",
+    "lease_writer": "GET/PUT lease b6-scenario-lock"
+  },
+  "contract_change": {
+    "EffectBatch.provenance": "synthetic|captured (captured requires run_id, collector and per-sample source_sha256; synthetic forbids them)",
+    "EffectSample.source_sha256": "optional raw-response hash (bodies never stored)",
+    "verify_effect": "report provenance follows batch; judgement rules unchanged"
+  },
+  "reused_without_edit": [
+    "c_verification_collect.valid_body",
+    "c_verification_collect.metric_value",
+    "c_verification_collect.definition_hash"
+  ],
+  "new_tests": 17,
+  "mutation_checks": {
+    "count": 6,
+    "detected": 6,
+    "mutations": [
+      "startup allowance check removed",
+      "terminating pods excluded from pod set",
+      "proxy non-200 treated as pass",
+      "interval+read<=gap guard removed",
+      "lease owner check removed",
+      "seal hash check removed"
+    ],
+    "note": "run on a scratch copy; one copy-path fixture error is baseline and excluded"
+  },
+  "full_suite": {
+    "count": 1671,
+    "seconds": 217.907,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/restart-effects-adapter-full.log",
+      "sha256": "b6ffd73a86ee54e36749fa8ad05ba99ff1e7ccf14b16cda51eaf5da2b58d0d57"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compile": "passed"
+  },
+  "not_in_scope": [
+    "PR-path rollback observation (GitHub/Argo adapters)",
+    "evidence and sealed batch retention (A7-5)",
+    "process wiring (observation start, receipt/policy build, seal hash in ledger, Slack result)",
+    "RBAC incl. pods/proxy, VAP, tokens",
+    "concrete PromQL and alert rules pinned against platform Prometheus",
+    "real-cluster shadow, WF11 live mode"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/restart_effects.py": "55b65a3583ec4a39b66fb7cb7c467f160433e81ff19e862656dcf97eda152988",
+    "ai-ops/src/ai_ops/recovery_effects.py": "7c66416aae718f2aa77c55d6d9ac046320207f6226c49c7b574f9ca7c9bdeb00",
+    "ai-ops/tests/test_restart_effects.py": "2d3b3d22a5ecc9263d064ff5a10b9321a87e7c81fd62c25b1ea3681685e748c4"
+  },
+  "no_external_actions": "no cluster, deploy, Slack, incident drill, Terraform, paid model call"
+}
