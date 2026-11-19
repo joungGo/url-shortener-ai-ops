@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_uncommitted",
+  "status": "merged_main_ci_passed",
   "author": "Claude Code (Opus 5.5)",
   "base": "5c74985973b71400000d408ae07e1cd69c410176",
   "new_tests": 7,
@@ -39,5 +39,27 @@
     120
   ],
   "infrastructure_deployment_slack_trial_paid_model": false,
-  "commit_pr_ci": null
+  "commit_pr_ci": {
+    "commits": [
+      "b7b8f9d",
+      "5b699bc5356cd2f66f51a1efef9e3b2c47100196"
+    ],
+    "branch": "claude/wf10-change-plan-20261119 (created from main)",
+    "pr": 44,
+    "pr_ci": 44491923061,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1615,
+    "pr_ci_skipped": 5,
+    "main_ci": 44492763462,
+    "main_jobs_success": 6,
+    "main_pr_gate": "skipped_by_design",
+    "merge": {
+      "method": "regular_squash_match_head",
+      "main": "7b6dcb19caca9156c492cb51c19a5a3a35cfd76a",
+      "tree": "d8a0beb9eb36336bf920b6503b393cb51e79245f",
+      "head_tree_equal": true,
+      "protection_changed": false,
+      "admin_bypass": false
+    }
+  }
 }

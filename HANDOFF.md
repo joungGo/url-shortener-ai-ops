@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-10 전환·원복 변경 계획 형식(A6) CI/main 반영 완료 (Claude)
+
+[PR #44](https://github.com/joungGo/url-shortener-ai-ops/pull/44) head `5b699bc5356cd2f66f51a1efef9e3b2c47100196`를 head 고정 일반 squash 병합해 main `7b6dcb19caca9156c492cb51c19a5a3a35cfd76a`에 반영했다. PR CI44491923061 7종(1615개)·main CI44492763462 성공, tree `d8a0beb9eb36336bf920b6503b393cb51e79245f` 일치. 보호 변경/우회 없음. 최종 메타데이터(이 기록·작업표·계획 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+남은 인프라 불필요 후보: A7 WF07~09 실제 어댑터 로컬 구현, A8 WF12 문서 초안. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 WF-10 전환·원복 변경 계획 형식(A6)·CI 반영 준비 (Claude)
 
 신규 `ai_ops.wf10_change_plan`: 검증된 후보 패키지 1개에서 적용 순서(ConfigMap→NetworkPolicy→Service→Deployment sender→main)·리소스별 hash·probe 기반 시작 허용 시간·사전/사후 확인과 역순 원복 묶음(`part-of=wf10`+기록 uid 일치 시에만 삭제, PVC·Secret·namespace·SA·RBAC·Ingress 금지, 삭제 전 DB 보존·자동 복원 없음)을 데이터로 생성한다. `rollback_bundle_sha256`·`change_plan_sha256`으로 이후 별도 실제 승인이 묶일 형식을 제공하며 명령 문자열·실행기 없음, execution_allowed=false.

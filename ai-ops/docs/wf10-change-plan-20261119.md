@@ -1,6 +1,6 @@
 # WF-10 전환·원복 변경 계획 형식(A6) · 2026-11-19
 
-상태: **로컬 구현·검증 완료 / 미커밋.** 기준 main `5c74985973b71400000d408ae07e1cd69c410176`.
+상태: **PR44로 main 반영 완료.** 기준 main `5c74985973b71400000d408ae07e1cd69c410176`.
 
 ## 목적
 
@@ -36,3 +36,7 @@ PYTHONPATH=ai-ops/src python -m ai_ops.wf10_change_plan verify --candidate <후�
 - 합성 후보 CLI build/verify 성공(계획 9,183바이트). 전체 1615개(204.526초, skip1=WF03 환경 게이트) 통과. 저장소 경계·diff·compileall 통과.
 
 실제 입력과 실클러스터 값이 없으므로 실제 hash는 아직 없다. 실제 적용·삭제, 서버 dry-run, uid 기록은 인프라 단계에서 한다. 인프라·배포·Slack·실습 실행 없음. 기존 시간·승인·원복 조건 변경 없음. 검증 수치는 [검증 기록](wf10-change-plan-validation-20261119.json)에 있다.
+
+## 최종 반영 결과
+
+[PR #44](https://github.com/joungGo/url-shortener-ai-ops/pull/44) head `5b699bc5356cd2f66f51a1efef9e3b2c47100196`를 head 고정 일반 squash 병합해 main `7b6dcb19caca9156c492cb51c19a5a3a35cfd76a`에 반영했다. [PR CI44491923061](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44491923061) 7종(1615개, skip5 기준선 동일)·[main CI44492763462](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44492763462) 성공(PR전용 gate skip은 설계대로). tree `d8a0beb9eb36336bf920b6503b393cb51e79245f` 일치. 보호 변경/우회 없음. 최종 메타데이터는 병합 후 로컬 갱신했다.
