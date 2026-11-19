@@ -1,5 +1,5 @@
 {
-  "status": "code_review_fixed_local_verified_ci_pending",
+  "status": "merged_main_ci_passed_live_connection_pending",
   "reviewer": "Claude Code (Opus 5.5)",
   "checked_at": "2026-11-19T06:22:59Z",
   "base": "50d0c1a309698320bc958eafc3d294f38b023f01",
@@ -80,5 +80,36 @@
   "execution_allowed": false,
   "infrastructure_deployment_slack_trial_paid_model": false,
   "github_protection": "private free-plan repo: branch protection/rulesets API 403 (not available); merge after exact-head PR CI success, no protection change or admin bypass",
-  "commit_pr_ci": "pending at this record"
+  "commit_pr_ci": {
+    "commits": [
+      "389bd46",
+      "0ff46cd19abdf346abf1205d14a5da8b15b01312"
+    ],
+    "pr": 39,
+    "pr_ci": 44471952438,
+    "push_ci": 44471944816,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1585,
+    "pr_ci_skipped": 5,
+    "pr38_ci_skipped_baseline": 5,
+    "main_ci": 44472709490,
+    "main_jobs": {
+      "scope": "success",
+      "WF03 event notice integration": "success",
+      "Lease trace local contracts": "success",
+      "terraform": "success",
+      "contracts": "success",
+      "image": "success",
+      "C03 Main PR Gate": "skipped"
+    },
+    "merge": {
+      "method": "regular_squash_match_head",
+      "main": "4b54777a20880614403d19ee98b54bec9cc45263",
+      "tree": "19a045da24eeb71e6082598e27f8ee33d02cb319",
+      "head_tree_equal": true,
+      "protection_changed": false,
+      "admin_bypass": false,
+      "required_reviews": "none (feature unavailable on plan)"
+    }
+  }
 }
