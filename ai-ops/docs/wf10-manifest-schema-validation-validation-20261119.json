@@ -1,0 +1,68 @@
+{
+  "status": "local_verified_uncommitted",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "f6e04337239a6f981745674ff390ce8b89e37f81",
+  "kubernetes_source": {
+    "repository": "kubernetes/kubernetes",
+    "tag": "v1.35.8",
+    "path": "api/openapi-spec/v3",
+    "sha256": {
+      "api__v1_openapi.json": "45666551cf0928e4e8a9b88508f9b23aa78d2341aa27b0587457b2694717fcc1",
+      "apis__apps__v1_openapi.json": "8f22326dfd8be012bc6247e44bb6adb8070079c0ca9c0a527840811bccf3482e",
+      "apis__networking.k8s.io__v1_openapi.json": "6b974984cb19f1ef1832fdfa84b67ce600eff1db354cdb49db0edb1cf87e234f"
+    }
+  },
+  "subset": {
+    "schemas": 138,
+    "bytes": 45584,
+    "builder_check": "matches pinned source"
+  },
+  "new_tests": 6,
+  "rejection_cases": 12,
+  "rendered_resources_valid": 8,
+  "manifest_sha256_unchanged": "f8908414260ec6795859032e34ac9ff752b432580bfe17e459c5aaada69cc5ef",
+  "cli": {
+    "synthetic_build_verify": "exit0",
+    "unresolved_input": "exit2 resources0",
+    "synthetic_candidate_bytes": 54641,
+    "package_limit_bytes": 65536
+  },
+  "full_suite": {
+    "count": 1608,
+    "seconds": 206.352,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/wf10-manifest-schema-full.log",
+      "sha256": "d5663f76b5befcfe5daa77f67d9bca319e97c50d42401814110386cdab34f39d"
+    }
+  },
+  "repository_boundary": "passed",
+  "diff_check": "passed",
+  "compileall": "passed",
+  "not_covered": [
+    "server dry-run",
+    "admission/defaulting",
+    "cross-field/name format",
+    "quota",
+    "policy engines"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/k8s_schema.py": "d11320176346b415b0ea3d98222f027b57d6886bd13fb9e7a91eaa2c6e693976",
+    "ai-ops/src/ai_ops/k8s_openapi_v1_35_8.json": "d45ec08befb917e0f9d289b103894b6f4d38bcc2242adeb31a2e5c7a38dd4376",
+    "ai-ops/scripts/build_k8s_schema_subset.py": "5f918acbf43843d9a54dd7fa3c0a5004607fe177a2b2fa087289c0c7f09f7df1",
+    "ai-ops/src/ai_ops/wf10_deployment.py": "fb2fecdcede3ef917b07c143e77a0a7bc9e9bdb50bd6713c1142d2647fb24d8c",
+    "ai-ops/tests/test_k8s_schema.py": "f0cc3faaddf5218e3f7f5899f2eec32a68ecd0aef8eb3da500101eb40a0c8a07"
+  },
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "commit_pr_ci": null
+}

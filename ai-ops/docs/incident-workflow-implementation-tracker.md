@@ -267,3 +267,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### SQLite 보조 파일 경쟁 수정 최종 반영 · 2026-11-19
 
 [PR #42](https://github.com/joungGo/url-shortener-ai-ops/pull/42) head `a45c053` → main `f6e04337239a6f981745674ff390ce8b89e37f81`. PR CI44486424872 7종·main CI44487170865 성공, tree `15e3620` 일치, 보호 변경/우회 없음.
+
+### WF-10 manifest 오프라인 schema 검증(A5) · 2026-11-19
+
+[검증 기록](wf10-manifest-schema-validation-20261119.md)·[검증 JSON](wf10-manifest-schema-validation-validation-20261119.json): v1.35.8 공식 OpenAPI v3 부분집합(원본 hash 고정)으로 renderer 8개 리소스를 출력 전 strict 검증. 서버 dry-run은 live gate로 유지. 신규 시험6·전체1608 통과. 이 커밋 시점 PR CI/main 대기.

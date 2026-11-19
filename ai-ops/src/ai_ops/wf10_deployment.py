@@ -15,6 +15,7 @@ import re
 import tempfile
 from urllib.parse import urlsplit
 
+from ai_ops.k8s_schema import SchemaError, validate_manifest
 from ai_ops.b_contracts import BindingRegistry, BRuntime, MetricCatalog, CollectionLimits, _json_object
 from ai_ops.slack_adapter import SlackPolicy
 from ai_ops.slack_runtime import SlackWebConfig
@@ -29,7 +30,7 @@ INIT_RESOURCES = {'requests':{'cpu':'10m','memory':'32Mi'},'limits':{'cpu':'100m
 LIVE_GATES = ('current_identity_permissions', 'fresh_store_and_manual_policy',
               'same_physical_store_uid_binding', 'normal_ci_and_worker', 'tls_and_routes',
               'manifest_and_rollback_hashes', 'source_image_provenance', 'exact_connection_approval',
-              'egress_enforcement_negative_tests', 'slack_token_ip_restriction')
+              'egress_enforcement_negative_tests', 'slack_token_ip_restriction', 'server_side_dry_run')
 SECRET_KEYS = ('signing', 'bot', 'slack_tls', 'event_identity', 'collector', 'sender_client')
 # The sender is the only internet-egress Pod. Private, CGNAT, loopback and
 # link-local (incl. IMDS 169.254.169.254) ranges stay closed; the VPC CIDR must
@@ -265,7 +266,15 @@ def candidate(value):
         'ingress':[{'from':[{'podSelector':{'matchLabels':labels}}],'ports':[{'protocol':'TCP','port':SENDER_PORT}]}],
         'egress':[{'to':[peer(net['dns'])],'ports':[{'protocol':p,'port':53} for p in ('TCP','UDP')]},
                   {'to':[{'ipBlock':{'cidr':'0.0.0.0/0','except':NON_PUBLIC}}],'ports':[{'protocol':'TCP','port':443}]}]}},'networking.k8s.io/v1'))
+    # Offline v1.35 structural check (strict unknown fields). Never emit a manifest
+    # the API server would reject on shape; server dry-run remains a live gate.
+    for resource in resources:
+        try:
+            validate_manifest(resource)
+        except SchemaError:
+            raise ValueError('wf10_schema_rejected') from None
     return {'status':'candidate_rendered_not_approved','execution_allowed':False,'live_verified':False,
+        'schema_validation':{'kubernetes':'v1.35.8','mode':'offline_openapi_subset_strict','server_dry_run':False},
         'source_revision':v['source_revision'],'preserved_c_limits_seconds':LIMITS,'manual_policy':{'rules':[],'strategy':'new_empty_active_queue_archive_old_read_only'},
         'required_live_gates':list(LIVE_GATES),'unresolved_live_inputs':sorted(UNRESOLVED),
         'external_prerequisites':['existing namespace/PVC/least-read-only service account and secrets incl. a 32-hex sender client secret',
