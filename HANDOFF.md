@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 A7-3b 재시작 사전 게이트 CI/main 반영 완료 (Claude)
+
+[PR #47](https://github.com/joungGo/url-shortener-ai-ops/pull/47) head `8c86507b45c5221c15a0a5e0501cf27ee2ef508f`를 head 고정 일반 squash 병합해 main `6a6605d11b86a7b438286f8664d3341ae39e678a`에 반영했다. PR CI44522308075 7종(1639개)·main CI44523032690 성공, tree `713fd3e069565d693054f1cb049d4fda0d74ae17` 일치. 보호 변경/우회 없음. 병합 후 branch 정리(복구용 SHA는 inventory). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+A7 남은 조각: 3a 실제 K8s 어댑터(원시 관측 도출·증거 수집·PATCH·Lease, 가짜 API 서버), 4 효과·원복·회수, 5 주기 보관 정리, 프로세스 연결. 조각별 PR. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 A7-3b 재시작 사전 게이트 재설계·CI 반영 준비 (Claude)
 
 WF08 실행 전 진단 4종은 실제 도출 정의가 없고 fixture가 통과값을 넣고 있었다. llm-council로 재설계를 결정했고, 사실 확인으로 대상 lab-api가 `Recreate`라 재시작 시 기존 Pod가 먼저 종료되어 증거가 반드시 사라짐을 확인했다. 신규 `ai_ops.restart_gates`(순수·결정적, pass/fail/unknown, unknown은 통과 아님)로 계획 이후 변경 없음(배포 전략 포함)·Ready 0·경쟁 컨트롤러 없음·readiness 실패 지속·liveness 정상(restartCount 불변)·과거 Ready 이력·의존성(실패만 차단)을 판정한다. image_available·capacity_verified 삭제(표시만), configuration_verified는 지문 게이트로 흡수. 스냅샷은 원시 관측값만 받고 계획에 strategy·restart_count를 봉인한다. PATCH 직전 증거 보존(describe·events·logs current/previous·metrics·status) 필수 게이트, 게이트 거절은 `gate_rejected` 인계 기록(값 없음)·재시도 없음.

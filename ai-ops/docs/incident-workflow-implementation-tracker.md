@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 기준 AI main `8fa3ad2`(A7-2 복구 결과 outbox PR46), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/recovery-outbox-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-19 KST. 기준 AI main `6a6605d`(A7-3b 재시작 사전 게이트 PR47), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 없음(main detached, 다음 조각에서 새 branch). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -303,3 +303,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7-3b 재시작 사전 게이트 재설계 · 2026-11-19
 
 [구현 기록](restart-gates-local-20261119.md)·[검증 JSON](restart-gates-local-validation-20261119.json): 진단 4종 bool 주입 → `restart_gates` 결정적 판정(지속·liveness·과거 Ready·지문·의존성) + PATCH 직전 증거 보존 필수 게이트. lab-api Recreate 반영. 시험39·전체1639 통과. 이 커밋 시점 PR CI/main 대기. 다음 A7-3a 실제 K8s 어댑터(가짜 API 서버 검증).
+
+### A7-3b 재시작 사전 게이트 최종 반영 · 2026-11-19
+
+[PR #47](https://github.com/joungGo/url-shortener-ai-ops/pull/47) head `8c86507` → main `6a6605d11b86a7b438286f8664d3341ae39e678a`. PR CI44522308075 7종·main CI44523032690 성공, tree `713fd3e` 일치, 보호 변경/우회 없음. 다음 A7-3a 실제 K8s 어댑터는 사용자 허락 후.

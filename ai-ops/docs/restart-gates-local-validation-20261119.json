@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_uncommitted",
+  "status": "merged_main_ci_passed",
   "slice": "A7-3b restart pre-write gate redesign",
   "author": "Claude Code (Opus 5.5)",
   "base": "8fa3ad2b38b88cbe31496ad81c1ede3644cb7bdb",
@@ -84,5 +84,27 @@
     120
   ],
   "infrastructure_deployment_slack_trial_paid_model": false,
-  "commit_pr_ci": null
+  "commit_pr_ci": {
+    "commits": [
+      "1033016",
+      "8c86507b45c5221c15a0a5e0501cf27ee2ef508f"
+    ],
+    "branch": "claude/recovery-restart-gates-20261119 (created from main; deleted after merge)",
+    "pr": 47,
+    "pr_ci": 44522308075,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1639,
+    "pr_ci_skipped": 5,
+    "main_ci": 44523032690,
+    "main_jobs_success": 6,
+    "main_pr_gate": "skipped_by_design",
+    "merge": {
+      "method": "regular_squash_match_head",
+      "main": "6a6605d11b86a7b438286f8664d3341ae39e678a",
+      "tree": "713fd3e069565d693054f1cb049d4fda0d74ae17",
+      "head_tree_equal": true,
+      "protection_changed": false,
+      "admin_bypass": false
+    }
+  }
 }
