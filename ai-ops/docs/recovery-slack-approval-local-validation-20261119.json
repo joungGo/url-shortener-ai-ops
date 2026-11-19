@@ -1,0 +1,57 @@
+{
+  "status": "local_verified_uncommitted",
+  "slice": "A7-1 Slack approval interactivity receiver",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "7b6dcb19caca9156c492cb51c19a5a3a35cfd76a",
+  "new_tests": 11,
+  "regression_found_and_fixed": "SlackEventsApp bound adapter.receive at init; existing test patching adapter.receive later hung. Reverted to per-request lookup (_handle).",
+  "slack_regression_modules": {
+    "modules": [
+      "test_slack_adapter",
+      "test_slack_web",
+      "test_slack_events",
+      "test_slack_server",
+      "test_slack_event_runtime",
+      "test_slack_sender"
+    ],
+    "passed": true
+  },
+  "full_suite": {
+    "count": 1626,
+    "seconds": 206.887,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/recovery-slack-approval-full.log",
+      "sha256": "9559a89ac8b3b3164b3291708cfe2efd8d89d7ddb81e2f1bc275e89c3417070d"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compileall": "passed",
+    "check_slack_adapter_local": "passed"
+  },
+  "not_in_scope": [
+    "posting approval request messages with buttons (A7-2)",
+    "wiring receiver/ledgers into the ingress process and Slack App Interactivity URL"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_slack_approval.py": "e4ca149d4a4205cc8f99b7543aba7239b019b0646ef6643d25593feaa3bd1749",
+    "ai-ops/src/ai_ops/slack_ingress.py": "ceb39defa744317f7a2e071c151a8dd87509ff58d801fe34ea4286bff7fcf0be",
+    "ai-ops/src/ai_ops/slack_adapter.py": "eacecbe21a40513a7c2d34f7697330af02d418424c0b5142a9e8062917f27191",
+    "ai-ops/tests/test_recovery_slack_approval.py": "e2873226a4333730ade3afb8043457ac0223ecc3430e60cca2d4e5cd800b1e54"
+  },
+  "execution_allowed": false,
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "commit_pr_ci": null
+}
