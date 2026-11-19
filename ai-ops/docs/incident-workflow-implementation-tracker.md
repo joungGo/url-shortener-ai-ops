@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 기준 AI main `7b6dcb1`(WF10 변경 계획 형식 PR44), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf10-change-plan-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-19 KST. 기준 AI main `0619651`(A7-1 Slack 승인 버튼 수신 PR45), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/recovery-slack-approval-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -287,3 +287,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7-1 복구 승인 Slack 버튼 수신 · 2026-11-19
 
 [구현 기록](recovery-slack-approval-local-20261119.md)·[검증 JSON](recovery-slack-approval-local-validation-20261119.json): 서명된 Slack 버튼 → WF06 장부 결정 기록만. 범위별 버튼·정책 쌍·결정적 request_id. 신규 시험11·전체1626 통과. 이 커밋 시점 PR CI/main 대기. A7 남은 조각: 2 결과 outbox, 3 진단·쓰기·잠금 어댑터, 4 효과·원복·회수, 5 주기 보관 정리.
+
+### A7-1 Slack 승인 버튼 수신 최종 반영 · 2026-11-19
+
+[PR #45](https://github.com/joungGo/url-shortener-ai-ops/pull/45) head `56e0d30` → main `0619651393b5792da03f9a86d561e502560d5e81`. PR CI44500818121 7종·main CI44501492963 성공, tree `5b9d01a` 일치, 보호 변경/우회 없음. 다음 조각 A7-2(결과 outbox)는 사용자 허락 후.

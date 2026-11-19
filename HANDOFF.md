@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 A7-1 복구 승인 Slack 버튼 수신 CI/main 반영 완료 (Claude)
+
+[PR #45](https://github.com/joungGo/url-shortener-ai-ops/pull/45) head `56e0d309e333f81dd49ad2136f6ba3eadfbc7d75`를 head 고정 일반 squash 병합해 main `0619651393b5792da03f9a86d561e502560d5e81`에 반영했다. PR CI44500818121 7종(1626개)·main CI44501492963 성공, tree `5b9d01a938163d7b0cbe279a2a2308b71521b9d6` 일치. 보호 변경/우회 없음. 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+A7 남은 조각: 2 결과 outbox(버튼 있는 승인 요청·진행/결과 회신, sender 경로 재사용), 3 진단·쓰기·잠금 어댑터, 4 효과·원복·회수, 5 주기 보관 정리. 조각별 PR. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 A7-1 복구 승인 Slack 버튼 수신·CI 반영 준비 (Claude)
 
 A7(WF07~09 실제 어댑터)을 5조각으로 나눠 하나씩 진행한다(사용자 결정). 1조각: 신규 `ai_ops.recovery_slack_approval`이 서명된 Slack interactivity(`block_actions`)를 서명·시각·form·팀/App/채널·정책 (사용자, 채널) 쌍으로 검증한 뒤 WF06 장부 `decide`만 호출한다. 버튼 값에 정확한 장부 대상(plan/approval hash·generation)과 범위(준비/명령 실행)를 담고, request_id는 Slack 식별자 hash로 멱등이다. 재검증·실행·전송 없음, execution_allowed=false. `SlackInteractivityApp`(/slack/interactivity)은 기존 ACK 제약을 재사용하고 서명 검증은 `verify_slack_request`로 공용화했다(동작 동일).
