@@ -33,3 +33,9 @@ renderer가 만든 컨테이너 명령·인자·마운트·권한을 실제 실�
 ## 반영
 
 이 커밋 시점 원격 CI·main 반영은 대기다. 이 저장소는 비공개·무료 플랜이라 GitHub 브랜치 보호/ruleset API가 403으로 제공되지 않는다. 따라서 기존 PR38과 같이 정확 head의 PR CI 성공을 확인한 뒤 일반 squash 병합하며, 보호 설정 변경·관리자 우회는 하지 않는다. 실제 입력12개 확정과 연결·WF11/C04/C05는 후속이다.
+
+## 최종 반영 결과
+
+[PR #39](https://github.com/joungGo/url-shortener-ai-ops/pull/39) head `0ff46cd19abdf346abf1205d14a5da8b15b01312`(커밋 `389bd46` 문서 + `0ff46cd` 구현/검토)를 head 고정 일반 squash 병합해 main `4b54777a20880614403d19ee98b54bec9cc45263`에 반영했다. [PR CI44471952438](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44471952438) 7종 성공(contracts 전체1585개, skip5는 PR38 기준과 동일)·push CI44471944816·[main CI44472709490](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44472709490) 성공. main의 PR전용 gate skip은 설계대로다. 검토 head와 병합 main의 tree `19a045da24eeb71e6082598e27f8ee33d02cb319` 일치. 보호 변경/관리자 우회 없음(보호 기능 미제공 플랜, 필수 리뷰 없음).
+
+최종 CI/main 메타데이터는 병합 후 로컬 갱신했다. 실제 입력12개·연결 승인·실물 검증은 여전히 미완료다.

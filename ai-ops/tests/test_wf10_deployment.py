@@ -84,6 +84,19 @@ class DeploymentTest(unittest.TestCase):
         self.assertNotIn('bot',mounts['slack-ingress']);self.assertNotIn('kubernetes',mounts['slack-relay'])
         self.assertIn('bot',mounts['slack-relay']);self.assertIn('kubernetes',mounts['worker'])
         self.assertNotIn('signing',mounts['event-receiver']);self.assertNotIn('event-identity',mounts['worker'])
+    def test_every_process_has_liveness_and_init_has_bounded_resources(self):
+        p=self.pod()
+        for c in p['containers']:
+            live=c['livenessProbe']
+            self.assertEqual((live['periodSeconds'],live['timeoutSeconds'],live['failureThreshold']),(30,5,3))
+            probe={k:v for k,v in c['readinessProbe'].items() if k in ('exec','tcpSocket')}
+            self.assertEqual({k:v for k,v in live.items() if k in ('exec','tcpSocket')},probe)
+        self.assertEqual(next(c for c in p['containers'] if c['name']=='worker')['livenessProbe']['exec']['command'],
+                         ['python','-m','ai_ops.worker_runtime','--probe'])
+        self.assertEqual(next(c for c in p['containers'] if c['name']=='event-receiver')['livenessProbe']['tcpSocket'],{'port':9443})
+        for c in p['initContainers']:
+            self.assertEqual(set(c['resources']),{'requests','limits'})
+            self.assertEqual(c['resources']['limits']['memory'],'64Mi')
     def test_private_secret_copy_scripts_compile_without_user_commands(self):
         for c in self.pod()['initContainers']:
             self.assertEqual(c['command'][:2],['python','-c']);compile(c['command'][2],'<init>','exec')
