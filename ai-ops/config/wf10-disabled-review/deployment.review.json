@@ -1,0 +1,95 @@
+{
+  "activation_supported": false,
+  "deployable": false,
+  "external_routes": [],
+  "image_digest": null,
+  "kind": "wf10_process_review_not_kubernetes",
+  "namespace": null,
+  "new_rbac_rules": [],
+  "preserved_c_limits_seconds": {
+    "independent_rollback_start": 300,
+    "lease_request": 3,
+    "minimum_review_after_notice": 120,
+    "observation": 120,
+    "owner_rollback": 240,
+    "review_deadline_from_start": 210,
+    "start": 15
+  },
+  "processes": [
+    {
+      "credential_classes": [
+        "event-receiver-tls",
+        "alert-bearer"
+      ],
+      "endpoint": "/v1/events",
+      "module": "ai_ops.alert_receiver",
+      "name": "event-receiver",
+      "required_args": [
+        "--cluster-id",
+        "--event-source-alias",
+        "--event-source-id"
+      ]
+    },
+    {
+      "contract": "reuse existing worker entrypoint and exclusive worker lock; no recovery write credentials",
+      "credential_classes": [
+        "existing-read-only-collector"
+      ],
+      "module": "ai_ops.worker",
+      "name": "worker"
+    },
+    {
+      "action": "ingress",
+      "credential_classes": [
+        "slack-signing",
+        "slack-tls"
+      ],
+      "enable_web": false,
+      "module": "ai_ops.slack_server",
+      "name": "slack-ingress"
+    },
+    {
+      "action": "relay",
+      "credential_classes": [
+        "slack-signing",
+        "slack-bot"
+      ],
+      "enable_web": false,
+      "module": "ai_ops.slack_server",
+      "name": "slack-relay"
+    }
+  ],
+  "resource_count": 0,
+  "secret_values": false,
+  "shared_store": {
+    "cross_namespace_shared_pvc_assumed": false,
+    "databases": [
+      "queue/jobs.sqlite3",
+      "slack-web/inbox.sqlite3"
+    ],
+    "evidence_directories_required": true,
+    "namespace": null,
+    "path_string_equality_sufficient": false,
+    "pvc_name": null,
+    "replacement_strategy": "stop-drain-before-start",
+    "require_same_physical_store": true,
+    "sqlite_wal_requires_supported_local_filesystem": true,
+    "store_path": "/data/incidents",
+    "worker_instances": 1
+  },
+  "source_registry": null,
+  "unresolved": [
+    "actual_connection_approval",
+    "alert_channel_id",
+    "current_bot_identity",
+    "image_digest",
+    "new_cluster_id",
+    "new_uid_binding",
+    "normal_ci_run",
+    "rendered_manifest_hash",
+    "rollback_bundle_hash",
+    "shared_event_slack_queue_storage_topology",
+    "source_alias",
+    "source_id"
+  ]
+}

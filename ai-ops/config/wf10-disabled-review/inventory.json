@@ -1,0 +1,41 @@
+{
+  "code_baseline": {
+    "ai": "1bea7d6f83e60b12ddb2fe04ce181cfecf5a17ff",
+    "notice_pin": "d6c2c8fca50feb8453948be284e7b9b7cccb5284",
+    "platform_last_verified": "bf6bcbc100cc4af47d7aba690db69d80a0a5298b"
+  },
+  "deployable": false,
+  "execution_approved": false,
+  "external_actions_performed": [],
+  "historical_candidates": {
+    "app_id": "A0CJHH8ULUC",
+    "investigation_channel": "C0CK82SD8NL",
+    "requester": "U0ABBAD4FT7",
+    "slack_events_url": "https://slack-ops.bidservice.store/slack/events",
+    "target_alias": "url-shortener-b6-lab",
+    "team_id": "T0AAZ9N5GT1"
+  },
+  "kind": "wf10_review_inventory_not_runtime",
+  "policy_proposal": {
+    "activate_now": false,
+    "automatic_rules": [],
+    "default": "manual"
+  },
+  "required_unresolved": [
+    "actual_connection_approval",
+    "alert_channel_id",
+    "current_bot_identity",
+    "image_digest",
+    "new_cluster_id",
+    "new_uid_binding",
+    "normal_ci_run",
+    "rendered_manifest_hash",
+    "rollback_bundle_hash",
+    "shared_event_slack_queue_storage_topology",
+    "source_alias",
+    "source_id"
+  ],
+  "schema_version": 1,
+  "status": "plan_documented_execution_blocked",
+  "store_strategy": "new_empty_active_queue_archive_old_read_only"
+}

@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-19",
+  "status": "local_disabled_preparation_verified_not_deployable",
+  "base_commit": "1bea7d6f83e60b12ddb2fe04ce181cfecf5a17ff",
+  "focused": {
+    "count": 21,
+    "seconds": 0.197,
+    "passed": true,
+    "skipped": 0
+  },
+  "full_suite": {
+    "count": 1565,
+    "seconds": 209.958,
+    "passed": true,
+    "skipped": 0
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/wf10_preparation.py": "bab0a6a5486f534a0c62a81b9cf282d435ff8253346b546567d721cd606e044f",
+    "ai-ops/tests/test_wf10_preparation.py": "07964e80216a0ef55105af6357c00fb3ff20b690a2472dd8611e35786c939e40"
+  },
+  "artifact_hashes": {
+    "CHECKSUMS.json": "8479f8215e75202a996a75d20cc9789ca41a11c92fa88c91d314f16b9a9107ed",
+    "README.md": "817aedd8d934c1f5291c5bf5ed7fb1e85139172e72f77523752e182066ce6271",
+    "deployment.review.json": "fc3f3f8b6565672634c5763d3ba2962f5c4c214a2314c400f44f844ca74ebefb",
+    "helm.disabled.json": "d670ddbf40a7628413d8da677a3fc62759ba221754eff9d6cf794d37d011a867",
+    "inventory.json": "ad009294e5728d31d13316c6c88d629b0bf1dd6132da8b07bcb2e0c87b620cf0",
+    "rollback.review.json": "a3116ccef72ab7465b515d6963df9b89649db35bf58d9795ad98d788d624ca9b",
+    "slack-web.disabled.json": "233af2d81d6dd08906791b6c4a3029f2c590a5d1239675557c462dc2b8761821",
+    "transition.review.json": "4aaf3a0babd901f19a9b5ed363d541fa40f6e226c3884a182207f9302655906d"
+  },
+  "logs": {
+    "/tmp/wf10-preparation-focused.log": "81bef841a359cd61df34040b41bf2811763c60a1f141ff2aacb5ac36adb20760",
+    "/tmp/wf10-preparation-full.log": "844d6bf05c9cf9ee549cecb44d316518ff16de1dbdfac475557f6e3ef2da16a7"
+  },
+  "helm_resource_count": 0,
+  "slack_rejected_before_credentials": true,
+  "synthetic_db_rehearsal": {
+    "queue_and_slack_backup": true,
+    "new_queue_jobs": 0,
+    "manual_policy": true,
+    "source_registry_mismatch_rejected": true,
+    "schema_clone_preserved_original": true,
+    "unreconciled_requests_sends_block_restore": true
+  },
+  "ast_files": 2,
+  "diff_check": "passed",
+  "repository_boundary": "passed",
+  "existing_implementation_files_unchanged": 429,
+  "c_stage_files_unchanged": 75,
+  "shared_lease_unchanged": true,
+  "live_backups_or_secrets_read": false,
+  "remote_ci_or_commit": false,
+  "installation_deployment_slack_fault": false,
+  "limitations": [
+    "12 live inputs remain unresolved; no activation renderer or executable restore tool",
+    "All DB/transition/rollback facts are synthetic; actual backup/evidence directory restoration not verified",
+    "Disabled Helm render is not a live WF10 topology test",
+    "Hashes and local assessment booleans do not authenticate approval or live readiness"
+  ],
+  "local_links_checked": 18
+}

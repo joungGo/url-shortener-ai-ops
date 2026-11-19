@@ -1,0 +1,24 @@
+{
+  "automatic_rules": [],
+  "execution_allowed": false,
+  "kind": "wf10_transition_review",
+  "live_backup_verified": false,
+  "live_schema_verified": false,
+  "reuse_existing_db_exception": [
+    "verify source/config identity and backup on clone first",
+    "preserve jobs and attempts; fence old authority and reconcile pending/sending",
+    "old worker must reject new schema; never downgrade metadata in place"
+  ],
+  "source_policy": "EventStore.set_policy expected_revision CAS, not direct SQL activation",
+  "steps": [
+    "freeze new admission and relay sends",
+    "drain/stop receiver, worker and relay",
+    "after stopping all writers, backup queue/jobs.sqlite3 AND slack-web/inbox.sqlite3 plus evidence files; quick_check and checksum manifest",
+    "archive old DB read-only; do not replay jobs, sending replies or approvals",
+    "initialize empty active store with same reviewed source registry and settings",
+    "verify event_meta=2, queue user_version=3, manual rules=[], no pre-request jobs",
+    "confirm physical shared store, least credentials and identical process version/config",
+    "obtain separate exact live package approval before any process or route activation"
+  ],
+  "strategy": "new_empty_active_queue_archive_old_read_only"
+}
