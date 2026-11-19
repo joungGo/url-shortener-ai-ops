@@ -1,5 +1,7 @@
 # WF-05 코드 검토·CI 반영 기록
 
+**최종 상태: PR33/main17093a7·최종 PR7종/main CI 성공. 아래 대기 문구는 검토 당시 이력이다.**
+
 2026-11-19 · 기반 main e3a4efab193bac143d598044e5d011329263d484 · 브랜치 codex/wf05-recovery-plans-20261119.
 
 review-bugbot 스킬의 직접 검토 절차를 사용했다. 전용 Bugbot 도구가 없어 자동 에이전트 검토로 표시하지 않는다. 신규 RecoveryPlan/registry와 Slack 접수·사건/job 인가·TaskService 결과·회신/정리 호출 경로, 이전 전달 형식과 기존 C단계 파일을 대조했다.
@@ -20,3 +22,13 @@ review-bugbot 스킬의 직접 검토 절차를 사용했다. 전용 Bugbot 도�
 
 
 원격 첫 CI44446235573의 계약·Lease·notice·Terraform 검사는 통과했으나 이미지가 기존 OpenSSL 검증에서 중단됐다. APKINDEX 실물은 libssl3/libcrypto3 3.5.9-r1이고 설치가 간접 업그레이드를 허용하면서 검사만r0를 요구했다. 공식 양 아키텍처 목록 확인 뒤 설치/검사를r1로 함께 고정했다. Docker daemon이 로컬에서 연결되지 않아 실제 이미지 재빌드는 새 head CI로 확인한다. WF05 Python 검증 소스는 이 보완에서 바꾸지 않았다. ECR 검사/배포 없음.
+
+## 2026-11-19 WF-05 검토·CI/main 반영 완료
+
+[AI PR #33](https://github.com/joungGo/url-shortener-ai-ops/pull/33)의 최종 head `33a9a19cb832af106af65d94621547ba43aa75f7`를 일반 squash 병합해 main `17093a7684c885574388d81f3168033d526a6115`에 반영했다. 직접 검토에서 사건 시각 나노초 손실로 직전 관측이 지원 근거가 되는 P2 한 건을 재현·수정했다. 이미지 CI의 OpenSSL 간접 갱신/검사 불일치도 공식 Alpine 양 아키텍처 목록 확인 후 설치·검사를3.5.9-r1로 함께 고정했다.
+
+WF05 집중29개 통과. 로컬 전체1401개 중1400개 통과 후 임시 amtool 부재의1개는 고정 notice9개 검사에서 통과해 고유1401개 검증 완료(skip0). [최종 PR CI44446823328](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44446823328)의 gate 포함7종·pushCI44446816507·[main CI44447269162](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44447269162) 성공. main PR전용 gate skip은 설계대로이며 실제 PR gate는 통과했다. 검토/병합 전체tree·소스해시 일치, 기존 C단계47개 소스 동일, 보호변경/관리자우회 없음.
+
+상세 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf05-recovery-plans-20261119/ai-ops/docs/recovery-plan-review-20261119.md`와 `recovery-plan-review-validation-20261119.json`, 구현 문서·작업표를 따른다. 코드/검증 문서는 main 반영됐으며 완료 후 인계·작업표·검증 메타데이터는 로컬 갱신했다. 원래 작업트리의 다른 코드/개인자료는 보존했다.
+
+계획 후보는 여전히 draft/미승인/proposal_ready=false/execution_allowed=false다. 기존 시간·승인·원복·C04/C05미완료 유지. 실제 배포·Slack전송·인프라·장애실습·ECR검사·Terraform/모델 실행 없음. 다음은 **WF-06 승인 대기·만료·취소·늦은 승인·재검증 로컬 구현**이다. 추천 GPT-6 SOL · High.
