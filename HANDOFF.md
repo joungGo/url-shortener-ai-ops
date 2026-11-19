@@ -1,5 +1,39 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-10 준비 코드 검토·CI 반영 준비
+
+비활성 설정/전환·원복 자료를 검토했고 수정이 필요한 오류는 발견하지 못했다. 집중21개 재실행 통과, 전체1565개 기존 통과 기록과 현재 소스·산출물/원본 로그 hash 일치 확인. 상세 `ai-ops/docs/wf10-preparation-review-20261119.md` 및 검증 JSON. 이 커밋 시점 CI/main 대기이며 실제 배포·Slack·실습·설치 없이 진행한다. 기존 시간·승인·원복 조건 유지. 실제 입력12개/활성 배포 연결은 후속이다. GPT-6 SOL · High.
+
+## 2026-11-19 WF-10 비활성 배포·전환/원복 자료 로컬 준비 완료
+
+AI main1bea7d6 기반 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf10-connection-plan-20261119`에서 `ai_ops.wf10_preparation`·시험21개와 `ai-ops/config/wf10-disabled-review/`8파일을 준비했다. Helm enabled=false 렌더 리소스0, Slack disabled/빈sources로 자격 읽기 전에 거절. deployment/transition/rollback JSON은 검토 명세이며 Kubernetes 적용본·installer·복원 실행기가 아니다. inventory/파일 변조·enable 변경/미확정 삭제를 거절하고 외부 클라이언트/자격 사용은 없다.
+
+실제 로컬 합성 큐/Slack 별도DB의 일관 backup/quick_check·새 빈 활성큐 jobs0/manual·registry대조·복제본schema전환·전환후 요청 보존을 시험했다. 실제 보존DB/키는 읽지 않았다. 새요청/모호한전송이 미대조면 원복 후보를 막고 수동 인계하며 모든 로컬 판정 execution_allowed=false다. 기존 경보 공지와 과거자료 보존 유지.
+
+집중21개(0.197초)·전체1565개(209.958초/skip0)·AST2개·diff·경계/링크 검증 통과. 기존 추적 구현/설정/시험/워크플로429개·C단계75개/공유Lease 동일. 상세 `ai-ops/docs/wf10-disabled-preparation-20261119.md`, `wf10-disabled-preparation-validation-20261119.json`, 작업표.
+
+실제 입력12개·활성 배포 renderer/원복 실물·이미지 빌드/등록·새 UID/TLS/CI는 미확정이다. 이 변경은 미커밋/원격CI/main 미반영. 다음은 **WF10 준비 도구·자료 검토·CI/main**이며 이후 확정안 승인으로 실제 연결한다. 기존 시간·승인·원복 유지. 인프라 설치·배포·Slack 전송·장애·Terraform·유료모델 실행 없음. 추천 **GPT-6 SOL · High**.
+
+## 2026-11-19 WF-10 연결 계획 문서 준비 완료
+
+AI main1bea7d6 기반 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf10-connection-plan-20261119`에서 `ai-ops/docs/wf10-connection-plan-20261119.md`·`wf10-connection-inputs-20261119.json`과 작업표/전체 계획을 갱신했다. 첫 범위는 기존 경보 채널 사실 공지→#ai-ops 사건 지정 조사→원래 요청 thread의 같은 사건 결과다. 공지와 사건 접수 독립·manual기본/자동예외0개·새 빈 활성 큐·과거DB 읽기 보존·호환 DB 원복을 전환안으로 정리했다.
+
+정확 경보 channel ID·현재 bot 신원·source registry·새 digest/render/원복 hash·UID/TLS/정상CI·적용 승인은 미확정이다. 계획 문서만 완료됐으며 실행 준비/배포 완료가 아니다. 새 설정/이미지·installer는 생성하지 않았고 코드/자격/정책을 변경하지 않았다. WF09 완료 메타데이터를 이어받았고 이전 작업트리 수정은 보존했다.
+
+다음은 인프라 없는 disabled 설정·전환/원복 자료 준비 및 검토다. 재설치와 실제 Slack 합성 경보/사용자 요청·회신 검증은 별도 요청/확정안 승인 후 진행한다. WF07~09 실제 쓰기/승인/효과·회수 연결·WF11/C04/C05는 별도 미완료다. 기존 시간·승인·원복 유지, 실제 설치·배포·Slack·장애·Terraform·유료모델·커밋/push 없음. 추천 GPT-6 SOL · High.
+
+## 2026-11-19 WF-09 검토·CI/main 반영 완료
+
+[PR #37](https://github.com/joungGo/url-shortener-ai-ops/pull/37) head `11ff946064388a090cecadb770d4278c7ca91201`를 일반 squash 병합해 main `1bea7d6f83e60b12ddb2fe04ce181cfecf5a17ff`에 반영했다. [PR CI44461799743](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44461799743) 7종·push CI44461794113·[main CI44462377953](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44462377953) 성공. main의 PR전용 gate skip은 설계대로이며 실제 PR gate는 통과했다. 검토/병합 tree `424ccbea3ca4b0b521b4e138c9d60867c508ac99`와 소스 hash 일치. 보호 변경/관리자 우회 없음.
+
+원복 관찰 뒤 최초 실패로 재제안하던 문제와 취소/만료 우선순위 P2 두 건을 회귀3개로 재현·수정했다. 집중39개·전체1544개(205.843초/skip0), AST4개·diff·저장소 경계 통과. 동시 회수 시험의 SQLite 연결 수명을 고정해 회수 예약 경쟁을 검증했으며 제품 파일 안전 검사는 유지했다. 기존 C단계75개/공유 Lease 동일.
+
+상세 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf09-effect-verification-20261119/ai-ops/docs/recovery-effect-review-20261119.md`, `recovery-effect-review-validation-20261119.json`, 작업표. 소스·시험·구현/검토 문서는 main 반영됐으며 최종 CI/main 메타데이터·인계는 로컬 갱신했다. 원래 작업트리의 다른 수정은 보존했고 main checkout/reset하지 않았다.
+
+기존 시간·실행별 승인·정확head 사람리뷰/CI·잠금/ACK·원복/회수 조건 유지. 실제 배포·Slack 전송·복구 PR 생성·감시/장애·인프라·Terraform apply/destroy·유료 모델은 실행하지 않았다. local_fixture만 연결하며 원복 후보는 실행 승인이 아니다. cleanup_complete는 선언된 자기 manifest의 합성 회수 범위다.
+
+다음은 WF10 공지·조사 첫 완료단위의 배포/Slack 검증 계획과 재설치 입력 준비다. 복구 쪽 실제 인증된 관측·승인/결과 outbox·원복/소유 회수 어댑터 연결은 별도 후속 범위로 남는다. 실제 연결/실습을 자동 시작하지 않는다. C04/C05 최종 실환경 검증은 미완료다. 추천 **GPT-6 SOL · High**.
+
 ## 2026-11-19 WF-09 코드 검토·CI 반영 준비
 
 후속 판정의 원복 결과/소비된 시도 누락과 취소·만료 우선순위 P2 두 건을 회귀3개로 재현·수정했다. 집중39개/전체1544개·AST4개·diff·저장소 경계 통과. 기존 C단계75개·공유 Lease 동일. `ai-ops/docs/recovery-effect-review-20261119.md`와 `recovery-effect-review-validation-20261119.json` 참조. 이 커밋 시점 원격 CI/main 대기이며 완료 후 최신 기록으로 확정한다. 실제 배포·Slack·장애·인프라는 실행하지 않는다. 기존 시간·승인·원복 조건 유지. 추천 GPT-6 SOL · High.

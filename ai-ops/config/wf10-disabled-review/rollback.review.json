@@ -1,0 +1,24 @@
+{
+  "automatic_replay": false,
+  "blind_snapshot_restore": false,
+  "cleanup": "only resources matching predeclared owner/UID/hash; no live cleanup implementation",
+  "execution_allowed": false,
+  "kind": "wf10_rollback_review",
+  "preserve": [
+    "original credentials",
+    "operator/login",
+    "shared PVC",
+    "DNS original values",
+    "snapshots/KMS",
+    "state versions",
+    "old and new request/reply evidence"
+  ],
+  "steps": [
+    "stop new intake and relay sends; preserve ambiguous reply states",
+    "preserve post-cutover database/evidence before considering old snapshot",
+    "reconcile all post-cutover requests and sends; do not silently overwrite them",
+    "restore compatible reviewed code/config/database as a unit only after reconciliation",
+    "preserve original direct Slack notice route; stop AI intake/worker if old auto route returns",
+    "if safe restore cannot be proven, keep notices and hand off investigation manually"
+  ]
+}

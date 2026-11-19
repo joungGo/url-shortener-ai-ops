@@ -1,0 +1,9 @@
+{
+  "README.md": "817aedd8d934c1f5291c5bf5ed7fb1e85139172e72f77523752e182066ce6271",
+  "deployment.review.json": "fc3f3f8b6565672634c5763d3ba2962f5c4c214a2314c400f44f844ca74ebefb",
+  "helm.disabled.json": "d670ddbf40a7628413d8da677a3fc62759ba221754eff9d6cf794d37d011a867",
+  "inventory.json": "ad009294e5728d31d13316c6c88d629b0bf1dd6132da8b07bcb2e0c87b620cf0",
+  "rollback.review.json": "a3116ccef72ab7465b515d6963df9b89649db35bf58d9795ad98d788d624ca9b",
+  "slack-web.disabled.json": "233af2d81d6dd08906791b6c4a3029f2c590a5d1239675557c462dc2b8761821",
+  "transition.review.json": "4aaf3a0babd901f19a9b5ed363d541fa40f6e226c3884a182207f9302655906d"
+}

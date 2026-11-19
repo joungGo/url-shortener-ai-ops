@@ -1,7 +1,7 @@
 {
   "date": "2026-11-19",
   "base_commit": "6891144c6c31e29a856d701191c9eb177764204a",
-  "status": "reviewed_local_passed_ci_pending",
+  "status": "merged_main_ci_passed",
   "findings_fixed": [
     {
       "priority": "P2",
@@ -44,10 +44,133 @@
   "ast_files": 4,
   "unchanged_c_files": 75,
   "shared_lease_unchanged": true,
-  "remote_ci": null,
-  "merge": null,
+  "remote_ci": [
+    {
+      "databaseId": 44461799743,
+      "headSha": "11ff946064388a090cecadb770d4278c7ca91201",
+      "conclusion": "success",
+      "url": "https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44461799743",
+      "jobs": [
+        {
+          "name": "WF03 event notice integration",
+          "conclusion": "success"
+        },
+        {
+          "name": "terraform",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lease trace local contracts",
+          "conclusion": "success"
+        },
+        {
+          "name": "scope",
+          "conclusion": "success"
+        },
+        {
+          "name": "contracts",
+          "conclusion": "success"
+        },
+        {
+          "name": "image",
+          "conclusion": "success"
+        },
+        {
+          "name": "C03 Main PR Gate",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "databaseId": 44461794113,
+      "headSha": "11ff946064388a090cecadb770d4278c7ca91201",
+      "conclusion": "success",
+      "url": "https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44461794113",
+      "jobs": [
+        {
+          "name": "scope",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lease trace local contracts",
+          "conclusion": "success"
+        },
+        {
+          "name": "terraform",
+          "conclusion": "success"
+        },
+        {
+          "name": "WF03 event notice integration",
+          "conclusion": "success"
+        },
+        {
+          "name": "contracts",
+          "conclusion": "success"
+        },
+        {
+          "name": "image",
+          "conclusion": "success"
+        },
+        {
+          "name": "C03 Main PR Gate",
+          "conclusion": "skipped"
+        }
+      ]
+    }
+  ],
+  "merge": {
+    "sha": "1bea7d6f83e60b12ddb2fe04ce181cfecf5a17ff",
+    "tree": "424ccbea3ca4b0b521b4e138c9d60867c508ac99",
+    "main_ci": {
+      "databaseId": 44462377953,
+      "headSha": "1bea7d6f83e60b12ddb2fe04ce181cfecf5a17ff",
+      "conclusion": "success",
+      "url": "https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44462377953",
+      "jobs": [
+        {
+          "name": "scope",
+          "conclusion": "success"
+        },
+        {
+          "name": "WF03 event notice integration",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lease trace local contracts",
+          "conclusion": "success"
+        },
+        {
+          "name": "terraform",
+          "conclusion": "success"
+        },
+        {
+          "name": "contracts",
+          "conclusion": "success"
+        },
+        {
+          "name": "image",
+          "conclusion": "success"
+        },
+        {
+          "name": "C03 Main PR Gate",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    "branch_protection_changed": false,
+    "admin_bypass": false
+  },
   "external_deployment": false,
   "slack_send": false,
   "fault_trial": false,
-  "conditions_unchanged": true
+  "conditions_unchanged": true,
+  "pr": {
+    "headRefOid": "11ff946064388a090cecadb770d4278c7ca91201",
+    "mergeCommit": {
+      "oid": "1bea7d6f83e60b12ddb2fe04ce181cfecf5a17ff"
+    },
+    "mergedAt": "2026-11-19T05:02:24Z",
+    "state": "MERGED",
+    "url": "https://github.com/joungGo/url-shortener-ai-ops/pull/37"
+  }
 }

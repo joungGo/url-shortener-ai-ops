@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-19",
+  "status": "documentation_validated_execution_not_ready",
+  "base_commit": "1bea7d6f83e60b12ddb2fe04ce181cfecf5a17ff",
+  "document_hashes": {
+    "ai-ops/docs/wf10-connection-plan-20261119.md": "e9deea9d4fd10b88c62666879dfcff655e49dec6b424ab67a9220803bd0098c5",
+    "ai-ops/docs/wf10-connection-inputs-20261119.json": "13906584a6d8d29fcd12449dd8e9d7d8b2d8949c6e019940830bbd90fa02da3e",
+    "ai-ops/docs/incident-workflow-implementation-tracker.md": "2aaac34dfaceee22a35d8a2de3fd3e31470c61bec5b80d3d344c50142a110b04",
+    "ai-ops/docs/incident-workflow-and-improvement-plan-20261118.md": "868336fa32b470d0d1789fab44721b6682a8433b5c1a6b5d9c17fd83a29a866a",
+    "HANDOFF.md": "8824fee114ce4922ba35a4c485260db6cbcda1b48cb1d0cca36eae0014740d95"
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/alert_receiver.py": "d09c55ed50cb1eedb7f56beee1be872b6353b94238bb789b5d4066848c0a9fcc",
+    "ai-ops/src/ai_ops/slack_runtime.py": "171035e5a9729ce71c7ab23ae10bbbf21e3c32be6fc21ccfe6f9c7e7fe81bcb3",
+    "ai-ops/src/ai_ops/slack_server.py": "de8fdf0ebd3aaede77ff382717796cb73684e336a9e2dcc115bb8a9217166983",
+    "ai-ops/src/ai_ops/event_store.py": "40ec06e341feacebd878bda51fab02faa70cfb0a75006ee7c353b69b68df14c0",
+    "ai-ops/config/slack-events.disabled.example.json": "55305eb18d1565a4b0db07954b1bc776a72923e653c470488e9b821159b94286",
+    "integration/wf03-platform-source.json": "67dbbab6bd02c23c7622171eaf5dbe20848ae1c0d574ac54c17e3e71c087b3ed"
+  },
+  "platform_note_sha256": "f1fe097d823d3b031b991ecb9c4a85850dbba7ce31d5893203e14a69d58f2e5c",
+  "local_links_checked": 8,
+  "implementation_config_workflow_files_unchanged": 429,
+  "inventory_json_valid": true,
+  "diff_check": "passed",
+  "unresolved_inputs": [
+    "alert_channel_id",
+    "current_bot_identity",
+    "source_alias",
+    "source_id",
+    "new_cluster_id",
+    "image_digest",
+    "rendered_manifest_hash",
+    "rollback_bundle_hash",
+    "new_uid_binding",
+    "normal_ci_run",
+    "actual_connection_approval",
+    "shared_event_slack_queue_storage_topology"
+  ],
+  "runtime_tests_rerun": false,
+  "reason": "Documentation-only change; existing WF09 local/CI results remain historical evidence, not new live verification.",
+  "aws_cluster_slack_queried": false,
+  "credentials_read": false,
+  "deployment_slack_fault_execution": false,
+  "committed_or_pushed": false
+}

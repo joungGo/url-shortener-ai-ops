@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 기준 AI main `6891144`(WF08 PR36), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `codex/wf09-effect-verification-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-19 KST. 기준 AI main `1bea7d6`(WF09 PR37), 플랫폼 main `bf6bcbc`. 현재 문서 작업 브랜치 `codex/wf10-connection-plan-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -21,8 +21,8 @@
 | WF-06 / P3 | 로컬 핵심 CI통과·main반영 | 승인 대기·만료·취소·늦은 승인·재검증 | [승인 장부/로컬 계약](recovery-approval-local-20261119.md) · prepare_proposal 한정·D3/D4 활성화 조건 · 실제 인증/조회 연결은 WF07/08 | WF-05 | 가짜시계로1시간+대기·자연회복·UID/계획변경·승인중복·취소 경쟁 시험, 대기중 쓰기토큰/잠금0 |
 | WF-07 / P4 | 로컬 코어 CI통과·main반영 | WF05/06 계획·준비 동의에서 기존 이미지 PR/리뷰/CI/잠금/동기화 검증으로 연결 | [로컬 구현·검증](recovery-pr-local-20261119.md) · recovery_pr · 같은 사건 결과 문자열 · 실제 인증/쓰기/outbox 포트 미활성 | WF-05, WF-06 | 로컬 Git/Helm·정확 head/CI/권한·유실/중단/중복/취소·잠금/동기화 경계; 실제 실행/효과/Slack은 후속 검증 |
 | WF-08 / P5 | 로컬 코어 CI통과·main반영 | 기존 후보/큐/worker·WF06 수명주기 재사용, 명령 전용 정확 계획 승인·별도 로컬 실행기 | [명령 계약/검증](recovery-command-local-20261119.md) · 고정 JSON PATCH·단일 사건 소비·읽기 조정·D5 로컬 한정 | WF-05, WF-06 | 미승인/타 scope/임의 명령 차단, CAS·취소/만료·동시 실행·응답 유실·잠금 확인; 실제 권한/전송 미연결 |
-| WF-09 / P6 | 로컬검증완료(연결 코어) | 기존 PR/명령 적용 기록→효과/후속/회수 장부·같은 사건 결과 문자열 | [효과/원복·인계 계약](recovery-effect-local-20261119.md) · 합성 포트·실제 전송 미연결 | WF-07, WF-08 | 명령종료0/PR병합을 회복으로 오판하지 않음, 실제변경·효과·원복 구분, 자격/잠금/자기임시자원 회수 |
-| WF-10 / 연결 | 예정 | 공지·조사 첫 완료단위 배포 및 실제 Slack 검증 | 버전/digest/config·대상/채널·정상CI·원복 계획/기록 | WF-04 로컬검증·CI/main | 합성 시험 뒤 승인 범위의 실제 통지·사용자 요청·같은사건 결과 확인. 첫 단계에 장애 주입 불필요 |
+| WF-09 / P6 | main 반영·CI완료(로컬 연결 코어) | 기존 PR/명령 적용 기록→효과/후속/회수 장부·같은 사건 결과 문자열 | [효과/원복·인계 계약](recovery-effect-local-20261119.md) · 합성 포트·실제 전송 미연결 | WF-07, WF-08 | 명령종료0/PR병합을 회복으로 오판하지 않음, 실제변경·효과·원복 구분, 자격/잠금/자기임시자원 회수 |
+| WF-10 / 연결 | 비활성 자료 로컬검증·실제입력 대기 | 공지·조사 첫 완료단위 배포 및 실제 Slack 검증 | [연결 계획](wf10-connection-plan-20261119.md)·[입력 작업표](wf10-connection-inputs-20261119.json)·버전/채널/정책/DB/원복 준비 | WF-04 로컬검증·CI/main | 합성 시험 뒤 승인 범위의 실제 통지·사용자 요청·같은사건 결과 확인. 첫 단계에 장애 주입 불필요 |
 | WF-11 / 실환경 | 예정 | PR/명령 실제 효과와 C04/C05 남은 필수 검증 | 실행별 계획·승인·결과·원복 증거 | WF-09, WF-10 및 실제준비 | 새실행 승인과 해당 방식 승인 확인, 정상/실패/취소/독립원복 필수사례, 현재지원범위 내 결과 기록 |
 | WF-12 / 인계 | 예정 | 설치·정리·재개·사용법과 지원 조치표 정리 | AI 문서/플랫폼 연결 런북/HANDOFF | 각 단계 완료에 맞춰 갱신, 최종 WF-11 | 배포 버전/검증 범위/지원·미지원·남은 한계 추적, 임의 권한확대/과거승인 재사용 없음 |
 
@@ -74,11 +74,11 @@ WF-07과WF-08은 공통 계약이 안정되면 독립 검토할 수 있으나 �
 
 ## 현재 재개 지점과 보존할 한계
 
-WF-00/01 문서완료, WF-02/03 CI통과·main반영, WF-04 로컬검증완료. WF-03은 AI PR31/mainca63fcf·플랫폼 PR163/mainbf6bcbc와 각 main CI 성공으로 완료했다. 기존 로컬검증만 완료라는 기록은 과거 이력이다.
+WF00/01 설계와 WF02~09 로컬 구현·CI/main 반영 완료. 최신 AI main1bea7d6(PR37), 플랫폼 마지막 검증 mainbf6bcbc. WF06~09는 로컬 연결 코어이며 실제 인증/쓰기/효과·회수 adapter와 복구 결과 outbox는 미연결이다. 과거 실행 기록의 ‘미구현/CI 대기’는 해당 시점 이력이다.
 
-현재 WF-04 PR32/main e3a4efa·CI 반영 완료, WF-05 계획 요청/계약도 PR33/main17093a7·CI 반영 완료다. [구현 기록](incident-slack-local-20261119.md)의 사건 명령은 실제 Slack에 배포하지 않았다. WF-02~04 실물 DB/정책 전환·WF-10 실제 공지→요청→결과, WF-06~09 승인/PR/명령/효과 구현과 WF-11 C04/C05 실환경 검증은 남아 있다.
+WF10 연결 계획 문서와 검토용 입력 작업표를 작성했다. 경보 공지와 사건 접수는 독립, 두 채널 유지, 수동조사 기본·자동예외0개, 새 빈 활성 큐가 전환안이다. 실제 경보 channel/source registry·이미지/render/원복 hash·새 UID/TLS/정상 CI·적용 승인은 미확정이다. 비활성8파일·오프라인 도구·합성 전환/원복 리허설을 준비했다. 다음은 **준비 도구/자료 검토·CI/main**이다. 실제 연결은 사용자 요청/확정안 승인 뒤 진행한다.
 
-인프라는 2026-11-19 정리 완료 상태다. 실행 리소스/state0을 검증했고 DNS·최종/기존 RDS 스냅샷/KMS·S3 state/버전·operator/기존 로그인·원본 자격·개인 자료는 보존했다. 새 설치/자동 실습 재개를 요청한 것으로 해석하지 않는다. 기존 시간·승인·원복 조건은 유지한다. 추천 GPT-6 SOL · High.
+기록상 인프라는2026-11-19 정리 완료다. 이번에 실물/원본 자격/백업 내용은 조회하지 않았다. 기존 DNS·스냅샷/KMS·state/버전·operator/로그인·원본 키·개인 자료 보존. WF11/C04/C05 실환경 완료와 WF12 최종 인계는 남아 있다. 기존 시간·승인·원복 유지, 인프라·Slack·실습 자동 재개 없음. 추천 GPT-6 SOL · High.
 
 ## WF-02 코드 검토 · 2026-11-18
 
@@ -209,3 +209,19 @@ WF05 집중29개 통과. 로컬 전체1401개 중1400개 통과 후 임시 amtoo
 WF09 최종: 신규36/전체1541개(198.711초/skip0)·AST4개·diff·저장소 경계 통과. 기존 C단계75개/공유 Lease 동일. 코드 미커밋·원격 CI/main 미반영.
 
 WF09 검토 보완: 후속 원복 상태·취소 우선순위 P2 두 건을 회귀3개로 재현/수정했다. 집중39/전체1544개 통과. 검토 문서와 review-validation JSON 참조. 이 시점 원격 CI/main 대기.
+
+WF09 최종 반영: [PR #37](https://github.com/joungGo/url-shortener-ai-ops/pull/37) head `11ff946064388a090cecadb770d4278c7ca91201`를 일반 squash 병합해 main `1bea7d6f83e60b12ddb2fe04ce181cfecf5a17ff`에 반영했다. [PR CI44461799743](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44461799743) 7종·push CI44461794113·[main CI44462377953](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44462377953) 성공. main의 PR전용 gate skip은 설계대로이며 실제 PR gate는 통과했다. 검토/병합 tree `424ccbea3ca4b0b521b4e138c9d60867c508ac99`와 소스 hash 일치. 보호 변경/관리자 우회 없음.
+
+### WF-10 연결 계획 · 2026-11-19
+
+첫 완료단위를 공지→사건 지정 조사→같은 사건/요청 thread 회신으로 고정했다. 대상/권한·두 채널·source registry·manual 전환·새 큐/예외 migration·배포 순서·현재/합성 증거 구분·DB 호환 원복·적용 전 승인 패키지를 문서화했다. 계획만 완료이며 실제 입력 미확정/실행준비 미완료다. 코드/설정 활성화·인프라·Slack·장애 실습 없음. 다음은 계획 검토와 disabled 설정/전환·원복 자료 준비.
+
+### WF-10 비활성 준비 · 2026-11-19
+
+[비활성 준비 문서](wf10-disabled-preparation-20261119.md)와 `ai-ops/config/wf10-disabled-review/`8파일을 추가했다. `wf10_preparation`은 canonical inventory/비활성 상태를 검사하며 활성화/API/자격/restore 기능은 없다. 기존 chart schema를 유지한 Helm0리소스·Slack자격 읽기전 거절, 큐/Slack 별도DB backup·새 빈큐·registry/schema·원복전 새요청 보존을 로컬 검증한다. 실제입력12개/활성렌더/원복실물은 미확정. 검증 수치는 JSON 참조, 이번 코드 미커밋/CI/main 미반영.
+
+WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2·diff·경계·링크18개 통과. Helm리소스0·Slack자격읽기0. 기존 구현파일429개/C75/공유Lease 동일. 코드/자료 미커밋, 원격CI/main/실행 미반영.
+
+### WF-10 준비 코드 검토 · 2026-11-19
+
+집중21개 재실행·전체1565개 검증 해시 일치, 검토상 수정 필요 오류 없음. [검토 기록](wf10-preparation-review-20261119.md)과 [검증 JSON](wf10-preparation-review-validation-20261119.json)을 따르며 CI/main 반영 대기. 실제 배포·Slack·장애 실행 없음.

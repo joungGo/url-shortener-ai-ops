@@ -1,0 +1,7 @@
+{
+  "bot_token_file": "/run/ai-ops-private/slack-bot-token",
+  "enabled": false,
+  "event_sources": {},
+  "schema_version": 1,
+  "signing_secret_file": "/run/ai-ops-private/slack-signing-secret"
+}

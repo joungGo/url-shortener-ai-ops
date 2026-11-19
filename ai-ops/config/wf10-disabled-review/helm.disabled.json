@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "image": {
+    "digest": "",
+    "repository": ""
+  },
+  "mode": "diagnostics",
+  "observability": {
+    "enabled": false
+  },
+  "receiver": {
+    "enabled": false
+  },
+  "replicaCount": 1,
+  "retention": {
+    "enabled": false
+  }
+}
