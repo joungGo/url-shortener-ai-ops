@@ -1,0 +1,59 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "A7-5 periodic retention for recovery ledgers, outbox, restart evidence and sealed effect captures",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "3c00eeecc97a2b273b713bfd247f997c94461a93",
+  "findings_before_change": [
+    "no periodic caller for the four recovery ledger prune() methods",
+    "restart evidence files (pod logs) and sealed effect captures had no deletion path",
+    "recovery_outbox kept message payloads after the Slack request expired and never deleted rows (MAX_ROWS 10000 would permanently block enqueue)"
+  ],
+  "design": {
+    "tick": "ledger prune (restart ledger first-class, deduplicated) -> outbox prune -> evidence sweep -> capture sweep; counts and failure names only",
+    "evidence_rule": "keep if any live restart run references the hash; delete if only expired runs reference it; unreferenced files and .tmp-* deleted after retention by mtime",
+    "capture_rule": "deleted after retention by mtime (seal hash not yet recorded in a ledger)",
+    "safety": "own 0700 directory only, own regular <sha256>.json/.tmp-* files directly inside; symlinks, subdirectories, other names kept and counted; missing directories not created; retention never shorter than 7 days",
+    "outbox_prune": "under the Slack processing lock, delete rows whose request is expired or missing; delivery already re-checks the request so no resend is possible"
+  },
+  "new_tests": 8,
+  "mutation_checks": {
+    "count": 6,
+    "detected": 5,
+    "equivalent": 1,
+    "mutations": [
+      "live evidence protection removed (detected)",
+      "shared hash subtraction removed (equivalent: live check precedes)",
+      "regular/own/name check removed (detected)",
+      "age cutoff ignored (detected)",
+      "unsafe directory accepted (detected)",
+      "outbox prune deletes live requests (detected)"
+    ]
+  },
+  "full_suite": {
+    "count": 1679,
+    "seconds": 216.854,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/recovery-retention-full.log",
+      "sha256": "841d8086cb78b347af77db14d6595dccac09c7e2993f857f206a4b29f0c6e0ba"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compile": "passed",
+    "resource_warning_as_error": "passed (retention+outbox tests)"
+  },
+  "not_in_scope": [
+    "process wiring (which process calls tick, interval, directory paths/PVC)",
+    "recording seal hashes in the effects ledger",
+    "long-term removal of dedup tombstone rows"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_retention.py": "4325c8909d6c22f8e805cd3edef8f3ac7b45f8cd080b4d4637ca70a4abffbadc",
+    "ai-ops/src/ai_ops/recovery_outbox.py": "908891710fe8709079a70cf887f87151e47d836109f282631c494ee193402e76",
+    "ai-ops/tests/test_recovery_retention.py": "fe7ae51b35e48a86867e1b12860c8b4808ba2e33a6ceae0fbef49fc36bd28ed4"
+  },
+  "no_external_actions": "no cluster, deploy, Slack, incident drill, Terraform, paid model call"
+}

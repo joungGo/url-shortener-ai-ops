@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 A7-5 복구 장부·증거·봉인 파일 주기 보관 정리·CI 반영 준비 (Claude)
+
+조사: 복구 장부 4종의 `prune()`을 주기 호출하는 곳이 없고, 재시작 증거(Pod 로그 포함)·효과 봉인 파일은 삭제 경로가 없었다. `recovery_outbox`는 Slack 요청 만료 후에도 메시지 본문을 남기고 행을 지우지 않아 10000행 상한에서 enqueue가 영구 거절될 수 있었다. 신규 `ai_ops.recovery_retention.RecoveryRetention.tick()`: 장부 prune(재시작 장부 먼저·중복 호출 없음, tombstone 의미 불변) → outbox prune → 증거(live 실행 참조는 유지, 만료 실행만 참조하면 삭제, 미참조·`.tmp-*`는 7일 후) → 봉인(7일 후). 본인 0700 디렉터리 바로 아래 본인 일반 `<sha256>.json`/`.tmp-*`만, symlink·하위 디렉터리·다른 이름은 개수만, 없는 디렉터리 미생성, 7일 미만 기간 거절, 실패는 이름만(다음 주기 재시도). `RecoveryOutbox.prune()`: Slack 처리 잠금에서 만료·부재 요청 행 삭제(전송은 요청 재확인이라 재전송 없음).
+
+신규 시험8, 결함 변형 5/5(+동등1), 전체1679 통과. 상세 `ai-ops/docs/recovery-retention-local-20261119.md`·검증 JSON. tick 호출 프로세스·간격·경로/PVC, 봉인 hash 장부 기록, tombstone 장기 정리는 이후. 이 커밋 시점 PR CI/main 대기. 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 A7-4 재시작 효과 관찰·봉인·Lease 회수 확인 CI/main 반영 완료 (Claude)
 
 [PR #49](https://github.com/joungGo/url-shortener-ai-ops/pull/49) head `6e4f5ef147ca2d0f3a32781700ae0bdcd846224d`를 head 고정 일반 squash 병합해 main `3c00eeecc97a2b273b713bfd247f997c94461a93`에 반영했다. PR CI44532528034 7종(1671개)·main CI44533398664 성공, tree `0e976753b4ff9ed92d9669b161748de0dca7ca95` 일치. 보호 변경/우회 없음. 병합 후 branch 정리(복구용 SHA는 inventory). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.

@@ -170,6 +170,14 @@ class RecoveryOutbox:
                 return self._finish(key, 'delivered', message_ts=body['ts'])
             return self._finish(key, 'needs_review')
 
+    def prune(self):
+        """Delete messages whose Slack request expired: they can never be sent again
+        (delivery re-checks the request) and their payload must not outlive it."""
+        with self.adapter._lock():
+            with self.adapter._db() as db:
+                return db.execute('DELETE FROM recovery_outbox WHERE request_id NOT IN '
+                                  '(SELECT request_id FROM slack_requests WHERE state!="expired")').rowcount
+
     def status(self, key):
         with self.adapter._db() as db:
             row = db.execute('SELECT state,attempts,message_ts,kind FROM recovery_outbox WHERE message_key=?',
