@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "A7-4 restart effect observation, sealing and Lease cleanup confirmation",
   "author": "Claude Code (Opus 5.5)",
   "base": "13d94e9a3efc8432480291ef9bbc1461e6899c60",
@@ -75,5 +75,24 @@
     "ai-ops/src/ai_ops/recovery_effects.py": "7c66416aae718f2aa77c55d6d9ac046320207f6226c49c7b574f9ca7c9bdeb00",
     "ai-ops/tests/test_restart_effects.py": "2d3b3d22a5ecc9263d064ff5a10b9321a87e7c81fd62c25b1ea3681685e748c4"
   },
-  "no_external_actions": "no cluster, deploy, Slack, incident drill, Terraform, paid model call"
+  "no_external_actions": "no cluster, deploy, Slack, incident drill, Terraform, paid model call",
+  "merge": {
+    "pr": 49,
+    "head": "6e4f5ef147ca2d0f3a32781700ae0bdcd846224d",
+    "main": "3c00eeecc97a2b273b713bfd247f997c94461a93",
+    "tree": "0e976753b4ff9ed92d9669b161748de0dca7ca95",
+    "pr_ci": {
+      "run": 44532528034,
+      "jobs": 7,
+      "tests": 1671,
+      "skipped": 5
+    },
+    "main_ci": {
+      "run": 44533398664,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted_after_merge": true
+  }
 }
