@@ -1,0 +1,84 @@
+{
+  "status": "code_review_fixed_local_verified_ci_pending",
+  "reviewer": "Claude Code (Opus 5.5)",
+  "checked_at": "2026-11-19T06:22:59Z",
+  "base": "50d0c1a309698320bc958eafc3d294f38b023f01",
+  "remote_main_fetched_unchanged": true,
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "P1",
+      "status": "fixed",
+      "summary": "Pod securityContext lacked fsGroupChangePolicy=OnRootMismatch; default recursive fsGroup pass widens shared existing PVC store to 0660/2770 and breaks JobQueue 0600/0700 checks (same path as recorded B6 incident).",
+      "regression": "test_one_pod_recreate_and_shared_existing_pvc asserts OnRootMismatch"
+    },
+    {
+      "id": "R2",
+      "severity": "nit",
+      "status": "fixed",
+      "summary": "alert_receiver.load_receiver_settings function-local import moved to module top; no import cycle, behavior unchanged."
+    }
+  ],
+  "accepted_residual_risks": [
+    "no livenessProbe for worker/receiver (chart has one)",
+    "init containers without resources (LimitRange/quota namespaces)",
+    "Slack egress limited to public /32 list; real egress path undecided",
+    "no server-side schema, CNI probe, physical PVC/WAL verification"
+  ],
+  "focused_tests": {
+    "modules": [
+      "test_wf10_deployment",
+      "test_wf10_preparation",
+      "test_alert_receiver",
+      "test_slack_events"
+    ],
+    "count": 82,
+    "passed": true
+  },
+  "full_suite": {
+    "command": "PYTHONPATH=ai-ops/src python -m unittest discover -s ai-ops/tests -p 'test_*.py'",
+    "count": 1585,
+    "seconds": 210.376,
+    "passed": true,
+    "skipped": 1,
+    "skip_note": "test_event_notices WF03 platform/amtool env-gated class; CI runs it in the separate WF03 event notice integration job. Earlier Codex record said skip0, likely with those env vars set."
+  },
+  "cli_checks": {
+    "synthetic_build_verify": "exit0 candidate_rendered_not_approved / candidate_verified_not_approved",
+    "unresolved_input": "exit2 resources0 no output directory",
+    "synthetic_candidate_bytes": 38825,
+    "package_limit_bytes": 65536
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compileall_changed_files": "passed",
+    "wf10_preparation_verify_disabled_review": "disabled_review_verified",
+    "check_deployment_py": "not run locally: requires CI-fetched .platform-source chart; covered by CI contracts job"
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/wf10_deployment.py": "57adbb422ff63944a9148469015e23f4c7faab28a40e415f726ab0c53bb3a322",
+    "ai-ops/src/ai_ops/alert_receiver.py": "135bdcfc0363bb58705d95fbda6d09d441cf3fe55ce544b54c360f56ada5344d",
+    "ai-ops/tests/test_wf10_deployment.py": "0ec12067ec521a29057a906cef5372604e85704b8e0a5f14641a2231ff23a431",
+    "ai-ops/config/wf10-deployment.unresolved.json": "410b119c49ac3603357f4d46eb223a827d0d186539ff394a189d8525b0e1150c",
+    "ai-ops/src/ai_ops/wf10_preparation.py": "bab0a6a5486f534a0c62a81b9cf282d435ff8253346b546567d721cd606e044f"
+  },
+  "full_log": {
+    "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/wf10-active-config-review-full.log",
+    "sha256": "f4abfc735fe64ba258a386b177adbd6675af58234dcde2fdaa8e5193fee860c9"
+  },
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "live_values_verified": false,
+  "execution_allowed": false,
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "github_protection": "private free-plan repo: branch protection/rulesets API 403 (not available); merge after exact-head PR CI success, no protection change or admin bypass",
+  "commit_pr_ci": "pending at this record"
+}

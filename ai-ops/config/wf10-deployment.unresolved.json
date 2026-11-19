@@ -1,0 +1,16 @@
+{
+  "config": null,
+  "execution_allowed": false,
+  "image": null,
+  "kind": "wf10_candidate_inputs",
+  "name": null,
+  "namespace": null,
+  "network": null,
+  "pvc_name": null,
+  "schema_version": 1,
+  "secrets": null,
+  "service_account": null,
+  "slack": null,
+  "source": null,
+  "source_revision": null
+}

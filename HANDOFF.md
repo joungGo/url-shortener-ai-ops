@@ -1,5 +1,41 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-10 활성 후보 코드 검토·CI 반영 준비 (Claude)
+
+Claude Code가 Codex 로컬 구현을 이어받아 검토했다. 실제 실행 모듈(worker/receiver/Slack ingress·relay)의 인자·경로·자격 권한 검사와 기존 chart를 대조했다. **P1 1건 수정:** 후보 Pod에 `fsGroupChangePolicy: OnRootMismatch`가 없어 공유 기존 PVC의 큐 0600/0700이 기동마다 0660/2770으로 넓어져 큐 검사가 실패할 수 있었다(B6 과거 사고와 같은 경로). 회귀 단언 추가. receiver 지연 import 정리(동작 동일).
+
+집중82개·전체1585개(210.376초, skip1=WF03 환경변수 게이트 시험으로 CI 별도 job에서 실행)·경계/diff/컴파일·CLI build/verify/미확정 exit2 통과. 상세 `ai-ops/docs/wf10-active-config-review-20261119.md`와 검증 JSON. 이 커밋 시점 PR CI/main 대기. 이 저장소는 비공개 무료 플랜이라 브랜치 보호 API가 403(미제공)이며 보호 변경·우회 없이 정확 head CI 성공 후 일반 병합한다. 기존 시간·승인·원복 조건 유지, 실제 배포·Slack·장애·인프라·Terraform·유료 모델 없음.
+
+## 2026-11-19 WF-10 활성 배포 후보 설정 로컬 완료
+
+AI main50d0c1a 기반 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf10-active-config-20261119` / `codex/wf10-active-config-20261119`에서 wf10_deployment renderer·합성 시험20개·실제값 null 입력을 추가했다. 누락 입력은 리소스0/exit2/출력폴더 없음. 합성 완성 입력은 ConfigMap·단일 Pod Deployment(Recreate/공유 기존PVC)·내부 Service2·제한 NetworkPolicy 후보5개를 생성한다. 자격값 없이 역할별 Secret 참조/0600 복사, 기존 read-only SA, manifest 정합성 검증만 제공한다. 실제적용 실행기는 없고 execution_allowed=false다.
+
+접수기만 런북 정책을 config hash에 누락하던 호환 오류를 수정했다. 기존 방식 사건 요청 거절·수정 방식 요청 성공을 로컬 SQLite로 재현/검증했다. 관련80개 선행·최종전체1585개(207.001초/skip0)·AST3·경계/diff 통과. 기존 시간·승인·원복·C단계 실행기 변경 없음.
+
+상세 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf10-active-config-20261119/ai-ops/docs/wf10-active-config-local-20261119.md` 및 검증 JSON/작업표. 원래 변경과 WF10 최종 메타데이터는 보존했다. 새 코드/문서는 미커밋·push/원격CI/main 미반영. 실제 입력12개·이미지출처·물리PVC/권한/네트워크/TLS·새 정상CI/원복·연결 승인은 미확정이다. 설치·실제 배포·Slack·장애·Terraform·유료 모델 실행 없음.
+
+다음은 **활성 후보 코드 검토·CI/main 반영**이다. 실제 연결·WF11/C04/C05는 후속이다. Claude 최신 체크포인트는 플랫폼 `docs/handoff/claude/CURRENT.md`. 추천 GPT-6 SOL · High.
+
+## 2026-11-19 상시 Claude 인계 규칙 반영
+
+사용자 요청에 따라 이후 Codex 작업의 시작·의미 있는 단계 완료·승인/로그인 대기·외부 장시간 작업 전후·최종 응답 전에 Claude 인계 체크포인트를 별도 요청 없이 갱신한다. 최신 진입점은 `/Users/jounghyeon/dev/Url-Shortener-EKS-Platform/docs/handoff/claude/CURRENT.md`, 절차는 `UPDATE-PROTOCOL.md`다. 양쪽 AGENTS와 CLAUDE에 연결했고 비밀값 복사/자동 commit·push·배경 예약 없이 기존 승인·원복 조건을 유지한다. 이번 변경은 로컬 문서만이며 실제 설치/삭제/배포/전송/실습 없음.
+
+## 2026-11-19 Claude 인계 준비
+
+같은 Mac의 Claude Code에서 전체 구현·검토/CI·설치/정리 작업을 이어갈 진입 자료를 `/Users/jounghyeon/dev/Url-Shortener-EKS-Platform/docs/handoff/claude/README.md`, `TASKS.md`, `inventory.json`에 작성했다. 양쪽 루트와 최신 WF10 작업트리에 `CLAUDE.md`를 추가했다. 루트의 오래된 HEAD/미커밋 자료와 최신 검토 코드 위치를 구분했으며 원본 변경/자격을 보존했다.
+
+이번 작업은 로컬 문서 준비만 수행했다. 클라우드/실제 Slack/실습/배포/설치/삭제·원격 CI·commit/push 없음. 최신 WF10 main50d0c1a 및 최종 로컬 기록이 기준이며, 실제 연결/WF11/C04/C05 미완료를 유지한다. 일반 Terraform 사용자 터미널 원칙과 새 건별 위임, 기존 시간·승인·원복/보존 조건도 유지한다. Claude에서 먼저 인계 자료/도구/현재 상태를 확인하고 다음 한 작업을 정한다.
+
+## 2026-11-19 WF-10 비활성 준비 검토·CI/main 완료
+
+[PR #38](https://github.com/joungGo/url-shortener-ai-ops/pull/38) head `c0fa27311f9127eb856db2bf5f348d03e8f6f182`를 일반 squash 병합해 main `50d0c1a309698320bc958eafc3d294f38b023f01`에 반영했다. [PR CI44465091658](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44465091658) 7종·push CI44465054234·[main CI44465684513](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44465684513) 성공. main의 PR전용 gate skip은 설계대로이며 실제 PR gate는 통과했다. 검토/병합 전체 tree `50452341417945dc2a13e9ab17130d4be9dee228` 및 소스 hash 일치. 보호 변경/관리자 우회 없음.
+
+검토상 수정 필요 오류 없음. 집중21개 재실행, 전체1565개 로컬 기존 결과/소스 해시 확인 및 PR CI 전체1565개 통과. Helm리소스0·Slack자격읽기전 거절·큐/Slack 두DB 보존·새 요청 미대조 원복차단을 검증했다. 기존 시간·승인·원복·잠금/ACK·회수 조건은 유지한다.
+
+상세 AI 작업트리 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf10-connection-plan-20261119/ai-ops/docs/wf10-preparation-review-20261119.md`·검증 JSON·작업표. 코드·준비자료·검토문서는 main 반영했고 최종 병합/CI 메타데이터·인계는 로컬 갱신했다. 기존 작업트리 수정은 보존했다.
+
+다음은 실제 입력12개와 활성 배포 renderer·전환/원복 적용안을 확정하는 단계다. 현재 자료는 실행기/실제 연결 승인이 아니며 WF10 실제 통지·조사·회신 검증과 WF11/C04/C05는 미완료다. 인프라 설치·실제 배포·Slack 전송·장애 실습·Terraform·유료 모델 호출 없음. 추천 **GPT-6 SOL · High**.
+
 ## 2026-11-19 WF-10 준비 코드 검토·CI 반영 준비
 
 비활성 설정/전환·원복 자료를 검토했고 수정이 필요한 오류는 발견하지 못했다. 집중21개 재실행 통과, 전체1565개 기존 통과 기록과 현재 소스·산출물/원본 로그 hash 일치 확인. 상세 `ai-ops/docs/wf10-preparation-review-20261119.md` 및 검증 JSON. 이 커밋 시점 CI/main 대기이며 실제 배포·Slack·실습·설치 없이 진행한다. 기존 시간·승인·원복 조건 유지. 실제 입력12개/활성 배포 연결은 후속이다. GPT-6 SOL · High.

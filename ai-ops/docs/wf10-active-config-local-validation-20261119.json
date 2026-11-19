@@ -1,0 +1,51 @@
+{
+  "status": "local_implementation_verified_not_deployed",
+  "checked_at": "2026-11-19T06:01:53.109386+00:00",
+  "base": "50d0c1a309698320bc958eafc3d294f38b023f01",
+  "new_tests": 20,
+  "related_run_before_final_two_tests": {
+    "count": 80,
+    "passed": true
+  },
+  "full_suite": {
+    "count": 1585,
+    "seconds": 207.001,
+    "passed": true,
+    "skipped": 0
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/wf10_deployment.py": "b808f2f729318d54114c5b2e11e242cf12728f3e9be6566c858b200dac89afa3",
+    "ai-ops/src/ai_ops/alert_receiver.py": "5127558779c32ce9460c270182300a9c3e6ff3155369ee6f253dc444aaa6ed95",
+    "ai-ops/tests/test_wf10_deployment.py": "acb568220916f7f4a8bc108c59ea6fe56b6f083866c6b6d645923f5bb72ba5f9",
+    "ai-ops/config/wf10-deployment.unresolved.json": "410b119c49ac3603357f4d46eb223a827d0d186539ff394a189d8525b0e1150c"
+  },
+  "full_log": {
+    "path": "/tmp/wf10-active-full.log",
+    "sha256": "3930c7dec85e3deabbacf56a01cdaf312d46896e9d42f806d82f19f561bef43e"
+  },
+  "unresolved_real_input_creates_resources": false,
+  "synthetic_candidate_resources": 5,
+  "receiver_worker_slack_config_hash_regression": "old mismatch rejected; corrected shared hash accepts event request",
+  "ast_files": 3,
+  "repository_boundary": "passed",
+  "diff_check": "passed",
+  "live_values_verified": false,
+  "server_schema_or_cluster_verified": false,
+  "test_wrapper_note": "Suite reported OK; trailing zsh status variable assignment was read-only and failed after tests. Results verified directly from complete unittest summary.",
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "commit_push_remote_ci": false,
+  "infrastructure_deployment_slack_trial": false,
+  "limitations": [
+    "Candidate generation and consistency only, not live approval or installer",
+    "Requires existing namespace/PVC/read-only SA/Secret, fresh empty store, current endpoints/NetworkPolicies/TLS and normal CI wiring",
+    "Image/source provenance, actual grants, backup/rollback and physical shared-store behavior unverified"
+  ]
+}
