@@ -24,6 +24,7 @@ from ai_ops.wf10_preparation import encoded, digest, read_regular, LIMITS, UNRES
 CONFIG_NAMES = ('bindings.json', 'runtime.json', 'metric-queries.json', 'runbook-policy.json')
 FIELDS = ('namespace', 'name', 'pvc_name', 'service_account', 'image', 'source_revision', 'source',
           'slack', 'secrets', 'network', 'config')
+INIT_RESOURCES = {'requests':{'cpu':'10m','memory':'32Mi'},'limits':{'cpu':'100m','memory':'64Mi'}}
 LIVE_GATES = ('current_identity_permissions', 'fresh_store_and_manual_policy',
               'same_physical_store_uid_binding', 'normal_ci_and_worker', 'tls_and_routes',
               'manifest_and_rollback_hashes', 'source_image_provenance', 'exact_connection_approval')
@@ -164,8 +165,10 @@ def candidate(value):
             'items':[{'key':k,'path':k} for k in keys]}}, {'name':vol,'emptyDir':{'medium':'Memory','sizeLimit':'1Mi'}}])
         script = 'import os,pathlib; os.umask(0o077); '+ '; '.join(
             f'p=pathlib.Path("/out/{k}"); p.write_bytes(pathlib.Path("/source/{k}").read_bytes()); p.chmod(0o600)' for k in keys)
+        # Explicit bounds so LimitRange/ResourceQuota namespaces accept the Pod.
         init.append({'name':'copy-'+vol,'image':v['image'],'command':['python','-c',script],
-                     'securityContext':security,'volumeMounts':[mount(vol+'-source','/source',True),mount(vol,'/out')]})
+                     'securityContext':security,'resources':INIT_RESOURCES,
+                     'volumeMounts':[mount(vol+'-source','/source',True),mount(vol,'/out')]})
         return mount(vol,destination,True)
     signing=secret('signing',v['secrets']['signing'],['token'],'/run/slack-signing')
     bot=secret('bot',v['secrets']['bot'],['token'],'/run/slack-bot')
@@ -195,6 +198,9 @@ def candidate(value):
             probe={'exec':{'command':['python','-m',module,*action]}}
         container['readinessProbe']={**probe,'periodSeconds':10,'timeoutSeconds':5}
         container['startupProbe']={**probe,'periodSeconds':10,'timeoutSeconds':5,'failureThreshold':12}
+        # Same contract as the existing chart/ci_service: restart a stalled process
+        # after ~90s; heartbeat limits are worker 120s and Slack 30s.
+        container['livenessProbe']={**probe,'periodSeconds':30,'timeoutSeconds':5,'failureThreshold':3}
         containers.append(container)
     pod={'serviceAccountName':v['service_account'],'automountServiceAccountToken':False,
          'enableServiceLinks':False,'terminationGracePeriodSeconds':90,

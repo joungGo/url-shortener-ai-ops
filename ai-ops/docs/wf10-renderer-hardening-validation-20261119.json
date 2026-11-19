@@ -1,0 +1,50 @@
+{
+  "status": "local_verified_ci_pending",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "4b54777a20880614403d19ee98b54bec9cc45263",
+  "changes": [
+    "livenessProbe on worker/event-receiver/slack-ingress/slack-relay: same probe as readiness, period30 timeout5 failure3 (chart/ci_service contract)",
+    "init container resources requests 10m/32Mi limits 100m/64Mi"
+  ],
+  "new_tests": 1,
+  "focused_tests": {
+    "count": 83,
+    "passed": true
+  },
+  "full_suite": {
+    "count": 1586,
+    "seconds": 212.613,
+    "passed": true,
+    "skipped": 1,
+    "skip_note": "WF03 platform/amtool env-gated class; CI runs it in its own job"
+  },
+  "cli_checks": {
+    "synthetic_build_verify": "exit0",
+    "unresolved_input": "exit2 resources0 no output directory",
+    "synthetic_candidate_bytes": 41870,
+    "package_limit_bytes": 65536
+  },
+  "repository_boundary": "passed",
+  "diff_check": "passed",
+  "source_hashes": {
+    "ai-ops/src/ai_ops/wf10_deployment.py": "523ecda83af89afc4518aa2111077ee895064334bd740e767eaab599e6113b36",
+    "ai-ops/tests/test_wf10_deployment.py": "140f9ac5ae4848287c23fb3e3a8ce40492ac012eb5ef334875c7d2d24b09be5d"
+  },
+  "full_log": {
+    "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/wf10-renderer-hardening-full.log",
+    "sha256": "39506f1824a26e951e35f10294eb7206562fe2fdb33868ef3fc62be5152a848a"
+  },
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "live_values_verified": false,
+  "execution_allowed": false,
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "commit_pr_ci": null
+}

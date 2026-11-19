@@ -1,5 +1,17 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-10 후보 renderer 보강·CI 반영 준비 (Claude)
+
+main4b54777 기반 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf10-renderer-hardening-20261119` / `claude/wf10-renderer-hardening-20261119`. 네 프로세스 livenessProbe(30/5/3, readiness와 같은 probe)·init resources(10m/32Mi~100m/64Mi) 추가, 시험1개. 집중83·전체1586(212.6초, skip1=WF03 환경 게이트) 통과. PR39 병합 후 메타데이터도 이 작업트리로 이관했다. 이 커밋 시점 PR CI/main 대기. 사용자 지침: "뭐야" 질문은 답만, 구현은 명시 허락 후 시작. 실제 배포·Slack·장애·인프라 없음.
+
+## 2026-11-19 WF-10 활성 후보 검토·CI/main 반영 완료 (Claude)
+
+[PR #39](https://github.com/joungGo/url-shortener-ai-ops/pull/39) head `0ff46cd19abdf346abf1205d14a5da8b15b01312`를 head 고정 일반 squash 병합해 main `4b54777a20880614403d19ee98b54bec9cc45263`에 반영했다. [PR CI44471952438](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44471952438) 7종(전체1585개, skip5=PR38과 동일)·push CI44471944816·[main CI44472709490](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44472709490) 성공. 검토/병합 tree `19a045da24eeb71e6082598e27f8ee33d02cb319` 일치. 보호 변경/우회 없음.
+
+검토 P1(공유 PVC `fsGroupChangePolicy: OnRootMismatch` 누락) 수정 포함. 상세 `ai-ops/docs/wf10-active-config-review-20261119.md`·검증 JSON. 작업트리 `CLAUDE.md`는 로컬 전용으로 미커밋 보존. 최종 메타데이터(이 기록·검토 문서 최종 절·검증 JSON·작업표)는 병합 후 로컬 갱신이다. 실제 입력12개·연결 승인·실물 검증, WF10 실제 Slack 연결·WF11/C04/C05·WF12는 미완료. 배포·Slack·장애·인프라·Terraform·유료 모델 실행 없음.
+
+다음 한 작업: **WF10 실제 입력12개 확정 준비**(재설치 요청·실행 주체 결정 후). 남은 검토 위험(liveness 부재·init resources·Slack egress 경로)은 실제 배치 결정 때 판단.
+
 ## 2026-11-19 WF-10 활성 후보 코드 검토·CI 반영 준비 (Claude)
 
 Claude Code가 Codex 로컬 구현을 이어받아 검토했다. 실제 실행 모듈(worker/receiver/Slack ingress·relay)의 인자·경로·자격 권한 검사와 기존 chart를 대조했다. **P1 1건 수정:** 후보 Pod에 `fsGroupChangePolicy: OnRootMismatch`가 없어 공유 기존 PVC의 큐 0600/0700이 기동마다 0660/2770으로 넓어져 큐 검사가 실패할 수 있었다(B6 과거 사고와 같은 경로). 회귀 단언 추가. receiver 지연 import 정리(동작 동일).
