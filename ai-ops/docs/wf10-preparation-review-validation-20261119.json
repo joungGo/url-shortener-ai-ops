@@ -1,6 +1,6 @@
 {
   "date": "2026-11-19",
-  "status": "review_passed_ci_pending",
+  "status": "merged_main_ci_passed_live_connection_pending",
   "findings": [],
   "focused": {
     "count": 21,
@@ -38,6 +38,50 @@
     120
   ],
   "live_execution": false,
-  "ci": null,
-  "merge": null
+  "ci": {
+    "pr": 44465091658,
+    "push": 44465054234,
+    "main": 44465684513,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1565,
+    "main_jobs": [
+      {
+        "name": "scope",
+        "conclusion": "success"
+      },
+      {
+        "name": "Lease trace local contracts",
+        "conclusion": "success"
+      },
+      {
+        "name": "terraform",
+        "conclusion": "success"
+      },
+      {
+        "name": "WF03 event notice integration",
+        "conclusion": "success"
+      },
+      {
+        "name": "contracts",
+        "conclusion": "success"
+      },
+      {
+        "name": "image",
+        "conclusion": "success"
+      },
+      {
+        "name": "C03 Main PR Gate",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "merge": {
+    "pr": 38,
+    "head": "c0fa27311f9127eb856db2bf5f348d03e8f6f182",
+    "main": "50d0c1a309698320bc958eafc3d294f38b023f01",
+    "tree": "50452341417945dc2a13e9ab17130d4be9dee228",
+    "method": "regular_squash",
+    "protection_changed": false,
+    "admin_bypass": false
+  }
 }
