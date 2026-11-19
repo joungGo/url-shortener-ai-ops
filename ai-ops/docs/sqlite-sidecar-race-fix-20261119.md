@@ -1,6 +1,6 @@
 # SQLite 보조 파일 삭제 경쟁 수정 · 2026-11-19
 
-상태: **로컬 수정·검증 완료 / 미커밋.** 기준 main `ceb6c277b6a968c5be046657dc04137695e1a836`.
+상태: **PR42로 main 반영 완료.** 기준 main `ceb6c277b6a968c5be046657dc04137695e1a836`.
 
 ## 발견 경위
 
@@ -30,3 +30,7 @@ SQLite는 마지막 연결을 닫을 때 `-wal`/`-shm`(필요 시 `-journal`)을
 - 관련 모듈 122개, 전체 1602개(205.063초, skip1=WF03 환경 게이트) 통과. 저장소 경계·diff 통과.
 
 검증 수치는 [검증 기록](sqlite-sidecar-race-fix-validation-20261119.json)에 있다. 인프라·배포·Slack·실습 실행 없음. 기존 시간·승인·원복 조건 변경 없음.
+
+## 최종 반영 결과
+
+[PR #42](https://github.com/joungGo/url-shortener-ai-ops/pull/42) head `a45c053b15b5141ea7dfba0539119135194e7d29`를 head 고정 일반 squash 병합해 main `f6e04337239a6f981745674ff390ce8b89e37f81`에 반영했다. [PR CI44486424872](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44486424872) 7종(1602개, skip5 기준선 동일)·[main CI44487170865](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44487170865) 성공(PR전용 gate skip은 설계대로). tree `15e36202953b3f5364325833e8baa4261d2aead3` 일치. 보호 변경/우회 없음. 최종 메타데이터는 병합 후 로컬 갱신했다.

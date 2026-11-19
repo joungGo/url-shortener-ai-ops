@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_uncommitted",
+  "status": "merged_main_ci_passed",
   "author": "Claude Code (Opus 5.5)",
   "base": "ceb6c277b6a968c5be046657dc04137695e1a836",
   "root_cause": "concurrent lstat observes SQLite's in-flight unlink of -wal/-shm/-journal as st_nlink==0; checks required nlink==1",
@@ -58,5 +58,26 @@
     120
   ],
   "infrastructure_deployment_slack_trial_paid_model": false,
-  "commit_pr_ci": null
+  "commit_pr_ci": {
+    "commits": [
+      "cbb1f2f",
+      "a45c053b15b5141ea7dfba0539119135194e7d29"
+    ],
+    "pr": 42,
+    "pr_ci": 44486424872,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1602,
+    "pr_ci_skipped": 5,
+    "main_ci": 44487170865,
+    "main_jobs_success": 6,
+    "main_pr_gate": "skipped_by_design",
+    "merge": {
+      "method": "regular_squash_match_head",
+      "main": "f6e04337239a6f981745674ff390ce8b89e37f81",
+      "tree": "15e36202953b3f5364325833e8baa4261d2aead3",
+      "head_tree_equal": true,
+      "protection_changed": false,
+      "admin_bypass": false
+    }
+  }
 }

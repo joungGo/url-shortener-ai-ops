@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 기준 AI main `ceb6c27`(WF10 Slack sender 분리 PR41), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf10-slack-sender-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-19 KST. 기준 AI main `f6e0433`(SQLite 보조 파일 경쟁 수정 PR42), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/recovery-flaky-test-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -263,3 +263,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### SQLite 보조 파일 삭제 경쟁 수정 · 2026-11-19
 
 [수정 기록](sqlite-sidecar-race-fix-20261119.md)·[검증 JSON](sqlite-sidecar-race-fix-validation-20261119.json): 동시 접근 시 SQLite가 지우는 중인 `-wal`/`-shm`(`nlink 0`)을 위험 파일로 오판하던 4개 저장소 검사 수정. 보안 조건 유지. 신규 시험4·부하 재현160·전체1602 통과. 이 커밋 시점 PR CI/main 대기.
+
+### SQLite 보조 파일 경쟁 수정 최종 반영 · 2026-11-19
+
+[PR #42](https://github.com/joungGo/url-shortener-ai-ops/pull/42) head `a45c053` → main `f6e04337239a6f981745674ff390ce8b89e37f81`. PR CI44486424872 7종·main CI44487170865 성공, tree `15e3620` 일치, 보호 변경/우회 없음.
+
+### WF-10 manifest 오프라인 schema 검증(A5) · 2026-11-19
+
+[검증 기록](wf10-manifest-schema-validation-20261119.md)·[검증 JSON](wf10-manifest-schema-validation-validation-20261119.json): v1.35.8 공식 OpenAPI v3 부분집합(원본 hash 고정)으로 renderer 8개 리소스를 출력 전 strict 검증. 서버 dry-run은 live gate로 유지. 신규 시험6·전체1608 통과. 이 커밋 시점 PR CI/main 대기.

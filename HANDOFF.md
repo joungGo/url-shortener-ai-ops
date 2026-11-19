@@ -1,5 +1,17 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-10 manifest 오프라인 schema 검증(A5)·CI 반영 준비 (Claude)
+
+renderer가 만드는 리소스 8개를 클러스터 없이 Kubernetes v1.35.8 구조 기준으로 검증한다. 새 바이너리·라이브러리 없이 공식 OpenAPI v3에서 4종 전이 스키마 138개만 추출해 `ai_ops/k8s_openapi_v1_35_8.json`으로 두고(원본 sha256 고정, `scripts/build_k8s_schema_subset.py --check`), `ai_ops.k8s_schema`가 strict unknown 필드·타입·필수·범위·int-or-string을 검사한다. renderer는 출력 전 전부 검증하고 실패 시 `wf10_schema_rejected`로 거절하며, live gate에 `server_side_dry_run`을 추가했다(서버 dry-run 대체 아님).
+
+신규 시험6(위반 12종 거절), manifest hash 불변, 전체1608 통과. 상세 `ai-ops/docs/wf10-manifest-schema-validation-20261119.md`·검증 JSON. 이 커밋 시점 PR CI/main 대기. 실제 배포·Slack·장애·인프라 없음.
+
+## 2026-11-19 SQLite 보조 파일 삭제 경쟁 수정 CI/main 반영 완료 (Claude)
+
+[PR #42](https://github.com/joungGo/url-shortener-ai-ops/pull/42) head `a45c053b15b5141ea7dfba0539119135194e7d29`를 head 고정 일반 squash 병합해 main `f6e04337239a6f981745674ff390ce8b89e37f81`에 반영했다. PR CI44486424872 7종(1602개)·main CI44487170865 성공, tree `15e36202953b3f5364325833e8baa4261d2aead3` 일치. 보호 변경/우회 없음. 최종 메타데이터(이 기록·작업표·수정 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+남은 인프라 불필요 후보: A5 오프라인 schema 검증, A6 전환·원복 적용안 형식, A7 WF07~09 실제 어댑터 로컬 구현, A8 WF12 문서 초안. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 SQLite 보조 파일 삭제 경쟁 수정·CI 반영 준비 (Claude)
 
 간헐 실패하던 `test_recovery_commands` 동시 실행 시험을 부하 재현·예외 추적한 결과 **제품 경쟁 조건**이었다. SQLite가 마지막 연결 종료 때 `-wal`/`-shm`을 지우는 순간 다른 스레드·프로세스의 `lstat`이 `nlink 0`을 보고, 안전 검사가 위험 파일로 오판해 정상 작업을 거절했다(fail-safe였지만 무작위 거절). 사용자에게 보고·허락 후 4곳(`job_queue`, `slack_adapter`, `observability`, `continuous_model`)에서 보조 파일 `nlink 0`만 부재로 간주(하드링크·권한·소유자·형식 검사와 본 DB 엄격 유지), `continuous_model` exists/lstat 경쟁 수정.
