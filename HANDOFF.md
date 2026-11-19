@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 A7-3b 재시작 사전 게이트 재설계·CI 반영 준비 (Claude)
+
+WF08 실행 전 진단 4종은 실제 도출 정의가 없고 fixture가 통과값을 넣고 있었다. llm-council로 재설계를 결정했고, 사실 확인으로 대상 lab-api가 `Recreate`라 재시작 시 기존 Pod가 먼저 종료되어 증거가 반드시 사라짐을 확인했다. 신규 `ai_ops.restart_gates`(순수·결정적, pass/fail/unknown, unknown은 통과 아님)로 계획 이후 변경 없음(배포 전략 포함)·Ready 0·경쟁 컨트롤러 없음·readiness 실패 지속·liveness 정상(restartCount 불변)·과거 Ready 이력·의존성(실패만 차단)을 판정한다. image_available·capacity_verified 삭제(표시만), configuration_verified는 지문 게이트로 흡수. 스냅샷은 원시 관측값만 받고 계획에 strategy·restart_count를 봉인한다. PATCH 직전 증거 보존(describe·events·logs current/previous·metrics·status) 필수 게이트, 게이트 거절은 `gate_rejected` 인계 기록(값 없음)·재시도 없음.
+
+시험39(거절16종·증거5종), 의도적 결함 변형 2종 검출, 효과 포함73·전체1639 통과. 상세 `ai-ops/docs/restart-gates-local-20261119.md`·검증 JSON. 실제 쓰기 차단 유지. 이 커밋 시점 PR CI/main 대기. 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 A7-2 복구 결과 outbox CI/main 반영 완료 (Claude)
 
 [PR #46](https://github.com/joungGo/url-shortener-ai-ops/pull/46) head `b2a97a5153f94505ccb5d69d9099aee97abce80b`를 head 고정 일반 squash 병합해 main `8fa3ad2b38b88cbe31496ad81c1ede3644cb7bdb`에 반영했다. PR CI44504060937 7종(1634개)·main CI44504869626 성공, tree `534bae66adb832065fa4e839560019e93d63d932` 일치. 보호 변경/우회 없음. 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.

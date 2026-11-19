@@ -1,0 +1,88 @@
+{
+  "status": "local_verified_uncommitted",
+  "slice": "A7-3b restart pre-write gate redesign",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "8fa3ad2b38b88cbe31496ad81c1ede3644cb7bdb",
+  "decision": "llm-council (c) redesign; fact: lab-api strategy Recreate (ai-ops/lab/templates/deployment.yaml)",
+  "rules_version": "restart-gates-v1",
+  "persist_multiplier": 2,
+  "gates": {
+    "blocking": [
+      "spec_unchanged_since_plan",
+      "not_ready_single_replica",
+      "no_competing_controller",
+      "persistent_readiness_failure",
+      "liveness_stable",
+      "prior_ready_evidence"
+    ],
+    "dependencies": "blocking only on fail; unknown display-only"
+  },
+  "removed": [
+    "image_available",
+    "capacity_verified",
+    "configuration_verified (absorbed into spec_unchanged_since_plan incl. strategy)"
+  ],
+  "evidence_gate": {
+    "required_items": [
+      "describe",
+      "events",
+      "logs_current",
+      "logs_previous",
+      "metrics",
+      "status"
+    ],
+    "position": "after second read and lease inspection, before executing/PATCH",
+    "on_failure": "needs_review, no write"
+  },
+  "tests": {
+    "recovery_commands": 39,
+    "recovery_commands_and_effects": 73,
+    "new_or_changed_rejection_cases": 16,
+    "evidence_gate_cases": 5
+  },
+  "mutation_checks": {
+    "evidence_gate_removed": "caught (5 failures)",
+    "unknown_as_pass": "caught"
+  },
+  "full_suite": {
+    "count": 1639,
+    "seconds": 212.461,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/restart-gates-full.log",
+      "sha256": "0e1eed1fba55030d3a8bd7fa126233bfd6619195fdf9aadd9f1fd9c1d81b6db9"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compileall": "passed"
+  },
+  "live_write_still_blocked": true,
+  "execution_allowed": false,
+  "infra_stage": [
+    "real read adapter deriving raw observations",
+    "evidence capture adapter",
+    "read-only shadow evaluation",
+    "RBAC resourceNames + ValidatingAdmissionPolicy",
+    "surge strategy review",
+    "WF11 live mode decision"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/restart_gates.py": "f09446ca36811f3655013f3962d3f1b86734ff9c654c09deb79eab864636c060",
+    "ai-ops/src/ai_ops/recovery_commands.py": "9c0a1328a567b1a05486c115c06d727c7d9a226b673e2d8dc94de04c32f0ca57",
+    "ai-ops/tests/test_recovery_commands.py": "77cf6c3828e1db9633057a8b95c88a9c59d396878d62af4a3b019b04e8bad3c5"
+  },
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "commit_pr_ci": null
+}

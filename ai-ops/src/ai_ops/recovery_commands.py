@@ -17,11 +17,12 @@ from ai_ops.recovery_plans import RecoveryPlan
 from ai_ops.recovery_approvals import RecoveryApprovalLedger, CurrentRecoveryState
 from ai_ops.alerts import alert_time
 from ai_ops.job_queue import utc
+from ai_ops.restart_gates import (RestartGateRejected, evaluate as evaluate_gates, rejected as rejected_gates,
+    summary as gate_summary, validate_evidence)
 
 ACTION = 'deployment-restart'
 ENDPOINT = '/apis/apps/v1/namespaces/ai-ops-lab/deployments/lab-api'
 ANNOTATION = 'ai-ops.bidservice.store/restart-id'
-CHECKS = {'image_available', 'dependencies_healthy', 'configuration_verified', 'capacity_verified'}
 UUID = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
 
 
@@ -132,8 +133,18 @@ class RestartSnapshot(StrictModel):
     observed_generation: int = Field(ge=0)
     replicas: Literal[1] = 1
     ready_replicas: int = Field(ge=0,le=1)
-    probe_failed: bool
-    diagnostics: list[str] = Field(max_length=4)
+    strategy: Literal['Recreate','RollingUpdate']
+    # Raw verified observations for restart_gates (3b); no pre-computed verdicts.
+    container_running: bool
+    restart_count: int = Field(ge=0,le=1_000_000)
+    pod_started_at: UTCDateTime
+    readiness_failing_since: UTCDateTime | None
+    readiness_window_seconds: int = Field(ge=1,le=3600)
+    prior_ready: Literal['observed','absent','unknown']
+    dependencies: Literal['pass','fail','unknown']
+    # Display-only for the approver; never a gate.
+    image_id_hash: Sha256 | None = None
+    scheduling_signals: list[Literal['failed_scheduling','quota_exceeded']] = Field(default_factory=list,max_length=2)
     rollout_in_progress: bool
     autoscaling: bool
     gitops_auto_sync: bool
@@ -176,6 +187,8 @@ class RestartPlan(StrictModel):
     pod_uid_hash: Sha256
     generation: int = Field(ge=1)
     annotations_exist: bool
+    strategy: Literal['Recreate','RollingUpdate']
+    restart_count: int = Field(ge=0,le=1_000_000)  # liveness baseline at plan time
     marker: Sha256
     executor_id: str = Field(pattern=r'^local-restart-[a-z0-9-]{1,40}$')
     request: dict
@@ -230,15 +243,12 @@ class RestartApprovalLedger(RecoveryApprovalLedger):
 
 def validate_before(plan,s,now,*,after):
     at=s.observed_at.timestamp()
-    if (not after<=at<=now or now-at>15
-            or s.deployment_uid!=plan.deployment_uid or s.resource_version!=plan.resource_version
-            or s.revision_hash!=plan.revision_hash or sha256_json(s.image)!=plan.image_hash
-            or s.pod_uid_hash!=plan.pod_uid_hash or s.generation!=plan.generation
-            or s.observed_generation!=s.generation or s.ready_replicas!=0 or not s.probe_failed
-            or set(s.diagnostics)!=CHECKS or len(s.diagnostics)!=len(CHECKS)
-            or s.rollout_in_progress or s.autoscaling or s.gitops_auto_sync or s.restart_marker is not None
-            or s.annotations_exist!=plan.annotations_exist):
+    if not after<=at<=now or now-at>15:
         raise ValueError('restart_current_state_rejected')
+    results=evaluate_gates(plan,s,now)
+    if rejected_gates(results):
+        raise RestartGateRejected(results)
+    return results
 
 
 class RestartCoordinator:
@@ -277,7 +287,8 @@ class RestartCoordinator:
         values=dict(candidate_hash=candidate_hash,event_id=p.event_id,job_id=p.job_id,target=TARGET.model_copy(deep=True),
             source_hash=sha256_json(body(source)),deployment_uid=s.deployment_uid,resource_version=s.resource_version,
             revision_hash=s.revision_hash,image_hash=sha256_json(s.image),pod_uid_hash=s.pod_uid_hash,generation=s.generation,
-            annotations_exist=s.annotations_exist,marker=marker,executor_id=self.executor_id,
+            annotations_exist=s.annotations_exist,strategy=s.strategy,restart_count=s.restart_count,
+            marker=marker,executor_id=self.executor_id,
             request=patch_request(s.deployment_uid,s.resource_version,marker,s.annotations_exist),
             execution_seconds=self.execution_seconds,created_at=_utc_datetime(utc(self.queue.now())),retained_until=p.retained_until)
         # Include model defaults in the sealed subject.
@@ -372,11 +383,15 @@ class RestartCoordinator:
             validate_before(plan,s,self.queue.now(),after=start)
             lease=port.inspect_lease(held,deadline=min(deadline,self.queue.now()+3));self._held(lease,owner,deadline)
             if lease['uid']!=held['uid']:raise ValueError('restart_lease_changed')
+            # Hard gate: Recreate terminates the old Pod first, so preserve its
+            # describe/status/events/logs/metrics before any write. No bundle, no patch.
+            evidence=validate_evidence(port.capture_evidence(deadline=deadline),start=start,now=self.queue.now())
             self.load(key,actor);self._port(port,plan)
             with self.queue.transaction() as db:
                 r=self._get(db,key)
                 self._approved(db,key,actor,ledger,plan,self.queue.now())
                 if r['state']!='checking' or r['cancel_requested'] or not start<=self.queue.now()<deadline:raise ValueError('restart_cancelled_or_expired')
+                r['evidence_bundle']=evidence
                 r.update(state='executing',reason='patch_outcome_pending',generation=r['generation']+1);self._save(db,r)
             port.patch(deepcopy(plan.request),deadline=deadline)
             observed=RestartSnapshot.model_validate(body(port.read(deadline=deadline)))
@@ -390,10 +405,16 @@ class RestartCoordinator:
                 r=self._get(db,key);r['lease_released']=True
                 if self.queue.now()>=deadline:r.update(state='needs_review',reason='cleanup_completed_after_budget')
                 self._save(db,r)
-        except Exception:
+        except Exception as exc:
             with self.queue.transaction() as db:
                 r=self._get(db,key)
-                if r['state']!='cancelled':r.update(state='needs_review',reason='inspect_without_retry',generation=r['generation']+1)
+                if r['state']!='cancelled':
+                    if isinstance(exc,RestartGateRejected):
+                        # Manual handoff with per-gate verdicts (names only, no values).
+                        r.update(state='needs_review',reason='gate_rejected',gate_results=gate_summary(exc.results),
+                                 generation=r['generation']+1)
+                    else:
+                        r.update(state='needs_review',reason='inspect_without_retry',generation=r['generation']+1)
                 self._save(db,r)
         return self.show(key,actor=actor)
 

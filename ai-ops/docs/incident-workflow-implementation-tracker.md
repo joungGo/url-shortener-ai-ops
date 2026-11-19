@@ -299,3 +299,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7-2 복구 결과 outbox 최종 반영 · 2026-11-19
 
 [PR #46](https://github.com/joungGo/url-shortener-ai-ops/pull/46) head `b2a97a5` → main `8fa3ad2b38b88cbe31496ad81c1ede3644cb7bdb`. PR CI44504060937 7종·main CI44504869626 성공, tree `534bae6` 일치, 보호 변경/우회 없음. 다음 조각 A7-3(진단·쓰기·잠금 어댑터)은 사용자 허락 후.
+
+### A7-3b 재시작 사전 게이트 재설계 · 2026-11-19
+
+[구현 기록](restart-gates-local-20261119.md)·[검증 JSON](restart-gates-local-validation-20261119.json): 진단 4종 bool 주입 → `restart_gates` 결정적 판정(지속·liveness·과거 Ready·지문·의존성) + PATCH 직전 증거 보존 필수 게이트. lab-api Recreate 반영. 시험39·전체1639 통과. 이 커밋 시점 PR CI/main 대기. 다음 A7-3a 실제 K8s 어댑터(가짜 API 서버 검증).
