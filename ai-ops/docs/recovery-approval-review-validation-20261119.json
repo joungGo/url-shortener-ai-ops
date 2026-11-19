@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-19",
+  "task": "WF-06 review",
+  "base_commit": "17093a7684c885574388d81f3168033d526a6115",
+  "review_method": "review-bugbot in-place diff/caller review; dedicated bugbot unavailable",
+  "findings": [
+    {
+      "severity": "P2",
+      "location": "recovery_approvals.py:185",
+      "issue": "initial admission budget not rechecked after DB wait",
+      "fixed": true
+    },
+    {
+      "severity": "P2",
+      "location": "recovery_approvals.py:133",
+      "issue": "clock regression overwrote terminal cancellation state",
+      "fixed": true
+    },
+    {
+      "severity": "P2",
+      "location": "recovery_approvals.py:326",
+      "issue": "retained draft accepted without current source result/hash validation",
+      "fixed": true
+    }
+  ],
+  "before": {
+    "tests": 4,
+    "failures": 4
+  },
+  "focused": {
+    "tests": 39,
+    "passed": true
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_approvals.py": "4399908c7c91dd80c583570e608e2ffae87223960c09369c777ecbf74e63f24a",
+    "ai-ops/tests/test_recovery_approvals.py": "629a828a5a286f8ea3eef71d612893774af1c388b8b9b1a0aeb5d2fe499a77a3"
+  },
+  "unchanged_c_stage_files": 68,
+  "ast_files": 2,
+  "diff_check": "passed",
+  "repository_boundary": "passed",
+  "remote_ci": "pending",
+  "main": "pending",
+  "deployment": false,
+  "slack": false,
+  "trial": false,
+  "infra": false,
+  "execution_allowed": false,
+  "full_suite": {
+    "count": 1440,
+    "seconds": 90.613,
+    "passed": true,
+    "skipped": 0
+  },
+  "log_hashes": {
+    "/tmp/wf06-review-before.log": "6cf02df547b6074b7f49835f35e50559e2a608f27d71af269919a9e091eb290e",
+    "/tmp/wf06-review-focused.log": "25bbb5ba45130173a3fe590f7f82a2d28328f4b1a8ec0b9b48d4a981d03bbf78",
+    "/tmp/wf06-review-full.log": "ab8508aa93d3c5f7115e029eabf8e34aa48d63267ce572a845d4911c14261304"
+  }
+}

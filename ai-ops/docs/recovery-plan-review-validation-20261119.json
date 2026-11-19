@@ -58,8 +58,16 @@
     "/tmp/wf05-review-full.log": "c928f82bc1bc08aab9ebd49fd6378855425beae83c02361d1fdf53c39db63a87",
     "/tmp/wf05-review-notice.log": "97d0c816d6bdd7dd163c0e4a99e4da03a102fcc9821b0032b45e462c6d585aac"
   },
-  "remote_ci": "pending",
-  "main": "pending",
+  "remote_ci": {
+    "pr_run": 44446823328,
+    "pr_checks": 7,
+    "conclusion": "success",
+    "push_run": 44446816507,
+    "main_run": 44447269162,
+    "main_conclusion": "success",
+    "main_pr_only_gate": "expected skip; actual PR gate passed"
+  },
+  "main": "17093a7684c885574388d81f3168033d526a6115",
   "deployment": false,
   "slack_sent": false,
   "infra_installed": false,
@@ -112,6 +120,12 @@
       }
     },
     "local_image_build": "Docker daemon unavailable; exact-head CI required",
-    "ecr_scan": "not_run"
-  }
+    "ecr_scan": "not_run",
+    "final_head_ci_build": "success"
+  },
+  "reviewed_head": "33a9a19cb832af106af65d94621547ba43aa75f7",
+  "pr": 33,
+  "merged_at": "2026-11-19T02:50:59Z",
+  "merge_method": "normal squash; no protection change or admin bypass",
+  "merged_tree_matches_reviewed_tree": true
 }

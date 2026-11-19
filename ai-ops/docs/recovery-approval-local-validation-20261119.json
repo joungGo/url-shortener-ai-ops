@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "task": "WF-06 local approval lifecycle",
+  "date": "2026-11-19",
+  "base_commit": "17093a7684c885574388d81f3168033d526a6115",
+  "branch": "codex/wf06-approval-lifecycle-20261119",
+  "focused_tests": {
+    "count": 35,
+    "passed": true
+  },
+  "full_suite": {
+    "count": 1436,
+    "seconds": 89.924,
+    "passed": true,
+    "skipped": 0
+  },
+  "static": {
+    "ast_files": 2,
+    "repository_boundary": "passed",
+    "git_diff_check": "passed",
+    "unchanged_c_stage_files": 68
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_approvals.py": "31b88fdc585f4ce6a93abdb37e8b9d1b1da08bfbb954be7e92a4532db2cf25f3",
+    "ai-ops/tests/test_recovery_approvals.py": "14fd111a59771d686fbd5e66ab277fa808ddb404504a959762c7c8b144422cbe"
+  },
+  "implemented": [
+    "durable_wait",
+    "exact_subject_and_generation",
+    "approval_expiry",
+    "cancel_fence",
+    "dedup",
+    "reopen",
+    "readonly_revalidation",
+    "natural_health_verification",
+    "policy_transition",
+    "source_authorization",
+    "retention_prune"
+  ],
+  "scope": "prepare_proposal_only",
+  "execution_allowed": false,
+  "synthetic_time_config": {
+    "wait_seconds": 7200,
+    "approval_seconds": 300,
+    "observation_seconds": 30,
+    "revalidation_seconds": 3
+  },
+  "remaining": [
+    "code_review_CI_main",
+    "authenticated_interactivity_adapter",
+    "live_readonly_probe_adapter",
+    "exact_PR_diff_and_head_review",
+    "command_execution_approval",
+    "live_validation"
+  ],
+  "unchanged_constraints": {
+    "lease_get_seconds": 3,
+    "start_seconds": 15,
+    "min_review_seconds_after_notice": 120,
+    "review_deadline_seconds_after_start": 210,
+    "owner_rollback_seconds": 240,
+    "independent_rollback_start_seconds": 300,
+    "recovery_observation_seconds": 120
+  },
+  "external_actions": {
+    "infrastructure": false,
+    "slack": false,
+    "deployment": false,
+    "trial": false,
+    "model": false
+  },
+  "logs": [
+    "/tmp/wf06-focused.log",
+    "/tmp/wf06-full.log"
+  ],
+  "notice_test_dependencies": {
+    "platform_root": "/Users/jounghyeon/dev/Url-Shortener-EKS-Platform/.worktrees/wf03-alert-reference-20261118",
+    "amtool": "/tmp/wf05-review-tools/amtool"
+  }
+}
