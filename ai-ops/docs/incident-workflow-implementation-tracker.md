@@ -251,3 +251,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### WF-10 후보 renderer 보강 최종 반영 · 2026-11-19
 
 [PR #40](https://github.com/joungGo/url-shortener-ai-ops/pull/40) head `6920a07` → main `1f20442e2a70eb66a6228275add9f564cdb37c06`. PR CI44474606794 7종·main CI44475106909 성공, tree `ac77ac8` 일치, 보호 변경/우회 없음. 다음 후보 A4(Slack egress 경로 설계)는 사용자 허락 후 시작.
+
+### WF-10 Slack sender 분리(B′) · 2026-11-19
+
+[설계 결정](wf10-slack-egress-design-20261119.md)·[구현 기록](wf10-slack-sender-local-20261119.md)·[검증 JSON](wf10-slack-sender-local-validation-20261119.json). bot 토큰은 sender Pod에만, 메인 Pod 인터넷 송신0, sender만 443(사설·IMDS 제외)·메인 Pod 수신만. 신규 시험12, 전체1598 통과(1회차 기존 flaky 1건 기록). 이 커밋 시점 PR CI/main 대기. 플랫폼·Slack 쪽 통제와 실클러스터 음성 시험은 인프라 단계.

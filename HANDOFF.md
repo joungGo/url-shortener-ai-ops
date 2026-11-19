@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-10 Slack sender 분리(B′) 구현·CI 반영 준비 (Claude)
+
+Slack 송신 경로를 운영 기준으로 재설계했다. Slack은 고정 IP가 없고, 플랫폼은 관리형 노드그룹이라 AWS 도메인 정책(Auto Mode 전용)을 쓸 수 없다. llm-council 결과 **B′(무상태 sender 분리)**로 결정했다. 신규 `ai_ops.slack_sender`가 bot 토큰을 가진 유일한 프로세스이며 메서드3·허용 채널·멱등·분당60건을 집행한다. relay는 bot 토큰 없이 `SlackSenderClient`로 보낸다. renderer는 메인 Pod 인터넷 송신0, sender만 443(사설·IMDS 제외)으로 리소스8개를 생성하고 입력 `slack_cidrs` 삭제·`secrets.sender_client` 추가.
+
+신규 시험12개, 전체1598개 2회(1회차 기존 flaky `test_recovery_commands` 동시성 1건 — 변경 무관, 2회차 전부 통과). 상세 `ai-ops/docs/wf10-slack-egress-design-20261119.md`, `wf10-slack-sender-local-20261119.md`, 검증 JSON. 이 커밋 시점 PR CI/main 대기. 플랫폼 strict 모드·IMDS hop limit·EIP 보존·Slack 토큰 IP 제한·실클러스터 음성 시험은 인프라 단계. 잔여 위험(slack.com·DNS 유출, 내부 평문, 메모리 멱등, HA 없음) 문서화. 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 WF-10 후보 renderer 보강 CI/main 반영 완료 (Claude)
 
 [PR #40](https://github.com/joungGo/url-shortener-ai-ops/pull/40) head `6920a0703736b896b74fe3b643bc7d8033d91b3c`를 head 고정 일반 squash 병합해 main `1f20442e2a70eb66a6228275add9f564cdb37c06`에 반영했다. PR CI44474606794 7종(1586개)·main CI44475106909 성공, tree `ac77ac84b546f48904dea0a9f98f4c24ccc571b5` 일치. 보호 변경/우회 없음. 최종 메타데이터(이 기록·작업표·보강 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.

@@ -38,11 +38,11 @@ def fixture():
         'slack':{'team_id':'TLOCAL01','app_id':'ALOCAL01','bot_user_id':'UBOT001','user_id':'UUSER01',
                  'investigation_channel_id':'CLOCAL01','alert_channel_id':'CALERT01'},
         'secrets':{'signing':'fixture-signing','bot':'fixture-bot','slack_tls':'fixture-tls',
-                   'event_identity':'fixture-event','collector':'fixture-collector'},
+                   'event_identity':'fixture-event','collector':'fixture-collector','sender_client':'fixture-sender-client'},
         'network':{'dns':{'namespace':'kube-system','labels':{'k8s-app':'kube-dns'}},
             'alertmanager':{'namespace':'monitoring','labels':{'app':'alertmanager'}},
             'ingress':{'namespace':'traefik','labels':{'app':'traefik'}},
-            'collector_cidrs':['10.0.0.1/32','10.0.0.2/32'],'slack_cidrs':['8.8.8.8/32']},'config':config}
+            'collector_cidrs':['10.0.0.1/32','10.0.0.2/32']},'config':config}
 
 class DeploymentTest(unittest.TestCase):
     def setUp(self):
@@ -51,6 +51,8 @@ class DeploymentTest(unittest.TestCase):
         env=patch.dict(os.environ,{'AI_OPS_FILES_ROOT':str(self.root)});env.start();self.addCleanup(env.stop)
     def render(self):return candidate(self.v)
     def pod(self):return next(x for x in self.render()['resources'] if x['kind']=='Deployment')['spec']['template']['spec']
+    def sender_pod(self):return next(x for x in self.render()['resources'] if x['kind']=='Deployment' and x['metadata']['name'].endswith('-sender'))['spec']['template']['spec']
+    def policy(self,suffix=''):return next(x for x in self.render()['resources'] if x['kind']=='NetworkPolicy' and x['metadata']['name']=='wf10-fixture'+suffix)['spec']
     def test_unresolved_draft_writes_no_manifest(self):
         out=self.root/'none';result=build(draft(),out)
         self.assertEqual(result['status'],'blocked_missing_inputs');self.assertFalse(out.exists())
@@ -67,8 +69,9 @@ class DeploymentTest(unittest.TestCase):
         self.assertEqual(result,self.render());self.assertFalse(result['execution_allowed']);self.assertFalse(result['live_verified'])
         self.assertEqual(result['preserved_c_limits_seconds'],LIMITS)
     def test_manifest_has_no_rbac_secret_pvc_or_external_route_creation(self):
-        self.assertEqual([x['kind'] for x in self.render()['resources']],['ConfigMap','Deployment','Service','Service','NetworkPolicy'])
-        for service in self.render()['resources'][2:4]:self.assertEqual(service['spec']['type'],'ClusterIP')
+        self.assertEqual([x['kind'] for x in self.render()['resources']],
+            ['ConfigMap','Deployment','Service','Service','NetworkPolicy','Deployment','Service','NetworkPolicy'])
+        for service in [x for x in self.render()['resources'] if x['kind']=='Service']:self.assertEqual(service['spec']['type'],'ClusterIP')
     def test_one_pod_recreate_and_shared_existing_pvc(self):
         d=self.render()['resources'][1];pod=d['spec']['template']['spec']
         self.assertEqual(d['spec']['replicas'],1);self.assertEqual(d['spec']['strategy'],{'type':'Recreate'})
@@ -82,7 +85,10 @@ class DeploymentTest(unittest.TestCase):
         p=self.pod();self.assertFalse(p['automountServiceAccountToken'])
         mounts={c['name']:{m['name'] for m in c['volumeMounts']} for c in p['containers']}
         self.assertNotIn('bot',mounts['slack-ingress']);self.assertNotIn('kubernetes',mounts['slack-relay'])
-        self.assertIn('bot',mounts['slack-relay']);self.assertIn('kubernetes',mounts['worker'])
+        self.assertIn('sender-client',mounts['slack-relay']);self.assertIn('kubernetes',mounts['worker'])
+        # B': the bot token is not present anywhere in the main Pod.
+        self.assertFalse(any(x['name'] in ('bot','bot-source') for x in p['volumes']))
+        self.assertNotIn('fixture-bot',encoded(p).decode())
         self.assertNotIn('signing',mounts['event-receiver']);self.assertNotIn('event-identity',mounts['worker'])
     def test_every_process_has_liveness_and_init_has_bounded_resources(self):
         p=self.pod()
@@ -105,16 +111,45 @@ class DeploymentTest(unittest.TestCase):
     def test_registry_and_runtime_command_consistent(self):
         out=self.render();cm=out['resources'][0]['data'];web=json.loads(cm['slack-web.json'])
         self.assertEqual(web['event_sources'],{'lab-seoul':{'source_id':'am-fixture','cluster_id':'practice-eks-example'}})
+        self.assertIsNone(web['bot_token_file'])
+        self.assertEqual(web['sender'],{'url':'http://wf10-fixture-sender.ai-ci.svc:9446','client_secret_file':'/run/slack-sender-client/token'})
         c=next(x for x in self.pod()['containers'] if x['name']=='event-receiver')
         self.assertIn('--event-source-alias',c['args']);self.assertNotIn('/v1/alerts',encoded(out).decode())
     def test_only_specified_peers_and_https_egress(self):
-        spec=self.render()['resources'][-1]['spec'];self.assertEqual(len(spec['ingress']),2)
-        self.assertEqual(spec['egress'][-1]['ports'],[{'protocol':'TCP','port':443}])
+        spec=self.policy();self.assertEqual(len(spec['ingress']),2)
         self.assertEqual(spec['egress'][1]['ports'],[{'protocol':'TCP','port':443},{'protocol':'TCP','port':8443}])
+        # Main Pod: no internet at all; Slack only through the sender Service port.
+        self.assertEqual(spec['egress'][-1],{'to':[{'podSelector':{'matchLabels':{'app.kubernetes.io/name':'wf10-fixture-sender','app.kubernetes.io/part-of':'wf10'}}}],
+                                             'ports':[{'protocol':'TCP','port':9446}]})
         self.assertNotIn('0.0.0.0/0',encoded(spec).decode())
+    def test_sender_is_only_internet_egress_and_accepts_only_main_pod(self):
+        spec=self.policy('-sender')
+        self.assertEqual(spec['ingress'],[{'from':[{'podSelector':{'matchLabels':{'app.kubernetes.io/name':'wf10-fixture','app.kubernetes.io/part-of':'wf10'}}}],
+                                           'ports':[{'protocol':'TCP','port':9446}]}])
+        internet=spec['egress'][-1]
+        self.assertEqual(internet['ports'],[{'protocol':'TCP','port':443}])
+        block=internet['to'][0]['ipBlock'];self.assertEqual(block['cidr'],'0.0.0.0/0')
+        for closed in ('10.0.0.0/8','172.16.0.0/12','192.168.0.0/16','100.64.0.0/10','169.254.0.0/16','127.0.0.0/8'):
+            self.assertIn(closed,block['except'])
+        self.assertEqual(len(spec['egress']),2)
+    def test_sender_pod_holds_only_bot_and_client_secret(self):
+        p=self.sender_pod();self.assertFalse(p['automountServiceAccountToken'])
+        self.assertEqual([c['name'] for c in p['containers']],['slack-sender'])
+        names={x['name'] for x in p['volumes']}
+        self.assertFalse(any('persistentVolumeClaim' in x or 'projected' in x for x in p['volumes']))
+        self.assertTrue({'bot','sender-client','policy'}<=names)
+        for forbidden in ('signing','collector','event-identity','slack-tls','kubernetes','data','config'):
+            self.assertNotIn(forbidden,names)
+        policy=next(x for x in p['volumes'] if x['name']=='policy')['configMap']
+        self.assertEqual(policy['items'],[{'key':'slack-policy.json','path':'slack-policy.json'}])
+        c=p['containers'][0];self.assertEqual(c['command'],['python','-m','ai_ops.slack_sender'])
+        self.assertEqual(c['args'],['--enable-web']);self.assertEqual(c['livenessProbe']['tcpSocket'],{'port':9446})
+        for i in p['initContainers']:self.assertEqual(i['resources']['limits']['memory'],'64Mi')
+        d=next(x for x in self.render()['resources'] if x['kind']=='Deployment' and x['metadata']['name'].endswith('-sender'))
+        self.assertEqual((d['spec']['replicas'],d['spec']['strategy']),(1,{'type':'Recreate'}))
     def test_wildcard_network_or_empty_selector_rejected(self):
-        for key,value in [('collector_cidrs',['0.0.0.0/0']),('slack_cidrs',['10.0.0.1/32']),('slack_cidrs',['127.0.0.1/32'])]:
-            v=deepcopy(self.v);v['network'][key]=value
+        for key,value in [('collector_cidrs',['0.0.0.0/0']),('collector_cidrs',['127.0.0.1/32']),('slack_cidrs',['8.8.8.8/32'])]:
+            v=deepcopy(self.v);v['network'][key]=value  # slack_cidrs is no longer an accepted field
             with self.assertRaises(ValueError):candidate(v)
         self.v['network']['ingress']['labels']={}
         with self.assertRaises(ValueError):self.render()
