@@ -27,7 +27,7 @@ class ApprovalPolicy(StrictModel):
     approval_seconds: int = Field(ge=1, le=3600)
     observation_seconds: int = Field(ge=1, le=300)
     revalidation_seconds: int = Field(ge=1, le=60)
-    scope: Literal['prepare_proposal'] = 'prepare_proposal'
+    scope: Literal['prepare_proposal', 'execute_command'] = 'prepare_proposal'
 
     @model_validator(mode='after')
     def valid(self):
@@ -64,22 +64,31 @@ class RecoveryApprovalLedger:
     configured policy and absolute deadlines. `generation` is a CAS fence for races.
     All public results have execution_allowed=False, including proposal_ready.
     """
+    TABLE_PREFIX = 'recovery_approval'
+    PLAN_MODEL = RecoveryPlan
+    SCOPE = 'prepare_proposal'
+    FAILURE_STATUS = 'image_failure'
+
     def __init__(self, queue, policy, *, load_plan, observe):
+        if (self.TABLE_PREFIX,self.SCOPE) not in {('recovery_approval','prepare_proposal'),('restart_approval','execute_command')}:
+            raise ValueError('approval_storage_scope_rejected')
+        if policy.scope != self.SCOPE:
+            raise ValueError('approval_scope_mismatch')
         self.queue = queue
         self.policy = ApprovalPolicy.model_validate(_body(policy))
         self.policy_hash = sha256_json(_body(self.policy))
         self.load_plan, self.observe = load_plan, observe
         with queue.transaction() as db:
-            db.execute('CREATE TABLE IF NOT EXISTS recovery_approval_meta (singleton INTEGER PRIMARY KEY CHECK(singleton=1), version INTEGER NOT NULL, policy_hash TEXT NOT NULL)')
-            meta = db.execute('SELECT * FROM recovery_approval_meta').fetchone()
+            db.execute(f'CREATE TABLE IF NOT EXISTS {self.TABLE_PREFIX}_meta (singleton INTEGER PRIMARY KEY CHECK(singleton=1), version INTEGER NOT NULL, policy_hash TEXT NOT NULL)')
+            meta = db.execute(f'SELECT * FROM {self.TABLE_PREFIX}_meta').fetchone()
             if meta and (meta['version'] != 1 or meta['policy_hash'] != self.policy_hash):
                 raise ValueError('approval_policy_requires_explicit_transition')
-            db.execute('INSERT OR IGNORE INTO recovery_approval_meta VALUES(1,1,?)', (self.policy_hash,))
-            db.execute('CREATE TABLE IF NOT EXISTS recovery_approvals (plan_hash TEXT PRIMARY KEY, document TEXT NOT NULL)')
-            db.execute('CREATE TABLE IF NOT EXISTS recovery_approval_receipts (request_hash TEXT PRIMARY KEY, payload_hash TEXT NOT NULL, plan_hash TEXT NOT NULL)')
+            db.execute(f'INSERT OR IGNORE INTO {self.TABLE_PREFIX}_meta VALUES(1,1,?)', (self.policy_hash,))
+            db.execute(f'CREATE TABLE IF NOT EXISTS {self.TABLE_PREFIX}s (plan_hash TEXT PRIMARY KEY, document TEXT NOT NULL)')
+            db.execute(f'CREATE TABLE IF NOT EXISTS {self.TABLE_PREFIX}_receipts (request_hash TEXT PRIMARY KEY, payload_hash TEXT NOT NULL, plan_hash TEXT NOT NULL)')
 
     def _active(self, db):
-        meta = db.execute('SELECT policy_hash FROM recovery_approval_meta WHERE singleton=1').fetchone()
+        meta = db.execute(f'SELECT policy_hash FROM {self.TABLE_PREFIX}_meta WHERE singleton=1').fetchone()
         if meta is None or meta['policy_hash'] != self.policy_hash or sha256_json(_body(self.policy)) != self.policy_hash:
             raise ValueError('approval_policy_changed')
 
@@ -89,7 +98,7 @@ class RecoveryApprovalLedger:
         plan = self.load_plan(plan_hash, actor)
         if plan is None:
             raise ValueError('approval_unavailable')
-        plan = RecoveryPlan.model_validate(_body(plan))
+        plan = self.PLAN_MODEL.model_validate(_body(plan))
         if (plan.plan_hash != plan_hash or plan.assessment != 'supported'
                 or plan.retained_until.timestamp() <= self.queue.now()):
             raise ValueError('approval_unavailable')
@@ -118,14 +127,13 @@ class RecoveryApprovalLedger:
             raise ValueError('revalidation_health_proof_rejected')
         return observation
 
-    @staticmethod
-    def _save(db, record):
-        db.execute('INSERT OR REPLACE INTO recovery_approvals VALUES(?,?)',
+    def _save(self, db, record):
+        db.execute(f'INSERT OR REPLACE INTO {self.TABLE_PREFIX}s VALUES(?,?)',
                    (record['plan_hash'], json.dumps(record, sort_keys=True)))
 
     def _get(self, db, plan_hash):
         self._active(db)
-        row = db.execute('SELECT document FROM recovery_approvals WHERE plan_hash=?',(plan_hash,)).fetchone()
+        row = db.execute(f'SELECT document FROM {self.TABLE_PREFIX}s WHERE plan_hash=?',(plan_hash,)).fetchone()
         if row is None:
             raise ValueError('approval_unavailable')
         record = json.loads(row['document'])
@@ -148,18 +156,25 @@ class RecoveryApprovalLedger:
     def _transition(record, state, reason):
         record.update(state=state, reason=reason, generation=record['generation']+1)
 
-    @staticmethod
-    def _view(record):
+    @classmethod
+    def _view(cls, record):
         return {**record, 'execution_allowed': False,
                 'proposal_ready': record['state']=='proposal_ready',
-                'approval_scope':'prepare_proposal'}
+                'approval_scope':cls.SCOPE}
+
+    def _require_open_observation(self, plan, observation):
+        original = plan.evidence.image_failure
+        if observation.status != 'image_failure' or (
+                observation.deployment_uid_hash != original.deployment_uid_hash
+                or observation.image_hash != original.image_hash):
+            raise ValueError('new_recovery_plan_required')
 
     def open(self, plan_hash, *, actor):
         plan = self._plan(plan_hash, actor)
         # Retry must not refresh a waiting/expired subject or its absolute deadlines.
         with self.queue.transaction() as db:
             self._active(db)
-            if db.execute('SELECT 1 FROM recovery_approvals WHERE plan_hash=?',(plan_hash,)).fetchone():
+            if db.execute(f'SELECT 1 FROM {self.TABLE_PREFIX}s WHERE plan_hash=?',(plan_hash,)).fetchone():
                 return self._view(self._get(db, plan_hash))
         start = self.queue.now()
         observation = self._observation(plan, after=start, deadline=start+self.policy.revalidation_seconds)
@@ -170,11 +185,7 @@ class RecoveryApprovalLedger:
         now = self.queue.now()
         if now-start >= self.policy.revalidation_seconds or now-observation.observed_at.timestamp() >= self.policy.observation_seconds:
             raise ValueError('revalidation_timed_out')
-        original = plan.evidence.image_failure
-        if observation.status != 'image_failure' or (
-                observation.deployment_uid_hash != original.deployment_uid_hash
-                or observation.image_hash != original.image_hash):
-            raise ValueError('new_recovery_plan_required')
+        self._require_open_observation(plan, observation)
         subject = dict(plan_hash=plan_hash, policy_hash=self.policy_hash,
                        identity=self._identity(observation), created_at=now,
                        wait_until=min(now+self.policy.wait_seconds,plan.retained_until.timestamp()),
@@ -184,7 +195,7 @@ class RecoveryApprovalLedger:
                       probe_until=None, fresh_until=None, proof_hash=observation.proof_hash, reason='waiting')
         with self.queue.transaction() as db:
             self._active(db)
-            if db.execute('SELECT 1 FROM recovery_approvals WHERE plan_hash=?',(plan_hash,)).fetchone():
+            if db.execute(f'SELECT 1 FROM {self.TABLE_PREFIX}s WHERE plan_hash=?',(plan_hash,)).fetchone():
                 return self._view(self._get(db, plan_hash))
             # BEGIN IMMEDIATE may wait: admission must still fit the original budget.
             now = self.queue.now()
@@ -192,7 +203,7 @@ class RecoveryApprovalLedger:
                     or now-observation.observed_at.timestamp() >= self.policy.observation_seconds
                     or now >= record['wait_until']):
                 raise ValueError('revalidation_timed_out')
-            if db.execute('SELECT COUNT(*) FROM recovery_approvals').fetchone()[0] >= 10000:
+            if db.execute(f'SELECT COUNT(*) FROM {self.TABLE_PREFIX}s').fetchone()[0] >= 10000:
                 raise ValueError('approval_ledger_full')
             self._save(db, record)
         return self._view(record)
@@ -213,7 +224,7 @@ class RecoveryApprovalLedger:
         payload = sha256_json([plan_hash, approval_hash, generation, decision])
         with self.queue.transaction() as db:
             record = self._get(db, plan_hash)
-            receipt = db.execute('SELECT payload_hash FROM recovery_approval_receipts WHERE request_hash=?',(key,)).fetchone()
+            receipt = db.execute(f'SELECT payload_hash FROM {self.TABLE_PREFIX}_receipts WHERE request_hash=?',(key,)).fetchone()
             if receipt:
                 if receipt['payload_hash'] != payload:
                     raise ValueError('approval_replay_conflict')
@@ -230,9 +241,9 @@ class RecoveryApprovalLedger:
                 record['approved_by_hash'] = sha256_json(actor)
             else:
                 self._transition(record, 'cancelled' if decision=='cancel' else 'rejected', decision)
-            if db.execute('SELECT COUNT(*) FROM recovery_approval_receipts').fetchone()[0] >= 30000:
+            if db.execute(f'SELECT COUNT(*) FROM {self.TABLE_PREFIX}_receipts').fetchone()[0] >= 30000:
                 raise ValueError('approval_receipts_full')
-            db.execute('INSERT INTO recovery_approval_receipts VALUES(?,?,?)',(key,payload,plan_hash))
+            db.execute(f'INSERT INTO {self.TABLE_PREFIX}_receipts VALUES(?,?,?)',(key,payload,plan_hash))
             self._save(db, record)
         return self._view(record)
 
@@ -265,7 +276,7 @@ class RecoveryApprovalLedger:
                 self._transition(record,'superseded','target_or_revision_changed')
             elif observation.status == 'healthy':
                 self._transition(record,'already_recovered','current_health_verified_no_change')
-            elif observation.status != 'image_failure':
+            elif observation.status != self.FAILURE_STATUS:
                 self._transition(record,'needs_review','cause_not_verified')
             else:
                 self._transition(record,'proposal_ready','fresh_proposal_preparation_only')
@@ -279,24 +290,25 @@ class RecoveryApprovalLedger:
     def replace_policy(self, policy):
         """Explicit trusted configuration transition. Old instances are fenced out."""
         policy = ApprovalPolicy.model_validate(_body(policy))
+        if policy.scope != self.SCOPE:raise ValueError('approval_scope_mismatch')
         new_hash = sha256_json(_body(policy))
         if policy.version <= self.policy.version:
             raise ValueError('approval_policy_version_must_increase')
         with self.queue.transaction() as db:
             self._active(db)
-            for row in db.execute('SELECT document FROM recovery_approvals').fetchall():
+            for row in db.execute(f'SELECT document FROM {self.TABLE_PREFIX}s').fetchall():
                 record = json.loads(row['document'])
                 if record['state'] in ('awaiting_approval','approved','revalidating','proposal_ready'):
                     self._transition(record,'superseded','approval_policy_changed')
                     self._save(db,record)
-            db.execute('UPDATE recovery_approval_meta SET policy_hash=? WHERE singleton=1',(new_hash,))
+            db.execute(f'UPDATE {self.TABLE_PREFIX}_meta SET policy_hash=? WHERE singleton=1',(new_hash,))
         self.policy, self.policy_hash = policy, new_hash
 
     def prune(self):
         """Drop expired metadata, retain only hashed dedup tombstones; no source copy."""
         with self.queue.transaction() as db:
             self._active(db)
-            for row in db.execute('SELECT plan_hash,document FROM recovery_approvals').fetchall():
+            for row in db.execute(f'SELECT plan_hash,document FROM {self.TABLE_PREFIX}s').fetchall():
                 record = self._get(db,row['plan_hash'])
                 if self.queue.now() >= record['retained_until']:
                     record.update(identity=None, approved_by_hash=None, proof_hash=None)

@@ -1,5 +1,35 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-08 검토 보완·CI 반영 준비
+
+명령 응답 유실 후 취소 누락·동시 조회 상태 덮어쓰기 P2 두 건을 재현·수정했다. 집중34개·전체1505개·AST3개·diff·저장소 경계 통과, 기존 C단계75개/공유 Lease 동일. `ai-ops/docs/recovery-command-review-20261119.md`, `recovery-command-review-validation-20261119.json`을 따른다. 이 커밋 시점 CI/main은 대기이며 완료 후 최신 기록으로 확정한다. 기존 시간·승인·원복 조건 유지, 실제 배포·Slack·장애·인프라 실행 없음. GPT-6 SOL · High.
+
+## 2026-11-19 WF-08 명령 실행 연결 코어 로컬 검증 완료
+
+AI main `b49672e95536dbc56f11a39626e300af2071d7da` 기반 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf08-command-execution-20261119` (`codex/wf08-command-execution-20261119`)에서 WF05 사건/조사 후보·기존 큐와 WF06 승인 수명주기를 고정 명령 계획에 연결했다. 최초 명령은 격리 ai-ops-lab/lab-api 한 Pod 재시작이며, 정확 UID/resourceVersion 검사 뒤 소유 annotation 하나를 PATCH하는 계약이다. 별도 execute_command 승인/테이블로 PR 준비 동의와 분리하고 현재 진단·실행자·공유 Lease·취소/만료를 확인한다.
+
+집중30개·전체1501개(152.834초/skip0)·AST3개·diff·저장소 경계 통과. 같은 사건의 동시/다른 계획 중복 실행, 1시간 이상 사람 대기, 정책/대상 변경, CAS 충돌, 취소 경쟁, 응답 유실·프로세스 중단·읽기 조정·잠금 실패를 검증했다. 기존 C단계75개와 공유 Lease 구현은 기준 main과 동일하다.
+
+**코드 미커밋·원격 CI/main 미반영. 실행은 합성 local_fixture 포트만 허용한다.** 실제 진단/쓰기/잠금 어댑터·RBAC/자격, 인증된 Slack 승인 endpoint/결과 outbox·주기 보관 정리는 후속 구현이다. 적용 확인은 서비스 회복이 아니며 WF09 효과검증/수동 인계를 남겼다. 불명확한 쓰기를 자동 재전송하거나 재시작을 원복했다고 표시하지 않는다.
+
+상세와 검증 해시는 위 작업트리의 `ai-ops/docs/recovery-command-local-20261119.md`, `recovery-command-local-validation-20261119.json`, 작업표/개선 계획에 기록했다. WF07 main 완료 후 메타데이터도 이어받았으며 원래 작업트리의 다른 변경은 보존했다.
+
+기존3/15/120/210/240/300/120초·실행별 승인·정확head 사람리뷰/CI·잠금/ACK·원복/회수 유지. C04/C05 최종 실환경 검증은 미완료다. 실제 배포·Slack 전송·복구 PR·인프라·장애·Terraform·유료 모델 실행 없음.
+
+다음은 **WF08 코드 검토·CI/main**, 이후 WF09 공통 효과검증·원복/수동 인계다. 추천 **GPT-6 SOL · High**.
+
+## 2026-11-19 WF-07 검토·CI/main 반영 완료
+
+[AI PR #35](https://github.com/joungGo/url-shortener-ai-ops/pull/35)의 head `bba9c335c4589bb72903de1dea0986e8d6e5db96`를 일반 squash 병합해 main `b49672e95536dbc56f11a39626e300af2071d7da`에 반영했다. 최종 확인 사이의 WF06 취소·원본 보관 만료·관측 지연 P2 3건을 재현·수정했다. 로컬 집중31개·전체1471개(134.944초/skip0)·AST2개·diff·저장소 경계 통과, 기존 C단계75개 동일.
+
+[PR CI44454087061](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44454087061) 7종과 [main CI44454506379](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44454506379) 성공. main의 PR전용 gate skip은 설계대로이며 실제 PR gate는 통과했다. 검토 head와 병합 tree·소스 hash 일치. 보호 변경/관리자 우회 없음.
+
+상세 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf07-image-pr-20261119/ai-ops/docs/recovery-pr-review-20261119.md` 및 `recovery-pr-review-validation-20261119.json`, 작업표를 따른다. 코드·구현/검토 문서는 main 반영됐고 완료 후 메타데이터·인계는 로컬 갱신했다. 원래 작업트리의 다른 변경은 보존했다.
+
+기존 시간·실행별 승인·정확head 리뷰/CI·잠금/ACK·원복/회수 유지. 실제 복구 PR·Slack전송·배포·인프라·장애·Terraform·유료모델은 실행하지 않았다. PR bridge는 로컬 fixture/쓰기 비활성 계획·관측 검증이며 실제 승인 endpoint/outbox/쓰기·잠금·회수 adapter와 draft 감사 DB 보관 정리, WF09 효과검증·C04/C05 실환경 완료는 후속이다.
+
+다음은 **WF08 명령1종의 고정 실행계약·승인·별도 실행기를 로컬 구현·검증**하는 단계다. 실제 실행은 별도 범위/승인 확인 후이며 자동 기동하지 않는다. 추천 **GPT-6 SOL · High**.
+
 ## 2026-11-19 WF-07 검토 보완·CI 반영 준비
 
 사용자 요청으로 WF07을 직접 검토해 마지막 확인 사이의 WF06 취소·자료 보관 종료·관측 지연 오류를 로컬 재현·수정했다. 기존 한계/승인/원복을 유지하며 최종 결과는 `ai-ops/docs/recovery-pr-review-validation-20261119.json`, 상세는 `recovery-pr-review-20261119.md`를 따른다. 이 커밋 시점 CI/main은 대기다. 실제 배포·Slack·장애·인프라는 실행하지 않는다. 추천 GPT-6 SOL · High.

@@ -48,8 +48,15 @@
     "passed": true,
     "skipped": 0
   },
-  "remote_ci": "pending",
-  "main": "pending",
+  "remote_ci": {
+    "pr_run": 44454087061,
+    "pr_checks": 7,
+    "conclusion": "success",
+    "main_run": 44454506379,
+    "main_conclusion": "success",
+    "main_pr_only_gate": "expected skip; PR gate passed"
+  },
+  "main": "b49672e95536dbc56f11a39626e300af2071d7da",
   "actual_deployment": false,
   "slack_send": false,
   "trial": false,
@@ -60,5 +67,10 @@
     "/tmp/wf07-review-before.log": "274c1e5925f30273ec1226e0ae32c3085d3de9b883396ba1628e35028a608af0",
     "/tmp/wf07-review-focused.log": "9204f8c8580a9f4104da60ba680087fa8c06553d7a7a3a7954f1fd3ff93eeb24",
     "/tmp/wf07-review-full.log": "98c263bf605e663744bd5af540381b18392d9e9a165c20071b5f6120c4a340f6"
-  }
+  },
+  "reviewed_head": "bba9c335c4589bb72903de1dea0986e8d6e5db96",
+  "pr": 35,
+  "merged_at": "2026-11-19T03:53:05Z",
+  "merge_method": "normal squash; no protection change/admin bypass",
+  "merged_tree_matches_reviewed_tree": true
 }

@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 설계 기준: [전체 워크플로우·변경 이유](incident-workflow-and-improvement-plan-20261118.md). 현재 작업 기준: AI main `59c33a9`(WF06 PR34), 플랫폼 main `bf6bcbc`. WF07 작업 브랜치 `codex/wf07-image-pr-20261119`. 로컬 구현·main 반영·실제 연결 상태를 구분한다.
+최종 갱신: 2026-11-19 KST. 기준 AI main `b49672e`(WF07 PR35), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `codex/wf08-command-execution-20261119`. [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -19,8 +19,8 @@
 | WF-04 / P2 | CI통과·main반영 | Slack 사건 지정 조사·상태조회·기존worker 결과 연결 | [로컬 구현·검증](incident-slack-local-20261119.md) · PR32/main e3a4efa·PR7종/main CI 통과·전체1372개 · 사건 인가·기존 outbox/worker·같은 thread 결과·보관 정리 | WF-02, WF-03 | 같은 사건의 요청/결과, 미허용 사용자·채널·대상 거절, 수동 기본에서 요청전 조사0, 재시작 후 중복 회신 방지 |
 | WF-05 / P3 | CI통과·main반영 | 복구 계획 요청·지원 조치 목록·공통 계약 | [로컬 구현·계약](recovery-plan-local-20261119.md) · 고정 registry·RecoveryPlan·plan-recovery·기존 사건/job/회신 장부 | WF-04 | 지원/미지원·증거부족 분기, 사건/대상/근거/계획해시/실패행동 명시, 요청만으로 클러스터 쓰기0 |
 | WF-06 / P3 | 로컬 핵심 CI통과·main반영 | 승인 대기·만료·취소·늦은 승인·재검증 | [승인 장부/로컬 계약](recovery-approval-local-20261119.md) · prepare_proposal 한정·D3/D4 활성화 조건 · 실제 인증/조회 연결은 WF07/08 | WF-05 | 가짜시계로1시간+대기·자연회복·UID/계획변경·승인중복·취소 경쟁 시험, 대기중 쓰기토큰/잠금0 |
-| WF-07 / P4 | 검토 보완·CI 반영 준비 | WF05/06 계획·준비 동의에서 기존 이미지 PR/리뷰/CI/잠금/동기화 검증으로 연결 | [로컬 구현·검증](recovery-pr-local-20261119.md) · recovery_pr · 같은 사건 결과 문자열 · 실제 인증/쓰기/outbox 포트 미활성 | WF-05, WF-06 | 로컬 Git/Helm·정확 head/CI/권한·유실/중단/중복/취소·잠금/동기화 경계; 실제 실행/효과/Slack은 후속 검증 |
-| WF-08 / P5 | 예정 | 명령1종 계획·승인·별도 실행기·권한 | AI 고정 command 어댑터·chart의 제한 RBAC·D5 결정 | WF-05, WF-06 | 임의shell·인자삽입·다른대상 차단, 승인 계획과 실행 일치, timeout/응답유실 후 무조건 재실행0, 가역성/실패행동 표시 |
+| WF-07 / P4 | 로컬 코어 CI통과·main반영 | WF05/06 계획·준비 동의에서 기존 이미지 PR/리뷰/CI/잠금/동기화 검증으로 연결 | [로컬 구현·검증](recovery-pr-local-20261119.md) · recovery_pr · 같은 사건 결과 문자열 · 실제 인증/쓰기/outbox 포트 미활성 | WF-05, WF-06 | 로컬 Git/Helm·정확 head/CI/권한·유실/중단/중복/취소·잠금/동기화 경계; 실제 실행/효과/Slack은 후속 검증 |
+| WF-08 / P5 | 검토 보완·CI 반영 준비 | 기존 후보/큐/worker·WF06 수명주기 재사용, 명령 전용 정확 계획 승인·별도 로컬 실행기 | [명령 계약/검증](recovery-command-local-20261119.md) · 고정 JSON PATCH·단일 사건 소비·읽기 조정·D5 로컬 한정 | WF-05, WF-06 | 미승인/타 scope/임의 명령 차단, CAS·취소/만료·동시 실행·응답 유실·잠금 확인; 실제 권한/전송 미연결 |
 | WF-09 / P6 | 예정 | 두 실행방식 공통 효과검증·원복/수동인계·결과 통지 | AI 결과계약·조치별 verifier/실패정책 | WF-07, WF-08 | 명령종료0/PR병합을 회복으로 오판하지 않음, 실제변경·효과·원복 구분, 자격/잠금/자기임시자원 회수 |
 | WF-10 / 연결 | 예정 | 공지·조사 첫 완료단위 배포 및 실제 Slack 검증 | 버전/digest/config·대상/채널·정상CI·원복 계획/기록 | WF-04 로컬검증·CI/main | 합성 시험 뒤 승인 범위의 실제 통지·사용자 요청·같은사건 결과 확인. 첫 단계에 장애 주입 불필요 |
 | WF-11 / 실환경 | 예정 | PR/명령 실제 효과와 C04/C05 남은 필수 검증 | 실행별 계획·승인·결과·원복 증거 | WF-09, WF-10 및 실제준비 | 새실행 승인과 해당 방식 승인 확인, 정상/실패/취소/독립원복 필수사례, 현재지원범위 내 결과 기록 |
@@ -180,3 +180,20 @@ WF05 집중29개 통과. 로컬 전체1401개 중1400개 통과 후 임시 amtoo
 ### WF-07 검토 보완 · 2026-11-19
 
 최종 DB 확인 전 취소·원본 보관 종료·관측 지연 P2 세 건을 회귀 시험으로 재현·수정했다. [검토 기록](recovery-pr-review-20261119.md)과 [최종 검증](recovery-pr-review-validation-20261119.json)을 따른다. 기존 제한/승인/원복과 실환경 미완료 유지. CI 통과 후 일반 main 반영 예정이며 배포·Slack·실습은 실행하지 않는다.
+
+### WF-07 검토·CI/main 완료 · 2026-11-19
+
+[PR35](https://github.com/joungGo/url-shortener-ai-ops/pull/35), headbba9c33, mainb49672e. P2 세 건 수정, 집중31/전체1471개·기존 C단계75개 동일. PR CI44454087061 7종·main CI44454506379 성공, 정상 squash·보호 변경/관리자 우회 없음. 검토/병합 tree·소스 hash 일치. 실제 연결·배포·Slack·실습 없음. 다음 WF08 로컬 명령 계약·실행기; 실제 adapter와 WF09/10/11 잔여는 유지.
+
+### WF-08 명령 경로 로컬 구현 · 2026-11-19
+
+- 최종 검증: 집중30개·전체1501개(152.834초/skip0), AST3개·diff·저장소 경계 통과. C단계75개와 공유 Lease 구현은 기준 main과 동일.
+
+- 기존 WF05 재시작 후보와 실제 queue/worker 근거, 같은 개인 DB와 WF06 승인 수명주기를 연결했다. 별도 execute_command 정책/테이블이 PR 준비 승인과 섞이지 않는다.
+- 최초 명령은 한 Pod 격리 lab-api의 UID/resourceVersion CAS + 소유 restart annotation PATCH다. 정확 계획·실행자·현재 진단·공유 Lease 확인 후 로컬 fixture만 실행한다. 같은 사건 중복/다른 계획 재실행·응답 유실 자동 재시도는 거절한다.
+- [구현 문서](recovery-command-local-20261119.md)와 [검증 JSON](recovery-command-local-validation-20261119.json)에 조건·검사 결과·한계를 기록한다. 실제 Slack/승인 endpoint, 생산 실행 포트/RBAC/자격과 주기 보관 정리·WF09 효과검증은 후속이다. 기존 C-stage 시간·승인·원복 유지.
+- 코드 미커밋·CI/main 미반영. 다음은 WF08 검토·CI/main. 실제 설치·배포·Slack·장애·Terraform·모델 없음. GPT-6 SOL · High.
+
+### WF-08 검토 보완 · 2026-11-19
+
+응답 유실 뒤 WF06 취소 누락과 동시 읽기 조정의 완료/취소 상태 덮어쓰기 P2 두 건을 재현·수정했다. 집중34개·전체1505개 통과, C단계75개/공유 Lease 동일. [검토 기록](recovery-command-review-20261119.md), [최종 검증](recovery-command-review-validation-20261119.json)을 따른다. 정확 head CI 후 일반 main 반영 예정이며 실제 배포·Slack·실습과 실행 조건 변경은 없다.
