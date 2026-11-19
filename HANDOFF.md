@@ -1,5 +1,35 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-09 코드 검토·CI 반영 준비
+
+후속 판정의 원복 결과/소비된 시도 누락과 취소·만료 우선순위 P2 두 건을 회귀3개로 재현·수정했다. 집중39개/전체1544개·AST4개·diff·저장소 경계 통과. 기존 C단계75개·공유 Lease 동일. `ai-ops/docs/recovery-effect-review-20261119.md`와 `recovery-effect-review-validation-20261119.json` 참조. 이 커밋 시점 원격 CI/main 대기이며 완료 후 최신 기록으로 확정한다. 실제 배포·Slack·장애·인프라는 실행하지 않는다. 기존 시간·승인·원복 조건 유지. 추천 GPT-6 SOL · High.
+
+## 2026-11-19 WF-09 효과검증·원복/수동 인계 로컬 검증 완료
+
+AI main `6891144c6c31e29a856d701191c9eb177764204a` 기반 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf09-effect-verification-20261119` (`codex/wf09-effect-verification-20261119`)에서 기존 WF07/08 적용 기록·사건/job/계획·인가와 같은 JobQueue DB를 효과·후속·회수 장부에 연결했다. PR/명령 적용 시각을 보존하고, 경보 해제 뒤 결과 읽기와 새 실행 승인을 분리했다.
+
+같은 UID/정확 실행의 runtime·HTTP·지표·경보 관찰로 성공/미해결/검증불가를 나누고, 취소·원복 결과·최초 실패를 별도 보존한다. 명령 실패는 재시작 반복 없이 수동 인계하며, PR 후속 원복은 사전 승인 범위/기준선/기한이 맞는 후보만 연결한다. 후보는 execution_allowed=false이고 기존 실행 직전 승인·권한·잠금 검사가 별도로 필요하다. 자기 소유의 봉인된 manifest만 로컬 회수하며 불명확한 쓰기는 재전송하지 않는다.
+
+신규 집중36개·전체1541개(198.711초/skip0)·AST4개·diff·저장소 경계 통과. 기존 C단계75개와 공유 Lease 구현은 동일. 승인 만료 뒤로 잘못 잡힌 취소 fixture1건은 합성 시각을 수정해 최종 전체 시험으로 확인했다. 실제 로컬 큐/worker·장부와 로컬 Git/Helm·합성 포트만 사용했다.
+
+**코드 미커밋·원격 CI/main 미반영.** 상세는 위 작업트리의 `ai-ops/docs/recovery-effect-local-20261119.md`, `recovery-effect-local-validation-20261119.json`, 작업표/전체 계획에 있다. WF08 main 완료 후 메타데이터도 이어받았고 원래 작업트리의 다른 수정은 보존했다.
+
+실제 인증된 관측/Slack 승인·결과 outbox·원복 실행·소유 자원 재고/회수 어댑터·주기 prune은 미연결이다. cleanup_complete는 선언된 자기 manifest 범위이며 실제 외부 자원 전체 회수 주장이 아니다. 기존 기록에 적용 시각이 없으면 추정하지 않고 검증불가다. C04/C05 최종 실환경 검증은 여전히 미완료다.
+
+기존3/15/120/210/240/300/120초·실행별 새승인·정확head 사람리뷰/CI·잠금/ACK·원복/회수 유지. 실제 배포·Slack 전송·복구 PR·인프라·장애·Terraform·유료 모델 실행 없음. 다음은 **WF09 코드 검토·CI/main**이다. 추천 **GPT-6 SOL · High**.
+
+## 2026-11-19 WF-08 검토·CI/main 반영 완료
+
+[AI PR #36](https://github.com/joungGo/url-shortener-ai-ops/pull/36)의 head `b571d34fcb41ef37a0e404acd46964a1b6cfb684`를 일반 squash 병합해 main `6891144c6c31e29a856d701191c9eb177764204a`에 반영했다. 응답 유실 뒤 WF06 취소 누락과 동시 조회의 완료/취소 상태 덮어쓰기 P2 두 건을 재현·수정했다.
+
+로컬 집중34개·전체1505개(147.607초/skip0), AST3개·diff·저장소 경계 통과. 기존 C단계75개와 공유 Lease 구현은 동일. [PR CI44457885630](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44457885630) 7종·push CI44457825395·[main CI44458405951](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44458405951) 성공. main의 PR전용 gate는 예상 skip이고 실제 PR gate는 통과했다. 검토/병합 전체 tree·소스 hash 일치, 보호 변경/관리자 우회 없음.
+
+상세 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf08-command-execution-20261119/ai-ops/docs/recovery-command-review-20261119.md`, `recovery-command-review-validation-20261119.json`, 작업표. 소스·시험·구현/검토 문서는 main 반영됐고 최종 CI/main 메타데이터·인계는 로컬 갱신했다. 원래 작업트리의 다른 변경을 보존했으며 main checkout/reset하지 않았다.
+
+기존 시간·승인·원복·정확head 사람리뷰/CI·잠금/ACK·회수 조건 유지. 실제 배포·Slack 전송·복구 PR·감시/장애·인프라·Terraform apply/destroy·유료 모델은 실행하지 않았다. 명령은 local_fixture만 허용하며 적용 확인은 서비스 회복이 아니다. 실제 인증된 Slack 승인/결과 outbox·진단/쓰기/잠금 어댑터·RBAC/자격·주기 보관 정리와 C04/C05 최종 실환경 검증은 후속이다.
+
+다음은 **WF09 공통 효과검증·원복/수동 인계 로컬 구현·검증**이다. 실제 연결/실습을 자동 시작하지 않는다. 추천 **GPT-6 SOL · High**.
+
 ## 2026-11-19 WF-08 검토 보완·CI 반영 준비
 
 명령 응답 유실 후 취소 누락·동시 조회 상태 덮어쓰기 P2 두 건을 재현·수정했다. 집중34개·전체1505개·AST3개·diff·저장소 경계 통과, 기존 C단계75개/공유 Lease 동일. `ai-ops/docs/recovery-command-review-20261119.md`, `recovery-command-review-validation-20261119.json`을 따른다. 이 커밋 시점 CI/main은 대기이며 완료 후 최신 기록으로 확정한다. 기존 시간·승인·원복 조건 유지, 실제 배포·Slack·장애·인프라 실행 없음. GPT-6 SOL · High.

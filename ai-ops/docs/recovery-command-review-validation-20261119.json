@@ -133,8 +133,64 @@
   "terraform_apply_destroy": false,
   "paid_model": false,
   "live_executor_connected": false,
-  "remote_ci": "pending",
-  "main_merge": "pending",
+  "remote_ci": {
+    "44457885630": {
+      "event": "pull_request",
+      "head": "b571d34fcb41ef37a0e404acd46964a1b6cfb684",
+      "url": "https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44457885630",
+      "conclusion": "success",
+      "jobs": {
+        "WF03 event notice integration": "success",
+        "Lease trace local contracts": "success",
+        "scope": "success",
+        "terraform": "success",
+        "contracts": "success",
+        "image": "success",
+        "C03 Main PR Gate": "success"
+      }
+    },
+    "44457825395": {
+      "event": "push",
+      "head": "b571d34fcb41ef37a0e404acd46964a1b6cfb684",
+      "url": "https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44457825395",
+      "conclusion": "success",
+      "jobs": {
+        "Lease trace local contracts": "success",
+        "WF03 event notice integration": "success",
+        "terraform": "success",
+        "scope": "success",
+        "contracts": "success",
+        "image": "success",
+        "C03 Main PR Gate": "skipped"
+      }
+    },
+    "44458405951": {
+      "event": "push",
+      "head": "6891144c6c31e29a856d701191c9eb177764204a",
+      "url": "https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44458405951",
+      "conclusion": "success",
+      "jobs": {
+        "terraform": "success",
+        "WF03 event notice integration": "success",
+        "Lease trace local contracts": "success",
+        "scope": "success",
+        "contracts": "success",
+        "image": "success",
+        "C03 Main PR Gate": "skipped"
+      }
+    }
+  },
+  "main_merge": {
+    "pr": 36,
+    "url": "https://github.com/joungGo/url-shortener-ai-ops/pull/36",
+    "head": "b571d34fcb41ef37a0e404acd46964a1b6cfb684",
+    "main": "6891144c6c31e29a856d701191c9eb177764204a",
+    "merged_at": "2026-11-19T04:27:04Z",
+    "method": "normal_squash",
+    "reviewed_and_merged_tree_equal": true,
+    "tree": "f58cef3ff55f63c6a178bb4bae625cd383577fba"
+  },
   "protection_changes": false,
-  "admin_bypass": false
+  "admin_bypass": false,
+  "completion_metadata": "Local post-merge record; implementation and review documentation already merged. No runtime activation."
 }
