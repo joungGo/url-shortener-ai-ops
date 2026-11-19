@@ -21,16 +21,26 @@ class EventSource(StrictModel):
     cluster_id: StrictStr = Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$')
 
 
+class SenderConfig(StrictModel):
+    """In-cluster Slack sender. The relay process then holds no bot token."""
+    url: StrictStr = Field(pattern=r'^http://[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?:[1-9][0-9]{1,4}$')
+    client_secret_file: StrictStr
+
+
 class SlackWebConfig(StrictModel):
     schema_version: Literal[1] = 1
     enabled: StrictBool = False
-    bot_token_file: StrictStr
+    # Exactly one: direct bot token (existing mode) or the separate sender.
+    bot_token_file: StrictStr | None = None
+    sender: SenderConfig | None = None
     signing_secret_file: StrictStr
     event_sources: dict[StrictStr, EventSource] = Field(default_factory=dict, max_length=32)
 
     @model_validator(mode='after')
     def sources_valid(self):
         from ai_ops.event_store import _name
+        if (self.bot_token_file is None) == (self.sender is None):
+            raise ValueError('exactly one Slack send credential mode')
         for alias in self.event_sources:
             _name(alias)
         pairs = [(s.source_id,s.cluster_id) for s in self.event_sources.values()]
@@ -45,7 +55,8 @@ class SlackWebConfig(StrictModel):
     def load(cls, path):
         try:
             config = cls.model_validate(read_config(Path(path)))
-            if any(not Path(v).is_absolute() for v in (config.bot_token_file,config.signing_secret_file)):
+            paths = [config.signing_secret_file, config.bot_token_file or config.sender.client_secret_file]
+            if any(not Path(v).is_absolute() for v in paths):
                 raise ValueError('invalid')
             return config
         except (OSError, ValueError, TypeError, RecursionError):
@@ -62,8 +73,14 @@ class SlackRuntime:
         self.tasks = tasks
         self._cursor = (-1, "")
         kwargs = {} if monotonic is None else {'monotonic':monotonic}
-        self.transport = SlackWebTransport(policy,config.bot_token_file,enabled=True,
-            connection_factory=connection_factory,**kwargs)
+        if config.sender is not None:
+            # Bot token stays in the separate sender Pod; same validations run here.
+            from ai_ops.slack_sender import SlackSenderClient
+            self.transport = SlackSenderClient(policy,config.sender,
+                connection_factory=connection_factory,**kwargs)
+        else:
+            self.transport = SlackWebTransport(policy,config.bot_token_file,enabled=True,
+                connection_factory=connection_factory,**kwargs)
         secret = read_private_secret(config.signing_secret_file)
         self.adapter = SlackAdapter(tasks,policy,secret,transport_mode='slack_web_api',event_sources=config.sources())
         self.app = SlackEventsApp(self.adapter)

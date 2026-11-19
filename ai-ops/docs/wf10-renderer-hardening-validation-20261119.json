@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_ci_pending",
+  "status": "merged_main_ci_passed_live_connection_pending",
   "author": "Claude Code (Opus 5.5)",
   "base": "4b54777a20880614403d19ee98b54bec9cc45263",
   "changes": [
@@ -46,5 +46,26 @@
   "live_values_verified": false,
   "execution_allowed": false,
   "infrastructure_deployment_slack_trial_paid_model": false,
-  "commit_pr_ci": null
+  "commit_pr_ci": {
+    "commits": [
+      "e256452",
+      "6920a0703736b896b74fe3b643bc7d8033d91b3c"
+    ],
+    "pr": 40,
+    "pr_ci": 44474606794,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1586,
+    "pr_ci_skipped": 5,
+    "main_ci": 44475106909,
+    "main_jobs_success": 6,
+    "main_pr_gate": "skipped_by_design",
+    "merge": {
+      "method": "regular_squash_match_head",
+      "main": "1f20442e2a70eb66a6228275add9f564cdb37c06",
+      "tree": "ac77ac84b546f48904dea0a9f98f4c24ccc571b5",
+      "head_tree_equal": true,
+      "protection_changed": false,
+      "admin_bypass": false
+    }
+  }
 }

@@ -1,0 +1,82 @@
+{
+  "status": "local_verified_uncommitted",
+  "author": "Claude Code (Opus 5.5)",
+  "decision": "B' stateless Slack sender (llm-council, user approved implementation)",
+  "base": "1f20442e2a70eb66a6228275add9f564cdb37c06",
+  "new_tests": {
+    "test_slack_sender": 10,
+    "test_wf10_deployment_added": 2
+  },
+  "focused": {
+    "modules": [
+      "test_slack_sender",
+      "test_slack_web",
+      "test_slack_server",
+      "test_slack_events",
+      "test_slack_event_runtime",
+      "test_wf10_deployment",
+      "test_wf10_preparation"
+    ],
+    "passed": true
+  },
+  "full_suite_runs": [
+    {
+      "count": 1598,
+      "seconds": 208.556,
+      "passed": false,
+      "failures": [
+        "test_recovery_commands.RestartCommandTest.test_two_concurrent_executors_submit_at_most_once"
+      ],
+      "log": {
+        "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/wf10-slack-sender-full-run1.log",
+        "sha256": "533096af9a459f05627d48c62f6b9f6eb233ed209ee5fec161831c7d51fd4539"
+      },
+      "assessment": "pre-existing timing-dependent test (since PR36), no import of changed modules; under load both threads were rejected (writes 0): at-most-once safety held, exactly-one liveness expectation flaked. Passed 5/5 isolated and module 3/3; not modified."
+    },
+    {
+      "count": 1598,
+      "seconds": 207.592,
+      "passed": true,
+      "skipped": 1,
+      "skip_note": "WF03 env-gated class",
+      "log": {
+        "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/wf10-slack-sender-full-run2.log",
+        "sha256": "2628160ae55693c906464ba3544c4086f3ad6094badaa0a881475c1f2082e220"
+      }
+    }
+  ],
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compileall": "passed",
+    "check_slack_adapter_local": "passed",
+    "wf10_preparation_verify": "disabled_review_verified",
+    "cli": {
+      "synthetic_build_verify": "exit0",
+      "unresolved_input": "exit2 resources0 no output",
+      "synthetic_candidate_bytes": 54482,
+      "package_limit_bytes": 65536
+    }
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/slack_sender.py": "9cce3c34efa7ce0f598f11b5b9613bcdfcb13fcea90e5102575cda6e3f0e9ebd",
+    "ai-ops/src/ai_ops/slack_web.py": "ae2d3133f1773cc5d21cad22364497f9228e7896faa49f332d4d1a8ed30cab75",
+    "ai-ops/src/ai_ops/slack_runtime.py": "2bed647adfddc09271b33ebe7f53dbac7dc4a783040cad53e26145ba448d0d6f",
+    "ai-ops/src/ai_ops/wf10_deployment.py": "17ecf1dd2dcf7c79c756786f6e6ca61855dbb390cdd0de2f88e3b5e106a1a3a3",
+    "ai-ops/tests/test_slack_sender.py": "8921bd83f7cbb66c93b29344edc1aef433d8a33807840bb48f116ddab942f522",
+    "ai-ops/tests/test_wf10_deployment.py": "10898262867790e8e79b06a8b563827bec4d1fa453f2a635bee0f52ccc7c20e1"
+  },
+  "preserved_limits_seconds": [
+    3,
+    15,
+    120,
+    210,
+    240,
+    300,
+    120
+  ],
+  "live_values_verified": false,
+  "execution_allowed": false,
+  "infrastructure_deployment_slack_trial_paid_model": false,
+  "commit_pr_ci": null
+}

@@ -50,6 +50,18 @@ def read_private_secret(path, *, token=False):
             os.close(fd)
 
 
+METHODS = frozenset({('POST','auth.test'), ('GET','bots.info'), ('POST','chat.postMessage')})
+
+
+def post_payload_valid(policy, payload):
+    """Shared fixed reply contract: granted channel, existing thread, bounded text, fixed flags."""
+    return (isinstance(payload,dict) and set(payload) == {'channel','thread_ts','text',*FLAGS}
+            and payload.get('channel') in {g.channel_id for g in policy.grants}
+            and isinstance(payload.get('thread_ts'),str) and bool(STAMP.fullmatch(payload['thread_ts']))
+            and isinstance(payload.get('text'),str) and 1 <= len(payload['text']) <= 4000
+            and all(type(payload.get(k)) is type(v) and payload[k] == v for k,v in FLAGS.items()))
+
+
 class SlackWebTransport:
     mode = 'slack_web_api'
 
@@ -69,7 +81,7 @@ class SlackWebTransport:
         self._bot = None
 
     def _request(self, method, name, payload=None):
-        if (method, name) not in {('POST','auth.test'), ('GET','bots.info'), ('POST','chat.postMessage')}:
+        if (method, name) not in METHODS:
             raise ValueError('slack_method_rejected')
         conn = None
         try:
@@ -144,11 +156,7 @@ class SlackWebTransport:
     def post_message(self, payload):
         if not self.verified_for(self._policy):
             raise ValueError('slack_identity_required')
-        if (not isinstance(payload,dict) or set(payload) != {'channel','thread_ts','text',*FLAGS}
-                or payload.get('channel') not in {g.channel_id for g in self._policy.grants}
-                or not isinstance(payload.get('thread_ts'),str) or not STAMP.fullmatch(payload['thread_ts'])
-                or not isinstance(payload.get('text'),str) or not 1 <= len(payload['text']) <= 4000
-                or any(type(payload.get(k)) is not type(v) or payload[k] != v for k,v in FLAGS.items())):
+        if not post_payload_valid(self._policy, payload):
             raise ValueError('slack_payload_rejected')
         response = self._request('POST','chat.postMessage',payload)
         body = response.get('body',{})

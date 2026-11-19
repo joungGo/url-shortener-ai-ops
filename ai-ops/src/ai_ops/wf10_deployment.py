@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from ai_ops.b_contracts import BindingRegistry, BRuntime, MetricCatalog, CollectionLimits, _json_object
 from ai_ops.slack_adapter import SlackPolicy
 from ai_ops.slack_runtime import SlackWebConfig
+from ai_ops.slack_sender import PORT as SENDER_PORT
 from ai_ops.slack_server import load_settings
 from ai_ops.wf10_preparation import encoded, digest, read_regular, LIMITS, UNRESOLVED
 
@@ -27,7 +28,14 @@ FIELDS = ('namespace', 'name', 'pvc_name', 'service_account', 'image', 'source_r
 INIT_RESOURCES = {'requests':{'cpu':'10m','memory':'32Mi'},'limits':{'cpu':'100m','memory':'64Mi'}}
 LIVE_GATES = ('current_identity_permissions', 'fresh_store_and_manual_policy',
               'same_physical_store_uid_binding', 'normal_ci_and_worker', 'tls_and_routes',
-              'manifest_and_rollback_hashes', 'source_image_provenance', 'exact_connection_approval')
+              'manifest_and_rollback_hashes', 'source_image_provenance', 'exact_connection_approval',
+              'egress_enforcement_negative_tests', 'slack_token_ip_restriction')
+SECRET_KEYS = ('signing', 'bot', 'slack_tls', 'event_identity', 'collector', 'sender_client')
+# The sender is the only internet-egress Pod. Private, CGNAT, loopback and
+# link-local (incl. IMDS 169.254.169.254) ranges stay closed; the VPC CIDR must
+# fall inside these exceptions (live gate).
+NON_PUBLIC = ['0.0.0.0/8', '10.0.0.0/8', '100.64.0.0/10', '127.0.0.0/8',
+              '169.254.0.0/16', '172.16.0.0/12', '192.168.0.0/16']
 
 
 def draft():
@@ -72,12 +80,13 @@ def inputs(value):
     match(s['alert_channel_id'], r'[CG][A-Z0-9]{2,31}')
     if s['alert_channel_id'] == s['investigation_channel_id']:
         raise ValueError('wf10_channel_boundary_rejected')
-    exact(v['secrets'], ('signing', 'bot', 'slack_tls', 'event_identity', 'collector'))
+    exact(v['secrets'], SECRET_KEYS)
     for x in v['secrets'].values():
         name(x)
-    if len(set(v['secrets'].values())) != 5:
+    if len(set(v['secrets'].values())) != len(SECRET_KEYS):
         raise ValueError('wf10_credential_separation_rejected')
-    exact(v['network'], ('dns', 'alertmanager', 'ingress', 'collector_cidrs', 'slack_cidrs'))
+    # Slack egress is not an IP input: Slack publishes no fixed addresses (B' sender).
+    exact(v['network'], ('dns', 'alertmanager', 'ingress', 'collector_cidrs'))
     for k in ('dns', 'alertmanager', 'ingress'):
         peer = v['network'][k]
         exact(peer, ('namespace', 'labels')); name(peer['namespace'])
@@ -86,14 +95,13 @@ def inputs(value):
         for key, val in peer['labels'].items():
             match(key, r'[a-zA-Z0-9][a-zA-Z0-9./_-]{0,62}')
             match(val, r'[a-zA-Z0-9][a-zA-Z0-9._-]{0,62}')
-    for k in ('collector_cidrs', 'slack_cidrs'):
-        cidrs = v['network'][k]
-        if type(cidrs) is not list or not 1 <= len(cidrs) <= 16 or len(set(cidrs)) != len(cidrs):
+    cidrs = v['network']['collector_cidrs']
+    if type(cidrs) is not list or not 1 <= len(cidrs) <= 16 or len(set(cidrs)) != len(cidrs):
+        raise ValueError('wf10_network_rejected')
+    for text in cidrs:
+        net = ipaddress.ip_network(text, strict=True)
+        if net.version != 4 or net.prefixlen != 32 or net.is_loopback or net.is_link_local:
             raise ValueError('wf10_network_rejected')
-        for text in cidrs:
-            net = ipaddress.ip_network(text, strict=True)
-            if net.version != 4 or net.prefixlen != 32 or net.is_loopback or net.is_link_local or (k == 'slack_cidrs' and not net.is_global):
-                raise ValueError('wf10_network_rejected')
     exact(v['config'], CONFIG_NAMES)
     # Validate schemas BEFORE writing any temporary config. Do not echo input.
     registry = BindingRegistry.model_validate(v['config']['bindings.json'])
@@ -135,7 +143,10 @@ def policy(v):
 
 def web(v):
     source = v['source']
-    return SlackWebConfig(enabled=True, bot_token_file='/run/slack-bot/token',
+    # Relay holds no bot token: it calls the in-namespace sender Service.
+    sender = {'url':f"http://{v['name']}-sender.{v['namespace']}.svc:{SENDER_PORT}",
+              'client_secret_file':'/run/slack-sender-client/token'}
+    return SlackWebConfig(enabled=True, sender=sender,
         signing_secret_file='/run/slack-signing/token',
         event_sources={source['alias']:{k:source[k] for k in ('source_id', 'cluster_id')}}).model_dump()
 
@@ -147,6 +158,7 @@ def candidate(value):
                 'unresolved_live_inputs':sorted(UNRESOLVED), 'execution_allowed':False, 'resources':[]}
     ns, n = v['namespace'], v['name']
     labels = {'app.kubernetes.io/name':n, 'app.kubernetes.io/part-of':'wf10'}
+    sender_labels = {'app.kubernetes.io/name':n+'-sender', 'app.kubernetes.io/part-of':'wf10'}
     def obj(kind, suffix, spec, api='v1'):
         return {'apiVersion':api, 'kind':kind, 'metadata':{'name':n+suffix,'namespace':ns}, **spec}
     configs = {**v['config'], 'slack-policy.json':policy(v), 'slack-web.json':web(v)}
@@ -160,7 +172,7 @@ def candidate(value):
     # Per-role private emptyDir: secret-volume symlinks/modes are not accepted by
     # existing Slack readers. Copy only fixed keys as uid10001/mode0600 in init.
     containers, init = [], []
-    def secret(vol, ref, keys, destination):
+    def secret(vol, ref, keys, destination, volumes=volumes, init=init):
         volumes.extend([{'name':vol+'-source','secret':{'secretName':ref,'defaultMode':288,
             'items':[{'key':k,'path':k} for k in keys]}}, {'name':vol,'emptyDir':{'medium':'Memory','sizeLimit':'1Mi'}}])
         script = 'import os,pathlib; os.umask(0o077); '+ '; '.join(
@@ -171,7 +183,7 @@ def candidate(value):
                      'volumeMounts':[mount(vol+'-source','/source',True),mount(vol,'/out')]})
         return mount(vol,destination,True)
     signing=secret('signing',v['secrets']['signing'],['token'],'/run/slack-signing')
-    bot=secret('bot',v['secrets']['bot'],['token'],'/run/slack-bot')
+    client=secret('sender-client',v['secrets']['sender_client'],['token'],'/run/slack-sender-client')
     tls=secret('slack-tls',v['secrets']['slack_tls'],['tls.crt','tls.key'],'/run/ai-slack-tls')
     event=secret('event-identity',v['secrets']['event_identity'],['token','tls.crt','tls.key'],'/etc/ai-ops-webhook')
     collector=secret('collector',v['secrets']['collector'],['token','ca.crt'],'/run/collector')
@@ -182,7 +194,7 @@ def candidate(value):
     roles=[('worker','ai_ops.worker_runtime',[],[collector,mount('kubernetes','/var/run/ai-ops/kubernetes',True)]),
         ('event-receiver','ai_ops.alert_receiver',['--cluster-id',source['cluster_id'],'--event-source-alias',source['alias'],'--event-source-id',source['source_id']],[event]),
         ('slack-ingress','ai_ops.slack_server',['ingress','--enable-web'],[signing,tls]),
-        ('slack-relay','ai_ops.slack_server',['relay','--enable-web'],[signing,bot])]
+        ('slack-relay','ai_ops.slack_server',['relay','--enable-web'],[signing,client])]
     for role,module,args,extra in roles:
         volumes.append({'name':role+'-tmp','emptyDir':{'sizeLimit':'64Mi'}})
         container={'name':role,'image':v['image'],'imagePullPolicy':'IfNotPresent',
@@ -221,14 +233,52 @@ def candidate(value):
         'egress':[{'to':[peer(net['dns'])],'ports':[{'protocol':p,'port':53} for p in ('TCP','UDP')]},
                   {'to':[{'ipBlock':{'cidr':c}} for c in net['collector_cidrs']],
                    'ports':[{'protocol':'TCP','port':p} for p in sorted({urlsplit(c['base_url']).port or 443 for c in v['config']['runtime.json']['connections'].values()})]},
-                  {'to':[{'ipBlock':{'cidr':c}} for c in net['slack_cidrs']], 'ports':[{'protocol':'TCP','port':443}]}]}},'networking.k8s.io/v1'))
+                  {'to':[{'podSelector':{'matchLabels':sender_labels}}],'ports':[{'protocol':'TCP','port':SENDER_PORT}]}]}},'networking.k8s.io/v1'))
+    # Separate stateless sender: bot token + client secret only. No PVC, no
+    # Kubernetes token, no signing secret; only the policy file from the ConfigMap.
+    s_volumes=[{'name':'policy','configMap':{'name':n+'-config','items':[{'key':'slack-policy.json','path':'slack-policy.json'}]}},
+               {'name':'sender-tmp','emptyDir':{'sizeLimit':'16Mi'}}]
+    s_init=[]
+    s_mounts=[mount('policy','/etc/ai-ops',True),
+              secret('bot',v['secrets']['bot'],['token'],'/run/slack-bot',s_volumes,s_init),
+              secret('sender-client',v['secrets']['sender_client'],['token'],'/run/slack-sender-client',s_volumes,s_init),
+              mount('sender-tmp','/tmp')]
+    s_probe={'tcpSocket':{'port':SENDER_PORT}}
+    sender={'name':'slack-sender','image':v['image'],'imagePullPolicy':'IfNotPresent',
+        'command':['python','-m','ai_ops.slack_sender'],'args':['--enable-web'],'securityContext':security,
+        'env':[{'name':'PYTHONDONTWRITEBYTECODE','value':'1'},{'name':'HOME','value':'/tmp'}],
+        'resources':{'requests':{'cpu':'25m','memory':'64Mi'},'limits':{'cpu':'250m','memory':'256Mi'}},
+        'volumeMounts':s_mounts,
+        'readinessProbe':{**s_probe,'periodSeconds':10,'timeoutSeconds':5},
+        'startupProbe':{**s_probe,'periodSeconds':5,'timeoutSeconds':5,'failureThreshold':12},
+        'livenessProbe':{**s_probe,'periodSeconds':30,'timeoutSeconds':5,'failureThreshold':3}}
+    s_pod={'serviceAccountName':v['service_account'],'automountServiceAccountToken':False,
+         'enableServiceLinks':False,'terminationGracePeriodSeconds':30,
+         'securityContext':{'runAsNonRoot':True,'runAsUser':10001,'runAsGroup':10001,'fsGroup':10001,
+            'seccompProfile':{'type':'RuntimeDefault'}},'containers':[sender],'initContainers':s_init,'volumes':s_volumes}
+    # Recreate + 1 replica: one in-memory idempotency window, never two senders.
+    resources.append(obj('Deployment','-sender',{'spec':{'replicas':1,'strategy':{'type':'Recreate'},'selector':{'matchLabels':sender_labels},
+        'template':{'metadata':{'labels':sender_labels,'annotations':{'checksum/config':config_hash}},'spec':s_pod}}},'apps/v1'))
+    resources.append(obj('Service','-sender',{'spec':{'type':'ClusterIP','selector':sender_labels,
+        'ports':[{'name':'http','protocol':'TCP','port':SENDER_PORT,'targetPort':SENDER_PORT}]}}))
+    resources.append(obj('NetworkPolicy','-sender',{'spec':{'podSelector':{'matchLabels':sender_labels},'policyTypes':['Ingress','Egress'],
+        'ingress':[{'from':[{'podSelector':{'matchLabels':labels}}],'ports':[{'protocol':'TCP','port':SENDER_PORT}]}],
+        'egress':[{'to':[peer(net['dns'])],'ports':[{'protocol':p,'port':53} for p in ('TCP','UDP')]},
+                  {'to':[{'ipBlock':{'cidr':'0.0.0.0/0','except':NON_PUBLIC}}],'ports':[{'protocol':'TCP','port':443}]}]}},'networking.k8s.io/v1'))
     return {'status':'candidate_rendered_not_approved','execution_allowed':False,'live_verified':False,
         'source_revision':v['source_revision'],'preserved_c_limits_seconds':LIMITS,'manual_policy':{'rules':[],'strategy':'new_empty_active_queue_archive_old_read_only'},
         'required_live_gates':list(LIVE_GATES),'unresolved_live_inputs':sorted(UNRESOLVED),
-        'external_prerequisites':['existing namespace/PVC/least-read-only service account and secrets',
+        'external_prerequisites':['existing namespace/PVC/least-read-only service account and secrets incl. a 32-hex sender client secret',
             'new empty active store; stop old workers and reconcile old jobs/sends before cutover',
-            'fresh source registry/UID/TLS/CI, egress IPs and additive NetworkPolicy audit',
-            'existing ingress/DNS and Alertmanager direct notice preservation, no automatic route change'],
+            'fresh source registry/UID/TLS/CI and additive NetworkPolicy audit',
+            'existing ingress/DNS and Alertmanager direct notice preservation, no automatic route change',
+            'platform: VPC CNI network policy strict enforcing mode, IMDSv2 hop limit 1, VPC CIDR inside sender egress exceptions',
+            'Slack app token IP restriction to the preserved NAT egress IP; minimal bot scopes'],
+        'residual_risks':['slack.com itself remains an exfiltration path for a compromised sender',
+            'DNS queries via cluster DNS remain an exfiltration channel',
+            'main Pod to sender is in-cluster plain HTTP with a bearer client secret',
+            'sender idempotency window is in memory; restarts rely on the adapter needs_review rule',
+            'single replica main Pod and SQLite on one RWO volume: no HA'],
         'manifest_sha256':digest(encoded(resources)),'resources':resources}
 
 
