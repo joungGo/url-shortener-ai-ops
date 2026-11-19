@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_uncommitted",
+  "status": "merged_main_ci_passed",
   "slice": "A7-2 recovery result outbox",
   "author": "Claude Code (Opus 5.5)",
   "base": "0619651393b5792da03f9a86d561e502560d5e81",
@@ -53,5 +53,27 @@
     120
   ],
   "infrastructure_deployment_slack_trial_paid_model": false,
-  "commit_pr_ci": null
+  "commit_pr_ci": {
+    "commits": [
+      "b423508",
+      "b2a97a5153f94505ccb5d69d9099aee97abce80b"
+    ],
+    "branch": "claude/recovery-outbox-20261119 (created from main)",
+    "pr": 46,
+    "pr_ci": 44504060937,
+    "pr_jobs_success": 7,
+    "pr_full_tests": 1634,
+    "pr_ci_skipped": 5,
+    "main_ci": 44504869626,
+    "main_jobs_success": 6,
+    "main_pr_gate": "skipped_by_design",
+    "merge": {
+      "method": "regular_squash_match_head",
+      "main": "8fa3ad2b38b88cbe31496ad81c1ede3644cb7bdb",
+      "tree": "534bae66adb832065fa4e839560019e93d63d932",
+      "head_tree_equal": true,
+      "protection_changed": false,
+      "admin_bypass": false
+    }
+  }
 }

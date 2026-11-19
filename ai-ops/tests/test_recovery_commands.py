@@ -1,5 +1,5 @@
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from types import SimpleNamespace
 import unittest
@@ -10,7 +10,8 @@ from ai_ops.contracts import sha256_json
 from ai_ops.c_recovery import TARGET, IMAGE_REPOSITORY
 from ai_ops.recovery_approvals import ApprovalPolicy, RecoveryApprovalLedger
 from ai_ops.recovery_commands import (RestartCoordinator,RestartApprovalLedger,RestartSnapshot,RestartPlan,
-    slack_restart_source,CHECKS,ANNOTATION,ENDPOINT)
+    slack_restart_source,ANNOTATION,ENDPOINT)
+from ai_ops.restart_gates import REQUIRED_EVIDENCE
 
 ACTOR='UALICE01'
 UID='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -20,6 +21,7 @@ class LocalExecutor:
     def __init__(self,t):
         self.t=t;self.reads=0;self.writes=0;self.acquires=0;self.releases=0;self.held=None
         self.write_hook=None;self.read_hook=None;self.lose_response=False;self.lost_lease=False;self.release_ok=True
+        self.captures=0;self.evidence_override=None
         self.identity={'executor_id':'local-restart-test','namespace':'ai-ops-lab','resource':'deployments/lab-api','verbs':['get','patch']}
     def read(self,*,deadline):
         self.reads+=1
@@ -31,6 +33,12 @@ class LocalExecutor:
         return deepcopy(self.held)
     def inspect_lease(self,held,*,deadline):
         return {**self.held,'uid':'different'} if self.lost_lease else deepcopy(self.held)
+    def capture_evidence(self,*,deadline):
+        self.captures+=1
+        if self.evidence_override is not None:
+            if isinstance(self.evidence_override,Exception):raise self.evidence_override
+            return self.evidence_override
+        return {'bundle_sha256':'e'*64,'items':list(REQUIRED_EVIDENCE),'captured_at':self.t.f.fixture.time}
     def patch(self,request,*,deadline):
         self.writes+=1
         self.t.assertEqual(request,self.t.plan.request)
@@ -53,7 +61,9 @@ class RestartCommandTest(unittest.TestCase):
         self.candidate=self.f.saved(receipt['request_id']);self.source=slack_restart_source(self.f.adapter,receipt['request_id'])
         self.state=RestartSnapshot(target=TARGET,deployment_uid=UID,resource_version='1',revision_hash='b'*64,
             image=IMAGE_REPOSITORY+'@sha256:'+'a'*64,pod_uid_hash=sha256_json('pod-1'),observed_at=self.now(),
-            generation=1,observed_generation=1,ready_replicas=0,probe_failed=True,diagnostics=sorted(CHECKS),
+            generation=1,observed_generation=1,ready_replicas=0,strategy='Recreate',container_running=True,restart_count=0,
+            pod_started_at=self.now()-timedelta(hours=1),readiness_failing_since=self.now()-timedelta(minutes=10),
+            readiness_window_seconds=30,prior_ready='observed',dependencies='pass',
             rollout_in_progress=False,autoscaling=False,gitops_auto_sync=False,annotations_exist=True)
         self.coordinator=self.create_coordinator()
         self.plan=self.coordinator.prepare(self.candidate.plan_hash,actor=ACTOR)
@@ -148,13 +158,72 @@ class RestartCommandTest(unittest.TestCase):
                 self.state=original
         self.assertEqual(self.port.writes,0)
     def test_hpa_gitops_rollout_dependency_and_healthy_state_fail_closed(self):
+        recent=self.now()-timedelta(seconds=30)
         for changes in ({'autoscaling':True},{'gitops_auto_sync':True},{'rollout_in_progress':True},
-            {'diagnostics':['image_available']},{'ready_replicas':1,'probe_failed':False},
-            {'observed_generation':0},{'restart_marker':'already'}):
+            {'ready_replicas':1},{'observed_generation':0},{'restart_marker':'already'},
+            {'strategy':'RollingUpdate'},{'readiness_failing_since':None},{'readiness_failing_since':recent},
+            {'pod_started_at':recent},{'container_running':False},{'restart_count':2},
+            {'prior_ready':'absent'},{'prior_ready':'unknown'},{'dependencies':'fail'},
+            {'readiness_failing_since':self.now()-timedelta(hours=2)}):
             with self.subTest(changes=changes):
                 original=self.state;self.state=original.model_copy(update=changes)
                 with self.assertRaises(ValueError):self.ledger.open(self.key,actor=ACTOR)
                 self.state=original
+    def test_unknown_dependencies_are_display_only(self):
+        self.state=self.state.model_copy(update={'dependencies':'unknown','image_id_hash':'f'*64,
+                                                 'scheduling_signals':['failed_scheduling']})
+        self.consent()
+        self.assertEqual(self.execute()['state'],'applied_unverified')
+        self.assertEqual(self.port.writes,1)
+    def test_evidence_capture_is_a_hard_gate_before_any_write(self):
+        bad=[OSError('capture failed'),
+             {'bundle_sha256':'e'*64,'items':[i for i in REQUIRED_EVIDENCE if i!='logs_previous'],'captured_at':0},
+             {'bundle_sha256':'not-a-hash','items':list(REQUIRED_EVIDENCE),'captured_at':0},
+             {'bundle_sha256':'e'*64,'items':list(REQUIRED_EVIDENCE),'captured_at':-1},
+             {'bundle_sha256':'e'*64,'items':list(REQUIRED_EVIDENCE),'captured_at':0,'raw_log':'x'}]
+        for i,override in enumerate(bad):
+            with self.subTest(case=i):
+                if i:self.setUp()
+                if isinstance(override,dict) and override['captured_at']==0:
+                    override={**override,'captured_at':self.f.fixture.time}
+                self.port.evidence_override=override
+                self.consent()
+                result=self.execute()
+                self.assertEqual((result['state'],result['reason']),('needs_review','inspect_without_retry'))
+                self.assertEqual(self.port.writes,0)
+                self.assertNotIn('evidence_bundle',result)
+    def test_evidence_is_captured_before_patch_and_recorded(self):
+        order=[]
+        original=self.port.capture_evidence
+        def capture(*,deadline):
+            order.append(('capture',self.port.writes));return original(deadline=deadline)
+        self.port.capture_evidence=capture
+        self.consent()
+        result=self.execute()
+        self.assertEqual(result['state'],'applied_unverified')
+        self.assertEqual(order,[('capture',0)])
+        self.assertEqual(result['evidence_bundle'],{'bundle_sha256':'e'*64,'items':list(REQUIRED_EVIDENCE),
+                                                    'captured_at':result['evidence_bundle']['captured_at']})
+    def test_gate_rejection_after_approval_is_recorded_for_manual_handoff(self):
+        self.consent()
+        self.state=self.state.model_copy(update={'prior_ready':'absent','restart_count':1})
+        result=self.execute()
+        self.assertEqual((result['state'],result['reason']),('needs_review','gate_rejected'))
+        verdicts={g['name']:g['verdict'] for g in result['gate_results']}
+        self.assertEqual(verdicts['prior_ready_evidence'],'fail')
+        self.assertEqual(verdicts['liveness_stable'],'fail')
+        self.assertEqual(verdicts['persistent_readiness_failure'],'pass')
+        self.assertTrue(all(set(g)=={'name','verdict','blocking','rules_version'} for g in result['gate_results']))
+        self.assertEqual((self.port.writes,self.port.captures),(0,0))
+        with self.assertRaises(ValueError):self.execute()  # one attempt per event, no retry
+    def test_persistent_failure_threshold_boundary(self):
+        from ai_ops.restart_gates import evaluate
+        now=self.f.fixture.time
+        def verdict(failing_for):
+            s=self.state.model_copy(update={'readiness_failing_since':datetime.fromtimestamp(now-failing_for,timezone.utc)})
+            return {g.name:g.verdict for g in evaluate(self.plan,s,now)}['persistent_readiness_failure']
+        self.assertEqual(verdict(60),'pass')   # 2 x readiness window (30s)
+        self.assertEqual(verdict(59),'fail')
     def test_expired_approval_or_observation_cannot_execute(self):
         ready=self.consent();self.f.fixture.time=ready['fresh_until']
         with self.assertRaises(ValueError):self.execute()
