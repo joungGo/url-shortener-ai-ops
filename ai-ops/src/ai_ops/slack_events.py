@@ -63,6 +63,17 @@ class SlackEventBridge:
         if view is None or view['target'] != row['target']:
             return False
         if view['registration']=='registered':
+            context=json.loads(entry['context']) if entry['context'] else {}
+            if 'recovery_plan' in context:
+                from ai_ops.recovery_plans import RecoveryPlan
+                plan=RecoveryPlan.model_validate(context['recovery_plan'])
+                return (plan.event_id==entry['event_id'] and plan.request_id==row['request_id']
+                        and plan.authorization_hash==self.adapter.authorization_hash
+                        and plan.config_hash==self.adapter.config_hash
+                        and plan.audience_hash==sha256_json({'team':self.adapter.policy.team_id,
+                            'user':row['user_id'],'channel':row['channel_id'],'thread':row['thread_ts']})
+                        and self.adapter.tasks.show(plan.job_id)['result']['state']!='expired'
+                        and self.store.queue.now()<plan.retained_until.timestamp())
             return True
         context=json.loads(entry['context']) if entry['context'] else {}
         return row['state']=='ready' and context.get('registration')=='expired'
@@ -83,6 +94,8 @@ class SlackEventBridge:
         view['checked_at'] = utc(self.store.queue.now())
         if view['registration']=='expired':
             return self._ready(row,entry,'사건 상세의 보관 기간이 만료됐습니다. 새 조사 작업은 없습니다.',view)
+        if entry['command']=='plan-recovery':
+            return self._plan(row, entry, view)
         if entry['command']=='status-event':
             # Status sees only this principal's requests, never another audience's job IDs.
             with self.adapter._db() as db:
@@ -119,6 +132,32 @@ class SlackEventBridge:
                        (view['target'],receipt['job_id'],row['request_id']))
         return {'request_id':row['request_id'],'state':'queued','task_id':receipt['job_id'],
                 'event_id':entry['event_id'],'execution_allowed':False}
+
+    def _plan(self, row, entry, view):
+        from ai_ops.recovery_plans import parse_plan_arguments, prepare_plan, plan_text
+        job, action = parse_plan_arguments(row['question'])
+        # An explicit job must belong to this event AND this signed audience.
+        # Other users' jobs and arbitrary guessed IDs get the same response.
+        with self.adapter._db() as db:
+            linked = db.execute('SELECT 1 FROM slack_requests r JOIN slack_event_requests e USING(request_id) '
+                'WHERE r.job_id=? AND e.event_id=? AND e.command="investigate-event" '
+                'AND r.user_id=? AND r.channel_id=? AND r.target=? AND r.policy_hash=? '
+                'AND r.config_hash=? AND r.state="queued" AND r.created_at>?',
+                (job,entry['event_id'],row['user_id'],row['channel_id'],view['target'],
+                 self.adapter.policy_hash,self.adapter.config_hash,
+                 self.store.queue.now()-RETENTION_SECONDS)).fetchone()
+        if linked is None:
+            return self._ready(row,entry,UNAVAILABLE)
+        plan = prepare_plan(self.adapter.tasks,self.store,view=view,job_id=job,action_id=action,
+            request_id=row['request_id'],authorization_hash=self.adapter.authorization_hash,
+            audience_hash=sha256_json({'team':self.adapter.policy.team_id,'user':row['user_id'],
+                                      'channel':row['channel_id'],'thread':row['thread_ts']}))
+        if not self.adapter._authorized(row) or self.view(row,entry) != {k:v for k,v in view.items() if k!='checked_at'}:
+            raise ValueError('recovery_scope_changed')
+        context = {**view,'recovery_plan':plan.model_dump(mode='json')}
+        # Atomic frozen plan/reply. Crash before commit just rebuilds a local draft;
+        # after commit no retry re-reads a different result or creates another job.
+        return self._ready(row,entry,plan_text(plan),context)
 
     @staticmethod
     def _context_text(context):

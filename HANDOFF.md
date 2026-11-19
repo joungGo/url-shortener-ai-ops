@@ -1,5 +1,19 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-19 WF-05 검토·CI 반영 준비
+
+사용자 후속 요청으로 WF-05를 직접 검토했고 사건 발생 시각의 나노초 손실로 직전 관측이 지원 근거가 되는 오류를 재현·수정했다. 최종 결과·해시는 `ai-ops/docs/recovery-plan-review-validation-20261119.json`, 설명은 `recovery-plan-review-20261119.md`를 따른다. 정확한 PR head의 CI 확인 뒤 일반 main 반영을 진행한다. 이 커밋 시점 원격 CI/main은 대기이며 최종 상태는 후속 인계 기록으로 확정한다. 기존 시간·승인·원복 조건과 C04/C05 미완료 유지. 실제 배포·Slack·인프라·장애·모델 실행 없음. 추천 GPT-6 SOL · High.
+
+## 2026-11-19 WF-05 복구 계획 요청·계약 로컬 검증 완료
+
+AI main e3a4efa(WF-04 PR32 반영) 기반 작업트리 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf05-recovery-plans-20261119`에서 명시적 `plan-recovery 사건 job [action]`·고정 조치 registry·해시 결합 RecoveryPlan을 구현했다. 기존 사건/조사 큐/worker/TaskService·Slack 회신 장부를 재사용한다. 같은 사용자/채널의 사건 조사만 참조하며 지원 조치/미지원/근거부족·중복/응답유실·인가변경/자료만료를 검증했다.
+
+지원은 이미지 장애의 저장 근거와 계획 템플릿 일치를 뜻한다. 모든 초안은 draft/미승인/proposal_ready=false/execution_allowed=false다. 정상 이미지·현재 UID/revision·정확 diff·승인은 후속 WF06/07이며 명령 재시작은 WF08 미구현 후보로 표시한다. 요청만으로 새 조사·PR·명령·쓰기 자격을 만들지 않았다.
+
+신규27개·전체1399개(83.307초/skip0)·AST4개·diff·소유경계 통과. C단계 소스47개 main과 동일; 기존 시간·승인·원복·C04/C05미완료 유지. 상세 `/Users/jounghyeon/dev/url-shortener-ai-ops/.worktrees/wf05-recovery-plans-20261119/ai-ops/docs/recovery-plan-local-20261119.md`, `recovery-plan-local-validation-20261119.json`, 작업표. WF04 반영 후 로컬 완료 메타데이터도 새 작업트리에 이어받았다.
+
+이번 WF05는 로컬 미커밋·CI/main 미반영. 인프라 설치·실제 배포/Slack·장애 실습·Terraform·유료 모델 없음. 원래 작업트리의 다른 수정/개인자료는 보존했다. 다음은 WF05 검토·CI/main 후 WF06 승인 대기·만료·취소·재검증 로컬 구현. 추천 GPT-6 SOL · High.
+
 ## 2026-11-19 WF-04 코드 검토·CI 반영 준비
 
 사건 지정 Slack 조사·상태/결과 연결을 직접 검토해 정책 변경 중단 뒤 이전 큐 권한 잔존과 연결 비활성화 뒤 사건 복사본 만료 지연2건을 재현·수정했다. Slack125개·전체1372개(84.572초/skip0)·AST8개·diff·저장소 경계 통과. 검토 기록 `ai-ops/docs/incident-slack-review-20261119.md`, 최종 소스 해시 `incident-slack-review-validation-20261119.json`을 따른다. 최초 로컬1370개/해시는 이전 시점 기록이다.

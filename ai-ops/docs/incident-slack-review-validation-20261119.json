@@ -54,11 +54,23 @@
   "log_sha256": "bd07555c6be176701364dbd611387caeba63b63079c6f752460eaa7c52360016",
   "diff_check": true,
   "repository_boundary": true,
-  "remote_ci": "pending",
-  "main": "pending",
+  "remote_ci": {
+    "pr_run": 44338728798,
+    "pr_checks": 7,
+    "conclusion": "success",
+    "push_run": 44338554478,
+    "main_run": 44339438355,
+    "main_conclusion": "success"
+  },
+  "main": "e3a4efab193bac143d598044e5d011329263d484",
   "deployment": false,
   "slack_sent": false,
   "fault_trial": false,
   "infra_installed": false,
-  "model_called": false
+  "model_called": false,
+  "pr": 32,
+  "reviewed_head": "2a1aefcaf05f97fd006b4dfc7f12fa133079ce1e",
+  "protection_changed": false,
+  "merge_method": "normal_squash",
+  "merged_source_hashes_verified": true
 }
