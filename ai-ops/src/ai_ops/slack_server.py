@@ -25,7 +25,9 @@ from ai_ops.job_queue import JobQueue
 from ai_ops.path_policy import cli_paths
 from ai_ops.runtime_settings import runbook_settings_kwargs
 from ai_ops.slack_adapter import SlackAdapter, SlackPolicy
-from ai_ops.recovery_approval_wiring import CONFIG_NAME, RecoveryApprovalConfig, RecoveryApprovalService
+from ai_ops.recovery_approval_wiring import (CONFIG_NAME, RecoveryApprovalConfig, RecoveryApprovalService,
+                                             relay_retention)
+from ai_ops.recovery_retention import INTERVAL_SECONDS as RECOVERY_RETENTION_INTERVAL
 from ai_ops.slack_ingress import SlackEventsApp, SlackInteractivityApp, SlackRouter
 from ai_ops.slack_process import check_process, process_lock
 from ai_ops.slack_runtime import SlackRuntime, SlackWebConfig
@@ -163,9 +165,18 @@ def recovery_tick(recovery, transport, stopped, state, now):
             recovery.deliver_once(transport)
 
 
-def relay_loop(runtime, stopped, progress, *, monotonic=time.monotonic, recovery=None):
+def retention_tick(retention, state, now):
+    """A7-5 recovery retention on its own (10 minute) interval; failures are retried later."""
+    if retention is None or now < state['next_retention']:
+        return
+    state['next_retention'] = now + RECOVERY_RETENTION_INTERVAL
+    with suppress(Exception):
+        retention.tick()
+
+
+def relay_loop(runtime, stopped, progress, *, monotonic=time.monotonic, recovery=None, retention=None):
     next_prune = 0.0
-    approvals = {'next_sync': 0.0}
+    approvals = {'next_sync': 0.0, 'next_retention': 0.0}
     while not stopped.is_set():
         # Complete the current tick/journal on SIGTERM; no later tick or retry.
         runtime.relay_once(stopped=stopped.is_set)
@@ -180,6 +191,9 @@ def relay_loop(runtime, stopped, progress, *, monotonic=time.monotonic, recovery
             runtime.adapter.prune()
             runtime.tasks.prune()
             next_prune = now + RETENTION_INTERVAL
+        # After the request prune, so messages of just-expired requests go in this pass.
+        if retention is not None and not stopped.is_set():
+            retention_tick(retention, approvals, now)
         progress.tick()
         stopped.wait(POLL_SECONDS)
 
@@ -236,7 +250,8 @@ def main(argv=None):
                 if recovery is not None:
                     service = RecoveryApprovalService(runtime.adapter, recovery)
                     runtime.adapter.recovery_approvals = service
-                relay_loop(runtime, stopped, progress, recovery=service)
+                relay_loop(runtime, stopped, progress, recovery=service,
+                           retention=relay_retention(runtime.adapter, service))
             finally:
                 for sig, handler in previous.items():
                     signal.signal(sig, handler)

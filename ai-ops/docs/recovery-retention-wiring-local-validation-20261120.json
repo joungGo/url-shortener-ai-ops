@@ -1,0 +1,62 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "A7 process wiring slice 2: recovery retention tick in the Slack relay",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "46789b11434736aad2531a22f40605dad44fe57c",
+  "flow": [
+    "relay loop: after the existing Slack request/task prune (60s), run RecoveryRetention.tick every 600s",
+    "feature on: RecoveryApprovalService.retention -> approval ledger prune (tombstone identity/approver/proof hashes) + outbox prune",
+    "feature off: OrphanOutboxRetention -> only outbox rows left by an earlier enabled run; never creates the table or reads a policy",
+    "recovery_outbox.prune_existing: delete under the existing processing lock only if the table exists; RecoveryOutbox.prune delegates (same behaviour)",
+    "not while stopping; failures are swallowed and retried next interval; no retention object -> unchanged loop calls"
+  ],
+  "new_tests": 7,
+  "module_tests": 24,
+  "mutation_checks": {
+    "count": 10,
+    "detected": 10,
+    "first_run_detected": 7,
+    "strengthened_tests": ["enabled relay uses its own ledger/outbox", "stop during request prune skips retention", "relay entrypoint passes the retention object"],
+    "mutations": [
+      "table check replaced by creation",
+      "delete all rows",
+      "processing lock removed",
+      "ledger not pruned",
+      "orphan pass used while enabled",
+      "interval removed",
+      "failure propagates",
+      "runs before the request prune",
+      "runs while stopping",
+      "entrypoint not wired"
+    ]
+  },
+  "test_note": "an existing relay-loop test counts stopped.is_set() calls; the extra stop check runs only when a retention object is present",
+  "related_existing_tests": {"modules": 6, "count": 130, "passed": true},
+  "full_suite": {
+    "count": 1731,
+    "seconds": 329.744,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-retention-full.log",
+      "sha256": "940110d3808dad54d0e66992c849626369eb929756c60f44a2a1a94320ce3427"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
+  "known_behaviour": [
+    "approval ledger is not pruned while the feature is off (needs the policy hash); records are hashes and times, pruned once re-enabled",
+    "restart evidence and sealed capture directories are added when the restart path is wired (path/PVC decision)",
+    "processing-lock contention records an 'outbox' failure and retries next interval",
+    "retention period stays the 7-day policy minimum"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_approval_wiring.py": "edcafd84d91dc4c45fa964be5290fc9a925c6ff8debdb89d489261c0f509c2b9",
+    "ai-ops/src/ai_ops/recovery_outbox.py": "d709341f2b4e9673a44aa9dc3231e56d34047e8c7da601373283f0b72a5e577d",
+    "ai-ops/src/ai_ops/slack_server.py": "262904c2536b69e7c6065e3146ccc355ac8e0a660fc72855f79424e60e09b1ff",
+    "ai-ops/tests/test_recovery_approval_wiring.py": "1b10d76cf70abb236d8604cf6114e235eefca69f1f64aa6d5c93352726578f32"
+  },
+  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, paid model call"
+}

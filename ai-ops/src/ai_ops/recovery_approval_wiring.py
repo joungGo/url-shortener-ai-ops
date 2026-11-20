@@ -27,7 +27,8 @@ from pydantic import StrictBool, model_validator
 
 from ai_ops.contracts import StrictModel
 from ai_ops.recovery_approvals import ApprovalPolicy, RecoveryApprovalLedger, slack_plan_source
-from ai_ops.recovery_outbox import RecoveryOutbox
+from ai_ops.recovery_outbox import RecoveryOutbox, prune_existing
+from ai_ops.recovery_retention import RecoveryRetention
 from ai_ops.recovery_slack_approval import SlackApprovalReceiver
 from ai_ops.slack_adapter import SlackAdapter
 from ai_ops.workflow_config import read_config
@@ -188,3 +189,29 @@ class RecoveryApprovalService:
 
     def deliver_once(self, transport):
         return self.outbox.deliver_one(transport)
+
+    def retention(self):
+        """A7-5 pass over what this process owns: the approval ledger and the outbox."""
+        return RecoveryRetention(now=self.adapter.tasks.queue.now,
+                                 ledgers={'prepare_proposal': self.ledger}, outbox=self.outbox)
+
+
+class OrphanOutboxRetention:
+    """Relay retention while the approval feature is off: only the outbox rows an
+    earlier enabled run may have left; never creates tables or reads a policy."""
+    def __init__(self, adapter):
+        if not isinstance(adapter, SlackAdapter):
+            raise ValueError('recovery_approval_adapter_required')
+        self.adapter = adapter
+
+    def tick(self):
+        report = {'failures': [], 'outbox_removed': 0, 'execution_allowed': False}
+        try:
+            report['outbox_removed'] = prune_existing(self.adapter)
+        except Exception:
+            report['failures'].append('outbox')
+        return report
+
+
+def relay_retention(adapter, service=None):
+    return service.retention() if service is not None else OrphanOutboxRetention(adapter)
