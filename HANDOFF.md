@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-20 원복 실행 조각2 기준선 고정 원복 실행기·CI 반영 준비 (Claude)
+
+llm-council 결정(원복=기준선 고정 sync 1회, 쓰기 전 드리프트 잠금, 실패=시도 소진→수동 인계)의 두 번째 조각. 신규 `ai_ops.rollback_executor.RollbackExecutor.execute_local`(local_fixture 포트·Argo `applications/lab-target` get/patch 신원만): 예약 전 WF09가 이 정확한 `rollback_candidate`(범위 hash·change 일치, 취소·결과·관측 시도 없음)이고 범위가 미철회·만료 전·미사용·실행 hash/대상/UID 결합인지 확인 → 계획당 1회 예약(이후 `rollback_already_attempted`) → 배포/기준선 `ai-ops/lab` 트리가 values.yaml만 다르고 정규 실패→기준선 digest뿐인지, Argo source 정확 일치(override 없음)·수동 sync·진행 중 operation 없음·실패 digest 실행 중, Lease 비어 있을 때만 → 드리프트 잠금 → 실시간·Lease·범위·결정 재확인 → pin 1회 → 확정 충돌 `not_applied`/그 외·미확인 `needs_review` → 고정 확인·Lease 반환 `pinned_unverified`(sync·회복은 WF09 원복 관측). 쓰기 전 실패 시 Lease 미반환(WF08 동일), 잠금 후 중단 시 잠금 유지(fail-closed).
+
+신규 시험11(실제 WF07/WF09·로컬 Git), 결함 변형 9/9, 전체1707 통과. 상세 `ai-ops/docs/rollback-executor-local-20261120.md`·검증 JSON. 실제 Argo 쓰기 포트·RBAC·인증 승인 조회기는 이후. 이 커밋 시점 PR CI/main 대기. 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-20 원복 실행 조각1 GitOps 드리프트 잠금 CI/main 반영 완료 (Claude)
 
 [PR #52](https://github.com/joungGo/url-shortener-ai-ops/pull/52) head `d7fd6c82296ec25bd1c1136a6d117bc56cac9750`를 head 고정 일반 squash 병합해 main `564571836e33c71540313645308c258a99d3e126`에 반영했다. PR CI44665694359 7종(1696개)·main CI44666355792 성공, tree `98eab6fb4a8c4bd56dc13e7d4e9fd9e73c46d262` 일치. 보호 변경/우회 없음. 병합 후 branch 정리(복구용 SHA는 inventory). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
