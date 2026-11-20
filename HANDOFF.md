@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-20 PR 경로 원복 관측 CI/main 반영 완료 (Claude)
+
+[PR #51](https://github.com/joungGo/url-shortener-ai-ops/pull/51) head `d375e4bf35203e567f438a33a2a2b38b8b78d75a`를 head 고정 일반 squash 병합해 main `e16b61494fa8d5644d82670a08e23ded43ab34c6`에 반영했다. PR CI44657902367 7종(1687개)·main CI44658449019 성공, tree `f8bca149d56c87c537740fefcb3bc7faecc63179` 일치. 보호 변경/우회 없음. 병합 후 branch 정리(복구용 SHA는 inventory). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+다음 후보: 원복 실행 조각(llm-council 결정 — 기준선 고정만, 조각1 gitops_drift_lock: 원복 전 잠금·잠금 중 WF07 PR 생성/sync fail-closed·해제=main ai-ops/lab 경로 트리 hash==scope.revision 트리; 조각2 원복 실행기: 실행 직전 재검증·sync 1회·실패=시도 소진→수동 인계, 실제 실행 차단), A7 프로세스 연결, A8 WF12 문서. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-20 PR 경로 원복 관측·CI 반영 준비 (Claude)
 
 WF09 `record_rollback_local`에 실제 원복 영수증·관찰 표본을 공급한다. 사용자 결정(권장안 1): 원복 적용은 클러스터 관측으로 판정하고 GitHub main==원복 revision은 판정이 아닌 인계 정보로 기록(승인 범위 revision은 승인 시 고정된 기존 커밋이라 WF07의 main==배포 SHA를 그대로 쓰면 기준선 고정 원복이 항상 검증불가). `restart_effects` 관찰기 PR 영수증 확장(Argo 앱 tick별 GET, `argo_state`: targetRevision·동기화·마지막 성공 작업 revision 일치+Healthy+삭제 중 아님, 앱 UID 변경 시 중단). 신규 `ai_ops.rollback_observe`: `RollbackAppliedReader.applied`(mode=kubernetes; 같은 앱·승인 revision 고정·동기화·성공·Healthy·수동 sync·같은 Deployment·generation 반영·`api` 단일 컨테이너가 승인 digest일 때만 영수증, 반영 시각=finishedAt·미래 거절, 안정 사실 hash로 재조회 동일), `alignment`(허용 저장소만 기존 `_main_sha`로 True/False/None), `RollbackObservationReader`(mode=sealed_capture). WF09: `rollback_note` 저장(판정 아님, prune 시 삭제), result_text 한 줄. 판정 규칙 불변, 조정기는 계속 local_fixture만.
