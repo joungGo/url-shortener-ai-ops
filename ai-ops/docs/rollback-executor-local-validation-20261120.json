@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "Rollback execution slice 2: baseline-pin rollback executor",
   "author": "Claude Code (Opus 5.5)",
   "base": "564571836e33c71540313645308c258a99d3e126",
@@ -60,5 +60,24 @@
     "ai-ops/src/ai_ops/rollback_executor.py": "c4d2052d899c921f3827857d0a91e7d6bcce21d8d6b0577d3db5f3342c78452b",
     "ai-ops/tests/test_rollback_executor.py": "b4a82a00ab2476a38d8ebcc3e17cd4134bea3fc041342f175490a5aaa1cb8838"
   },
-  "no_external_actions": "no cluster, GitHub write, deploy, Slack, incident drill, Terraform, paid model call"
+  "no_external_actions": "no cluster, GitHub write, deploy, Slack, incident drill, Terraform, paid model call",
+  "merge": {
+    "pr": 53,
+    "head": "f9267cfe4a9c1a4e7313da30dbb2c324aad5b072",
+    "main": "9e70a3dd96fd1d51453b3b61afba64797c5791da",
+    "tree": "b621d1a1bda0fe657ac036fe9fef8e4e96ac182a",
+    "pr_ci": {
+      "run": 44669209443,
+      "jobs": 7,
+      "tests": 1707,
+      "skipped": 5
+    },
+    "main_ci": {
+      "run": 44669722156,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted_after_merge": true
+  }
 }

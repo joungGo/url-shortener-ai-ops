@@ -287,6 +287,23 @@ class RecoveryApprovalLedger:
             self._save(db, record)
             return self._view(record)
 
+    def page(self, *, after='', limit=50):
+        """Maintenance read for the notifier: current views of still-retained records.
+
+        Applies the same time transitions as ``show`` (expiry, timeouts) without a
+        principal. It never opens, decides or revalidates. Returns (views, cursor);
+        the cursor is '' after the last page.
+        """
+        if not isinstance(after, str) or len(after) > 64 or type(limit) is not int or not 1 <= limit <= 200:
+            raise ValueError('approval_page_rejected')
+        with self.queue.transaction() as db:
+            self._active(db)
+            rows = db.execute(f'SELECT plan_hash FROM {self.TABLE_PREFIX}s WHERE plan_hash>? '
+                              "AND json_extract(document,'$.retained_until')>? ORDER BY plan_hash LIMIT ?",
+                              (after, self.queue.now(), limit)).fetchall()
+            views = [self._view(self._get(db, row['plan_hash'])) for row in rows]
+        return views, (rows[-1]['plan_hash'] if len(rows) == limit else '')
+
     def replace_policy(self, policy):
         """Explicit trusted configuration transition. Old instances are fenced out."""
         policy = ApprovalPolicy.model_validate(_body(policy))

@@ -1,0 +1,78 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "A7 process wiring slice 1: Slack recovery approval path (prepare_proposal)",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "9e70a3dd96fd1d51453b3b61afba64797c5791da",
+  "decision": "user 2026-11-20: approval wait opens only on an explicit request-approval command; first slice = approval path",
+  "flow": [
+    "ACK: request-approval <event ref|this> <exact 64-hex plan hash>; anything else rejected",
+    "relay: plan hash -> exactly one live plan-recovery request of the same user; same channel/thread/event else uniform UNAVAILABLE",
+    "WF06 ledger.open (approvers, retention, original result checks unchanged); fixed reply texts, no exception text",
+    "ledger.page (time transitions only) -> A7-2 outbox enqueue every 5s; at most one delivery per relay tick; failures contained",
+    "ingress SlackRouter: /slack/events + /slack/interactivity on one TLS listener; button receiver uses the signing secret only",
+    "recovery-approval.json absent or disabled -> unchanged behaviour; invalid or ungranted approvers -> start/check-config fail",
+    "default observe port always fails (observation_not_connected): no approval wait can open in a real deployment"
+  ],
+  "new_tests": 17,
+  "mutation_checks": {
+    "count": 12,
+    "detected": 12,
+    "mutations": [
+      "thread/channel check removed",
+      "default observe port made to succeed",
+      "observation failure text confused",
+      "approvers-in-grants check removed",
+      "index requester check removed",
+      "page retention boundary relaxed",
+      "delivery while stopping",
+      "sync interval removed",
+      "ACK argument check removed",
+      "disabled reply confused",
+      "ingress router not mounted",
+      "check-config grants check removed"
+    ]
+  },
+  "related_existing_tests": {"modules": 6, "count": 140, "passed": true},
+  "full_suite": {
+    "count": 1724,
+    "seconds": 324.053,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-wiring-full.log",
+      "sha256": "71d4da0c8fd884c7ae0e31ef9b3782fa15f60ad4901d074e53d2992f474a72c1"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compile": "passed"
+  },
+  "known_behaviour": [
+    "no approval wait opens in a real deployment until a verified PR-path current-state reader is wired",
+    "after approval nothing revalidates yet; the approval expires and an expiry notice is sent",
+    "approver must be the plan requester (existing WF06 slack_plan_source restriction)",
+    "execute_command scope not wired; its buttons are rejected as approval_scope_unavailable",
+    "changed approval policy needs the explicit replace_policy transition (not wired); start is refused",
+    "Slack DB lock contention on a button press returns 503; Slack does not retry; the same press is idempotent",
+    "a queued approval request may still be sent before a later status notice; late presses are recorded as expired by the ledger"
+  ],
+  "not_in_scope": [
+    "PR-path current-state observation reader",
+    "revalidation after approval and WF07 hand-off",
+    "execute_command approvals with the restart coordinator",
+    "RecoveryRetention tick in the relay",
+    "WF10 renderer mount of recovery-approval.json and Slack Interactivity Request URL",
+    "approval policy transition procedure"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_approval_wiring.py": "8b123712005986ac3ff5d944b6f63269ff3813853a77a55358cf2154dd8d6bf4",
+    "ai-ops/src/ai_ops/recovery_approvals.py": "a1583a5ebd222081c6da53f80dd427eb0c537a98d737f2a66547f84f11093c1b",
+    "ai-ops/src/ai_ops/slack_adapter.py": "0c967bc18f42c60d4529a1eb814ecb64681568e4d39294a193e8ed423be79172",
+    "ai-ops/src/ai_ops/slack_events.py": "d6076ac08cf9fe186faed1aa77865f261eecfa21abf789072d0bcefc220d5c2e",
+    "ai-ops/src/ai_ops/slack_ingress.py": "814f58ff1a7b0d65f876719d2c96abf9ff00cae59453454e7676331672fe6726",
+    "ai-ops/src/ai_ops/slack_server.py": "e5650aee394aefe13fbd14c80cc33480f577f352bb9e5ef4211d660abf2314a9",
+    "ai-ops/tests/test_recovery_approval_wiring.py": "28ac443482b9b14064e5bbb4815cb3e2dbb2b67370b0c939cb30706b3b40dbfa"
+  },
+  "no_external_actions": "no cluster, GitHub write, deploy, Slack, incident drill, Terraform, paid model call"
+}

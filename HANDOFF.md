@@ -1,5 +1,15 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-20 A7 프로세스 연결 조각1 Slack 복구 승인 경로·CI 반영 준비 (Claude)
+
+사용자 허락으로 A7 프로세스 연결 시작, 결정: 승인 대기=명시 명령, 첫 조각=승인 경로. branch `claude/a7-process-wiring-20261120`(기준 main `9e70a3d`). 신규 `ai_ops.recovery_approval_wiring`: `@bot request-approval <사건|this> <계획hash>`(ACK는 정확 64hex만) → 계획 요청자·같은 채널/스레드/사건 확인 → WF06 `ledger.open` → 고정 문구 회신(예외 문구 없음). 계획 hash→요청 색인(`json_extract`, 정확 1건). 장부 `page`(시간 전이만, 열기·결정·재검증 없음)→A7-2 outbox 동기화(relay 5초)·틱당 전송1(실패 격리, 종료 중 전송 없음). ingress `SlackRouter`가 `/slack/interactivity` 장착(서명 키만, bot 토큰 없음). `recovery-approval.json` 없거나 `enabled:false`면 기존 동작, 잘못되거나 grants 밖 승인자면 시작·check-config 실패. 관측 포트는 `observation_not_connected`(항상 실패)라 실제 배포에선 승인 대기가 열리지 않음(fail-closed). 후속: PR 경로 현재 상태 관측기, 승인 뒤 재검증·WF07, execute_command, 보관 tick, renderer 마운트·Slack Interactivity URL, 정책 전환. 시험17·변형 12/12. 실제 배포·Slack·장애·인프라 없음.
+
+## 2026-11-20 원복 실행 조각2 기준선 고정 원복 실행기 CI/main 반영 완료 (Claude)
+
+[PR #53](https://github.com/joungGo/url-shortener-ai-ops/pull/53) head `f9267cfe4a9c1a4e7313da30dbb2c324aad5b072`를 head 고정 일반 squash 병합해 main `9e70a3dd96fd1d51453b3b61afba64797c5791da`에 반영했다. PR CI44669209443 7종(1707개)·main CI44669722156 성공, tree `b621d1a1bda0fe657ac036fe9fef8e4e96ac182a` 일치. 보호 변경/우회 없음. 병합 후 branch 정리(복구용 SHA는 inventory). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+원복 경로(관측 PR51·드리프트 잠금 PR52·실행기 PR53) 로컬 계약 완료. 다음 후보: A7 프로세스 연결(승인 정책·Slack 수신 경로·outbox 전송·관찰 시작/봉인 hash 기록·보관 정리 tick·잠금 해제 확인·실제 PromQL/규칙·RBAC 설계: pods/proxy·applications patch 포함), 실제 Argo 쓰기 포트·인증 승인 조회기, A8 WF12 문서. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-20 원복 실행 조각2 기준선 고정 원복 실행기·CI 반영 준비 (Claude)
 
 llm-council 결정(원복=기준선 고정 sync 1회, 쓰기 전 드리프트 잠금, 실패=시도 소진→수동 인계)의 두 번째 조각. 신규 `ai_ops.rollback_executor.RollbackExecutor.execute_local`(local_fixture 포트·Argo `applications/lab-target` get/patch 신원만): 예약 전 WF09가 이 정확한 `rollback_candidate`(범위 hash·change 일치, 취소·결과·관측 시도 없음)이고 범위가 미철회·만료 전·미사용·실행 hash/대상/UID 결합인지 확인 → 계획당 1회 예약(이후 `rollback_already_attempted`) → 배포/기준선 `ai-ops/lab` 트리가 values.yaml만 다르고 정규 실패→기준선 digest뿐인지, Argo source 정확 일치(override 없음)·수동 sync·진행 중 operation 없음·실패 digest 실행 중, Lease 비어 있을 때만 → 드리프트 잠금 → 실시간·Lease·범위·결정 재확인 → pin 1회 → 확정 충돌 `not_applied`/그 외·미확인 `needs_review` → 고정 확인·Lease 반환 `pinned_unverified`(sync·회복은 WF09 원복 관측). 쓰기 전 실패 시 Lease 미반환(WF08 동일), 잠금 후 중단 시 잠금 유지(fail-closed).

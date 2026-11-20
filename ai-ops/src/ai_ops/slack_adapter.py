@@ -108,6 +108,8 @@ class SlackAdapter:
             self.events = EventStore(tasks.queue, tasks.settings, sources=event_sources)
             self.authorization_hash = sha256_json({'authorization':self.authorization_hash,
                                                   'event_sources':self.events.sources})
+        # Attached only by explicit wiring (relay with an enabled approval config).
+        self.recovery_approvals = None
         self.event_owner = 'slack-web' if transport_mode == 'slack_web_api' else 'slack-local'
         self.directory = tasks.queue.root / ('slack-web' if transport_mode == 'slack_web_api' else 'slack')
         _private_directory(self.directory)
@@ -229,7 +231,7 @@ class SlackAdapter:
                 or not isinstance(thread, str) or not STAMP.fullmatch(thread)
                 or not isinstance(text, str) or len(text.encode()) > 16384):
             raise ValueError('slack_event_fields_rejected')
-        command = re.fullmatch(re.escape('<@' + self.policy.bot_user_id + '>') + r'\s+(investigate|investigate-event|status-event|plan-recovery)\s+(\S+)(?:\s+(.+))?', text, re.DOTALL)
+        command = re.fullmatch(re.escape('<@' + self.policy.bot_user_id + '>') + r'\s+(investigate|investigate-event|status-event|plan-recovery|request-approval)\s+(\S+)(?:\s+(.+))?', text, re.DOTALL)
         if command is None: raise ValueError('slack_command_rejected')
         action, reference, question = command.groups()
         event_command = None
@@ -242,6 +244,10 @@ class SlackAdapter:
         if action == 'plan-recovery':
             from ai_ops.recovery_plans import parse_plan_arguments
             parse_plan_arguments(question)
+        if action == 'request-approval':
+            # Only an exact plan hash; never free text, digests, URLs or decisions.
+            from ai_ops.recovery_approval_wiring import parse_approval_arguments
+            parse_approval_arguments(question)
         question, _ = sanitize_question(question or '현재 상태를 확인해줘')
         identity = {'team':self.policy.team_id,'app':self.policy.app_id,'event':event_id}
         if self.transport_mode == 'slack_web_api':

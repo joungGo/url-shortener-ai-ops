@@ -122,3 +122,34 @@ class SlackInteractivityApp(SlackEventsApp):
 
     def _handle(self, headers, body):
         return self.receiver.receive(headers, body)
+
+
+class SlackRouter:
+    """One listener for the exact paths of its apps; each keeps its own limits.
+
+    Unknown paths go to the first app, which rejects them (403, no retry).
+    Shutdown waits for every app's in-flight request threads.
+    """
+    def __init__(self, *apps):
+        if not apps or any(not isinstance(app, SlackEventsApp) for app in apps):
+            raise ValueError('slack_router_apps_rejected')
+        self.apps = {app.PATH: app for app in apps}
+        if len(self.apps) != len(apps):
+            raise ValueError('slack_router_duplicate_path')
+        self.default = apps[0]
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] == 'lifespan':
+            while True:
+                event = await receive()
+                if event['type'] == 'lifespan.startup':
+                    await send({'type':'lifespan.startup.complete'})
+                elif event['type'] == 'lifespan.shutdown':
+                    tasks = [task for app in self.apps.values() for task in tuple(app._tasks)]
+                    if tasks:
+                        await asyncio.gather(*(asyncio.shield(task) for task in tasks), return_exceptions=True)
+                    await send({'type':'lifespan.shutdown.complete'})
+                    return
+        if scope['type'] != 'http':
+            return
+        await self.apps.get(scope.get('path'), self.default)(scope, receive, send)

@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 기준 AI main `5645718`(원복 실행 조각1 드리프트 잠금 PR52), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/recovery-rollback-executor-20261120`(원복 실행 조각2). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-20 KST. 기준 AI main `9e70a3d`(원복 실행 조각2 원복 실행기 PR53), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-process-wiring-20261120`(A7 프로세스 연결 조각1 승인 경로). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -351,3 +351,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### 원복 실행 조각2 기준선 고정 원복 실행기 · 2026-11-20
 
 [구현 기록](rollback-executor-local-20261120.md)·[검증 JSON](rollback-executor-local-validation-20261120.json): 계획당 1회, 쓰기 직전 재검증(이미지 digest만 되감기는지 Git 트리 비교·Argo source 정확·수동 sync·operation 없음·Lease), 쓰기 전 드리프트 잠금, pin 1회, 실패=시도 소진→수동 인계. local_fixture만. 시험11·변형 9/9·전체1707 통과. 이 커밋 시점 PR CI/main 대기. 다음: A7 프로세스 연결 또는 A8 WF12 문서.
+
+### 원복 실행 조각2 기준선 고정 원복 실행기 최종 반영 · 2026-11-20
+
+[PR #53](https://github.com/joungGo/url-shortener-ai-ops/pull/53) head `f9267cf` → main `9e70a3dd96fd1d51453b3b61afba64797c5791da`. PR CI44669209443 7종·main CI44669722156 성공, tree `b621d1a` 일치, 보호 변경/우회 없음. 다음 작업은 사용자 허락 후.
+
+### A7 프로세스 연결 조각1 Slack 복구 승인 경로 · 2026-11-20
+
+[구현 기록](recovery-approval-wiring-local-20261120.md)·[검증 JSON](recovery-approval-wiring-local-validation-20261120.json): 사용자 결정(승인 대기=명시 명령). `request-approval <사건|this> <계획hash>` → 계획 요청자·같은 스레드/사건 확인 → WF06 `open`; 계획 hash→요청 색인; 장부 `page`→outbox 동기화(5초)·틱당 전송1; ingress `SlackRouter`로 `/slack/interactivity`(서명 키만); `recovery-approval.json` 없거나 꺼지면 기존 동작. 관측 포트 미연결(항상 실패)이라 실제 배포에선 대기 미개시(fail-closed). 재검증·PR 준비·execute_command·보관 tick·renderer 마운트는 후속. 시험17·변형 12/12 통과. 이 커밋 시점 PR CI/main 대기.
