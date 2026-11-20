@@ -1,5 +1,17 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-20 PR 경로 원복 관측·CI 반영 준비 (Claude)
+
+WF09 `record_rollback_local`에 실제 원복 영수증·관찰 표본을 공급한다. 사용자 결정(권장안 1): 원복 적용은 클러스터 관측으로 판정하고 GitHub main==원복 revision은 판정이 아닌 인계 정보로 기록(승인 범위 revision은 승인 시 고정된 기존 커밋이라 WF07의 main==배포 SHA를 그대로 쓰면 기준선 고정 원복이 항상 검증불가). `restart_effects` 관찰기 PR 영수증 확장(Argo 앱 tick별 GET, `argo_state`: targetRevision·동기화·마지막 성공 작업 revision 일치+Healthy+삭제 중 아님, 앱 UID 변경 시 중단). 신규 `ai_ops.rollback_observe`: `RollbackAppliedReader.applied`(mode=kubernetes; 같은 앱·승인 revision 고정·동기화·성공·Healthy·수동 sync·같은 Deployment·generation 반영·`api` 단일 컨테이너가 승인 digest일 때만 영수증, 반영 시각=finishedAt·미래 거절, 안정 사실 hash로 재조회 동일), `alignment`(허용 저장소만 기존 `_main_sha`로 True/False/None), `RollbackObservationReader`(mode=sealed_capture). WF09: `rollback_note` 저장(판정 아님, prune 시 삭제), result_text 한 줄. 판정 규칙 불변, 조정기는 계속 local_fixture만.
+
+신규 시험8(실제 WF07/WF09 fixture), 결함 변형 7/7, 전체1687 통과. 상세 `ai-ops/docs/rollback-observe-local-20261119.md`·검증 JSON. 원복 실행 방식은 llm-council로 A(기준선 고정)만·원복 전 gitops_drift_lock·main 정렬은 별도 승인으로 결정(구현 전, 다음 조각). 이 커밋 시점 PR CI/main 대기. 실제 배포·Slack·장애·인프라 없음.
+
+## 2026-11-19 A7-5 복구 장부·증거·봉인 파일 주기 보관 정리 CI/main 반영 완료 (Claude)
+
+[PR #50](https://github.com/joungGo/url-shortener-ai-ops/pull/50) head `21b060c3ada218c0d69818386e22c9c825bd5f99`를 head 고정 일반 squash 병합해 main `ce68c5bd761db02ca1941f1aa79f9612e1d8b62d`에 반영했다. PR CI44536959534 7종(1679개)·main CI44537829472 성공, tree `3a1f5902a1e5f6e4eb204177c05b33e5720e4271` 일치. 보호 변경/우회 없음. 병합 후 branch 정리(복구용 SHA는 inventory). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.
+
+A7 남은 조각: PR 경로 원복 관측(GitHub/Argo), 프로세스 연결(승인 정책·수신기·outbox·관찰 시작·봉인 hash 장부 기록·보관 정리 tick·실제 PromQL/규칙·`pods/proxy` RBAC). 그다음 A8 WF12 문서 초안. 조각별 PR. **"뭐야" 질문은 답만, 구현은 명시 허락 후.** 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-19 A7-5 복구 장부·증거·봉인 파일 주기 보관 정리·CI 반영 준비 (Claude)
 
 조사: 복구 장부 4종의 `prune()`을 주기 호출하는 곳이 없고, 재시작 증거(Pod 로그 포함)·효과 봉인 파일은 삭제 경로가 없었다. `recovery_outbox`는 Slack 요청 만료 후에도 메시지 본문을 남기고 행을 지우지 않아 10000행 상한에서 enqueue가 영구 거절될 수 있었다. 신규 `ai_ops.recovery_retention.RecoveryRetention.tick()`: 장부 prune(재시작 장부 먼저·중복 호출 없음, tombstone 의미 불변) → outbox prune → 증거(live 실행 참조는 유지, 만료 실행만 참조하면 삭제, 미참조·`.tmp-*`는 7일 후) → 봉인(7일 후). 본인 0700 디렉터리 바로 아래 본인 일반 `<sha256>.json`/`.tmp-*`만, symlink·하위 디렉터리·다른 이름은 개수만, 없는 디렉터리 미생성, 7일 미만 기간 거절, 실패는 이름만(다음 주기 재시도). `RecoveryOutbox.prune()`: Slack 처리 잠금에서 만료·부재 요청 행 삭제(전송은 요청 재확인이라 재전송 없음).

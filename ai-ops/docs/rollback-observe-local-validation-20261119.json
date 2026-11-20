@@ -1,0 +1,59 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "PR-path rollback observation for WF09 record_rollback_local",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "ce68c5bd761db02ca1941f1aa79f9612e1d8b62d",
+  "decision": {
+    "user_choice": "option 1 (recommended): judge rollback from cluster facts; GitHub main == rollback revision recorded as handoff information, never a gate",
+    "reason": "RollbackScope.revision is fixed at approval (an existing, likely baseline, commit) while the WF07 sync check requires main head == deployed SHA, which would make every baseline-pinned rollback unverifiable"
+  },
+  "changes": {
+    "restart_effects": "observer accepts PR receipts with argo_application; per tick reads the Argo Application (fixed GET route); app UID change stops the run; argo_state healthy only if targetRevision, sync revision and last successful operation name the same 40-hex commit, health Healthy, not deleting",
+    "rollback_observe": "RollbackAppliedReader.applied (mode kubernetes): receipt only if same app, pinned+synced+succeeded+Healthy on scope revision, manual sync, same Deployment with generation observed, single api container running IMAGE_REPOSITORY@scope digest; applied_at = operation finishedAt (future rejected); source_hash from stable facts so re-reads match the sealed execution hash. alignment: gitops_main_matches True/False/None via existing _main_sha for allowed repositories only. RollbackObservationReader (mode sealed_capture) pairs it with the A7-4 sealed reader",
+    "recovery_effects": "record_rollback_local stores reader.alignment result as rollback_note (informational, never a gate, cleared on prune); result_text adds one line only when present; judgement rules unchanged"
+  },
+  "new_tests": 8,
+  "mutation_checks": {
+    "count": 7,
+    "detected": 7,
+    "mutations": [
+      "Argo health ignored",
+      "pinned targetRevision ignored",
+      "scope revision comparison removed (detected after adding a consistently-other-revision case)",
+      "image digest comparison removed",
+      "alignment made a gate",
+      "receipt hash includes raw resourceVersion",
+      "app identity check removed"
+    ]
+  },
+  "test_data_note": "two initial failures were test-data issues (the 'changed' application UID equalled the fixture UID; a degraded-at-record expectation) and were corrected, not product defects",
+  "full_suite": {
+    "count": 1687,
+    "seconds": 241.824,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/rollback-observe-full.log",
+      "sha256": "c7acc3eae7d7621f1a708d1da11ac2bce414868efe5c20951e8825b303f9cada"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compile": "passed",
+    "resource_warning_as_error": "passed (rollback, restart effects, recovery effects tests)"
+  },
+  "not_in_scope": [
+    "rollback execution path (baseline pin vs revert PR) and its approval/lock/revalidation",
+    "process wiring and authenticated RollbackScope reader",
+    "GitHub read identity and real Argo application name",
+    "real-cluster shadow and live decision"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/rollback_observe.py": "4893495cb9c9cf3ed5133a54e61115d34a0fd4a67fe1b95c482d572615ddb2e7",
+    "ai-ops/src/ai_ops/restart_effects.py": "18d418a057bad7284803abc2a1704e0782ba0c6fb960351298d07238edb1e883",
+    "ai-ops/src/ai_ops/recovery_effects.py": "72ae4f84dd71399fb00e1c0a901128501e95672c753deaaf92334a9694db24c1",
+    "ai-ops/tests/test_rollback_observe.py": "349af1618ca8dca13255412d5f2cfd5854dfbeebefebbfc697ba73b411cc68be"
+  },
+  "no_external_actions": "no cluster, GitHub, deploy, Slack, incident drill, Terraform, paid model call"
+}

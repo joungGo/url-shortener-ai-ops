@@ -47,7 +47,9 @@ from ai_ops.restart_k8s import (CONTAINER, LEASE, LEASE_PATH, NAME, NAMESPACE, P
 
 HTTP_PORT = 8000
 PROXY = re.escape(PODS) + '/' + NAME + re.escape(f':{HTTP_PORT}/proxy/') + '(readyz|items)'
-EFFECT_READER_ROUTES = (('GET', re.escape(ENDPOINT)), ('GET', re.escape(PODS)), ('GET', PROXY))
+ARGO_APPLICATION = r'/apis/argoproj\.io/v1alpha1/namespaces/' + NAME + '/applications/' + NAME
+EFFECT_READER_ROUTES = (('GET', re.escape(ENDPOINT)), ('GET', re.escape(PODS)), ('GET', PROXY), ('GET', ARGO_APPLICATION))
+REVISION = re.compile(r'[a-f0-9]{40}')
 EFFECT_PROMETHEUS_ROUTES = (('GET', r'/api/v1/query'), ('GET', r'/api/v1/rules'))
 LEASE_ROUTES = (('GET', re.escape(LEASE_PATH)), ('PUT', re.escape(LEASE_PATH)))
 SEAL_LIMIT = 8 * 1024 * 1024
@@ -106,6 +108,33 @@ def effect_window(applied_at, startup_seconds, span_seconds):
     return start, start + timedelta(seconds=span_seconds)
 
 
+def argo_path(application):
+    namespace, name = application
+    if not re.fullmatch(NAME, namespace or '') or not re.fullmatch(NAME, name or ''):
+        raise ValueError('argo_application_rejected')
+    return f'/apis/argoproj.io/v1alpha1/namespaces/{namespace}/applications/{name}'
+
+
+def argo_state(app):
+    """(revision, application uid, synced+healthy) from one Argo Application read.
+
+    Healthy only if the pinned target, the synced revision and the last successful
+    operation all name the same commit, health is Healthy and nothing is deleting.
+    """
+    status = app.get('status', {})
+    revision = status.get('sync', {}).get('revision')
+    if not isinstance(revision, str) or not REVISION.fullmatch(revision):
+        raise ValueError('argo_revision_unavailable')
+    operation = status.get('operationState', {})
+    healthy = (status.get('sync', {}).get('status') == 'Synced'
+               and status.get('health', {}).get('status') == 'Healthy'
+               and operation.get('phase') == 'Succeeded'
+               and operation.get('syncResult', {}).get('revision') == revision
+               and app.get('spec', {}).get('source', {}).get('targetRevision') == revision
+               and not app.get('metadata', {}).get('deletionTimestamp'))
+    return revision, app['metadata']['uid'], healthy
+
+
 class _Stop(Exception):
     """Ends the run: identity changed or cancelled (every series becomes unknown)."""
 
@@ -134,12 +163,13 @@ class _PromShim:
 class RestartEffectObserver:
     mode = 'kubernetes'  # not 'local_fixture': the WF09 coordinator refuses live readers
 
-    def __init__(self, *, collector, reader, prometheus, config, now, sleep):
+    def __init__(self, *, collector, reader, prometheus, config, now, sleep, argo_application=None):
         if not re.fullmatch(r'local-restart-[a-z0-9-]{1,40}', collector or ''):
             raise ValueError('effect_collector_rejected')
         self.collector, self.reader, self.prometheus = collector, reader, prometheus
         self.config = ObservationConfig.model_validate(body(config))
         self._now, self._sleep = now, sleep
+        self._argo = argo_path(argo_application) if argo_application is not None else None
 
     def _at(self):
         return datetime.fromtimestamp(self._now(), timezone.utc)
@@ -178,14 +208,21 @@ class RestartEffectObserver:
         if digest is None or not DIGEST.fullmatch(digest):
             raise ValueError('effect_image_not_pinned')
         marker = (template.get('metadata', {}).get('annotations') or {}).get(ANNOTATION)
+        revision, application_uid, synced, digests = revision_hash(template), None, None, [dh, ph]
+        if receipt.method == 'pr':
+            ah, app = self._raw(self.reader, self._argo, deadline)
+            if app.get('metadata', {}).get('uid') != receipt.application_uid:
+                raise _Stop('observation_identity_changed')
+            revision, application_uid, synced, marker = argo_state(app) + (None,)
+            digests.append(ah)
         reading = RuntimeEffect(
-            revision=revision_hash(template), application_uid=None, digest=digest, generation=meta['generation'],
+            revision=revision, application_uid=application_uid, digest=digest, generation=meta['generation'],
             observed_generation=status.get('observedGeneration', 0), replicas=status.get('replicas', 0),
             ready_replicas=status.get('readyReplicas', 0),
             # Terminating Pods count: an old Pod still present is not "replaced".
             pod_uid_hashes=sorted(sha256_json(p['metadata']['uid']) for p in pods), ready_pods=len(ready),
-            marker=marker if isinstance(marker, str) and SHA.fullmatch(marker) else None, argo_synced_healthy=None)
-        return reading, sha256_json([dh, ph]), ready
+            marker=marker if isinstance(marker, str) and SHA.fullmatch(marker) else None, argo_synced_healthy=synced)
+        return reading, sha256_json(digests), ready
 
     def _http(self, pod, path, deadline):
         if not re.fullmatch(NAME, pod):
@@ -241,9 +278,10 @@ class RestartEffectObserver:
         receipt = ExecutionReceipt.model_validate(body(receipt))
         policy = EffectPolicy.model_validate(body(policy))
         cfg = self.config
-        if (receipt.method != 'command' or not receipt.applied or receipt.applied_at is None or receipt.cancelled
-                or policy.window_start is None):
+        if (not receipt.applied or receipt.applied_at is None or receipt.cancelled or policy.window_start is None):
             raise ValueError('effect_observation_receipt_rejected')
+        if receipt.method == 'pr' and self._argo is None:
+            raise ValueError('effect_argo_application_required')
         if not re.fullmatch(r'effect-[a-f0-9]{32}', run_id or ''):
             raise ValueError('effect_run_id_rejected')
         if ([x.model_dump() for x in policy.metrics] != [m.requirement().model_dump() for m in cfg.metrics]

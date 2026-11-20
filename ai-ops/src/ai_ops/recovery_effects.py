@@ -411,6 +411,13 @@ class EffectCoordinator:
                 or restored.application_uid!=e.application_uid or restored.revision!=scope.revision
                 or restored.digest!=scope.digest or restored.retained_until!=e.retained_until):
                 raise ValueError('rollback_receipt_mismatch')
+            # Handoff information only (e.g. Git main vs restored revision); never a gate.
+            note=None;check=getattr(reader,'alignment',None)
+            if callable(check):
+                try:value=check(scope,deadline=deadline)
+                except Exception:value=None
+                matches=value.get('gitops_main_matches') if isinstance(value,dict) else None
+                note={'gitops_main_matches':matches if matches in (True,False) else None}
             batch=EffectBatch.model_validate(body(reader.read(restored,policy,deadline=deadline)))
             if sha256_json(body(scope_reader(e)))!=sha256_json(body(scope)):raise ValueError('rollback_scope_changed')
             current=self._source(key,actor)
@@ -420,6 +427,7 @@ class EffectCoordinator:
                 if current.cancelled or not start<=self.queue.now()<deadline:raise ValueError('rollback_read_expired')
                 report=verify_effect(restored,policy,batch,now=self.now())
                 r.update(rollback_result=report,state='rollback_verified' if report['service_resolved'] else 'manual_handoff',generation=r['generation']+1)
+                if note is not None:r['rollback_note']=note
                 self._save(db,r)
         except Exception:
             with self.queue.transaction() as db:
@@ -469,12 +477,14 @@ class EffectCoordinator:
             for row in db.execute('SELECT document FROM recovery_effects').fetchall():
                 r=json.loads(row[0])
                 if self.queue.now()>=r['retained_until'] and not r['expired']:
-                    r.update(expired=True,state='expired',event_id=None,job_id=None,cleanup=[],first_result=None,result=None,rollback=None,rollback_result=None,generation=r['generation']+1)
+                    r.update(expired=True,state='expired',event_id=None,job_id=None,cleanup=[],first_result=None,result=None,rollback=None,rollback_result=None,generation=r['generation']+1);r.pop('rollback_note',None)
                     self._save(db,r)
 
     def result_text(self,key,*,actor):
         r=self.show(key,actor=actor)
         label={'succeeded':'회복 확인','unresolved':'미해결','verification_unknown':'검증불가','cancelled':'취소됨','rollback_verified':'원복 후 회복 확인','manual_handoff':'수동 인계 필요'}.get(r['state'],'관찰 대기')
+        note=r.get('rollback_note')
+        git=('' if not note else '원복 revision과 Git main 일치: '+{True:'예',False:'아니오(Git과 클러스터 불일치, 사람 확인 필요)'}.get(note['gitops_main_matches'],'미확인')+'\n')
         return (f'효과 검증: {label}\n사건: {r["event_id"]}\n조사: {r["job_id"]}\n계획: {key}\n'
-            f'회수 확인: {r["cleanup_complete"]} · 후속: {(r["rollback"] or {}).get("decision","미정")}\n'
+            f'회수 확인: {r["cleanup_complete"]} · 후속: {(r["rollback"] or {}).get("decision","미정")}\n'+git+
             '로컬 합성 검증입니다. PR 병합·명령 종료·경보 해제만으로 회복을 판정하지 않습니다. Slack 전송 및 추가 실행 승인 결과가 아닙니다.')

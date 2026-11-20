@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "A7-5 periodic retention for recovery ledgers, outbox, restart evidence and sealed effect captures",
   "author": "Claude Code (Opus 5.5)",
   "base": "3c00eeecc97a2b273b713bfd247f997c94461a93",
@@ -55,5 +55,24 @@
     "ai-ops/src/ai_ops/recovery_outbox.py": "908891710fe8709079a70cf887f87151e47d836109f282631c494ee193402e76",
     "ai-ops/tests/test_recovery_retention.py": "fe7ae51b35e48a86867e1b12860c8b4808ba2e33a6ceae0fbef49fc36bd28ed4"
   },
-  "no_external_actions": "no cluster, deploy, Slack, incident drill, Terraform, paid model call"
+  "no_external_actions": "no cluster, deploy, Slack, incident drill, Terraform, paid model call",
+  "merge": {
+    "pr": 50,
+    "head": "21b060c3ada218c0d69818386e22c9c825bd5f99",
+    "main": "ce68c5bd761db02ca1941f1aa79f9612e1d8b62d",
+    "tree": "3a1f5902a1e5f6e4eb204177c05b33e5720e4271",
+    "pr_ci": {
+      "run": 44536959534,
+      "jobs": 7,
+      "tests": 1679,
+      "skipped": 5
+    },
+    "main_ci": {
+      "run": 44537829472,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted_after_merge": true
+  }
 }
