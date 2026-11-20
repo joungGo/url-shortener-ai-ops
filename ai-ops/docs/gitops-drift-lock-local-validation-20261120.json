@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "Rollback execution slice 1: GitOps drift lock",
   "author": "Claude Code (Opus 5.5)",
   "base": "e16b61494fa8d5644d82670a08e23ded43ab34c6",
@@ -48,5 +48,24 @@
     "ai-ops/src/ai_ops/recovery_pr.py": "5d8b7d8473df660dc0191624206808000b432a0c4574dcbbb3b0b3beaacb19c2",
     "ai-ops/tests/test_gitops_drift_lock.py": "347b98649660169d84e2aa58209e82bcb50bbbdc62ff7f74cec0fc709c7b333d"
   },
-  "no_external_actions": "no cluster, GitHub write, deploy, Slack, incident drill, Terraform, paid model call"
+  "no_external_actions": "no cluster, GitHub write, deploy, Slack, incident drill, Terraform, paid model call",
+  "merge": {
+    "pr": 52,
+    "head": "d7fd6c82296ec25bd1c1136a6d117bc56cac9750",
+    "main": "564571836e33c71540313645308c258a99d3e126",
+    "tree": "98eab6fb4a8c4bd56dc13e7d4e9fd9e73c46d262",
+    "pr_ci": {
+      "run": 44665694359,
+      "jobs": 7,
+      "tests": 1696,
+      "skipped": 5
+    },
+    "main_ci": {
+      "run": 44666355792,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted_after_merge": true
+  }
 }
