@@ -1,6 +1,6 @@
 # PR 경로 원복 관측 로컬 구현 · 2026-11-19
 
-상태: **로컬 구현·검증 완료, 이 커밋 시점 PR CI/main 대기.** 기준 main `ce68c5bd761db02ca1941f1aa79f9612e1d8b62d`. 원복 실행 경로는 없다. 실제 읽기도 계속 막혀 있다(모든 리더 mode가 `local_fixture`가 아님).
+상태: **PR51로 main 반영 완료.** 기준 main `ce68c5bd761db02ca1941f1aa79f9612e1d8b62d`. 원복 실행 경로는 없다. 실제 읽기도 계속 막혀 있다(모든 리더 mode가 `local_fixture`가 아님).
 
 ## 조사 결과와 결정
 
@@ -86,3 +86,7 @@
 전체 결과는 [검증 기록](rollback-observe-local-validation-20261119.json)에 있다.
 
 실제 클러스터·GitHub·배포·Slack·장애 실습 없음. 기존 시간·실행별 승인·정확 head 리뷰/CI·잠금·원복 조건 변경 없음.
+
+## 최종 반영 결과
+
+[PR #51](https://github.com/joungGo/url-shortener-ai-ops/pull/51) head `d375e4bf35203e567f438a33a2a2b38b8b78d75a`를 head 고정 일반 squash 병합해 main `e16b61494fa8d5644d82670a08e23ded43ab34c6`에 반영했다. [PR CI44657902367](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44657902367) 7종(1687개, skip5 기준선 동일)·[main CI44658449019](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44658449019) 성공(PR전용 gate skip은 설계대로). tree `f8bca149d56c87c537740fefcb3bc7faecc63179` 일치. 보호 변경/우회 없음. 병합 후 branch를 정리했고 최종 메타데이터는 로컬 갱신했다.

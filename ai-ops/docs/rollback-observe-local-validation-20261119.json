@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "PR-path rollback observation for WF09 record_rollback_local",
   "author": "Claude Code (Opus 5.5)",
   "base": "ce68c5bd761db02ca1941f1aa79f9612e1d8b62d",
@@ -55,5 +55,24 @@
     "ai-ops/src/ai_ops/recovery_effects.py": "72ae4f84dd71399fb00e1c0a901128501e95672c753deaaf92334a9694db24c1",
     "ai-ops/tests/test_rollback_observe.py": "349af1618ca8dca13255412d5f2cfd5854dfbeebefebbfc697ba73b411cc68be"
   },
-  "no_external_actions": "no cluster, GitHub, deploy, Slack, incident drill, Terraform, paid model call"
+  "no_external_actions": "no cluster, GitHub, deploy, Slack, incident drill, Terraform, paid model call",
+  "merge": {
+    "pr": 51,
+    "head": "d375e4bf35203e567f438a33a2a2b38b8b78d75a",
+    "main": "e16b61494fa8d5644d82670a08e23ded43ab34c6",
+    "tree": "f8bca149d56c87c537740fefcb3bc7faecc63179",
+    "pr_ci": {
+      "run": 44657902367,
+      "jobs": 7,
+      "tests": 1687,
+      "skipped": 5
+    },
+    "main_ci": {
+      "run": 44658449019,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted_after_merge": true
+  }
 }

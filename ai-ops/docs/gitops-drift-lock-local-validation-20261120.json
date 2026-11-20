@@ -1,0 +1,52 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "Rollback execution slice 1: GitOps drift lock",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "e16b61494fa8d5644d82670a08e23ded43ab34c6",
+  "decision": "llm-council 2026-11-20: rollback executes only as baseline pin; engage a drift lock before the rollback; WF07 blocked fail-closed while engaged; release only when main ai-ops/lab tree equals the baseline commit tree",
+  "changes": {
+    "gitops_drift_lock": "GitOpsDriftLock.engage (idempotent per plan/scope/repository, conflict for another engaged rollback, re-engage after release), release_if_aligned (main head + ai-ops/lab Git tree SHA via existing _main_sha/_lab_tree; release only on equal trees; differs/unreadable/main moving keep the lock; no exception text), assert_unlocked(db) used inside WF07 transactions; no expiry and no unauthenticated override",
+    "recovery_pr": "assert_unlocked in _ready_in_db (prepare/publish transactions), _prepared_authority (start checks of preflight/merge/sync planning/sync record) and the four final transactions after authority recheck; read-only operations and recording an already created PR are not blocked"
+  },
+  "new_tests": 9,
+  "mutation_checks": {
+    "count": 7,
+    "detected": 7,
+    "mutations": [
+      "prepare/publish check removed",
+      "start check removed",
+      "tree comparison replaced by SHA comparison",
+      "conflict check removed",
+      "main re-read removed",
+      "released lock treated as engaged",
+      "four in-transaction checks removed (detected by the after-last-start-check race test)"
+    ]
+  },
+  "full_suite": {
+    "count": 1696,
+    "seconds": 235.086,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/gitops-drift-lock-full.log",
+      "sha256": "666ad3ba034b0f8261c324b5da18b4272fc281d728e65663ed38ff0b0a84f988"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compile": "passed",
+    "existing_wf07_tests": "passed (with drift lock tests, ResourceWarning as error)"
+  },
+  "not_in_scope": [
+    "slice 2 rollback executor (pre-execution revalidation, lock engage, single baseline-pin sync, attempt exhaustion -> manual handoff)",
+    "periodic release check wiring and human alignment change path",
+    "authorized release path for fix-forward"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/gitops_drift_lock.py": "17afc618c5ae7fb495ae94ccd83be4fc92ce652559197d885b0135d50b5b7247",
+    "ai-ops/src/ai_ops/recovery_pr.py": "5d8b7d8473df660dc0191624206808000b432a0c4574dcbbb3b0b3beaacb19c2",
+    "ai-ops/tests/test_gitops_drift_lock.py": "347b98649660169d84e2aa58209e82bcb50bbbdc62ff7f74cec0fc709c7b333d"
+  },
+  "no_external_actions": "no cluster, GitHub write, deploy, Slack, incident drill, Terraform, paid model call"
+}
