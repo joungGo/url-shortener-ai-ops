@@ -1,5 +1,11 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-20 원복 실행 조각1 GitOps 드리프트 잠금·CI 반영 준비 (Claude)
+
+llm-council 결정(원복=기준선 고정만, 원복 전 잠금, main 정렬은 별도 승인)의 첫 조각. 기준선 고정 원복 뒤 main에는 실패 변경이 남아, 다음 WF07이 오염된 main 위에서 만들어지면 "main head==배포 SHA" 검사를 오히려 통과해 재배포한다. 신규 `ai_ops.gitops_drift_lock`: `engage`(대상별 1개, 같은 계획·범위·저장소면 멱등, 다른 원복은 충돌, 해제 후 재잠금), `release_if_aligned`(기존 `_main_sha`/`_lab_tree`로 main `ai-ops/lab` Git 트리==기준선 트리일 때만 해제·main SHA/트리 기록; 다름·읽기 실패·확인 중 main 변경이면 유지, 예외 문구 없음), `assert_unlocked(db)`. 만료·비인증 수동 해제 없음(fix-forward 해제는 이후 인가 경로). WF07 `recovery_pr`: `_ready_in_db`·`_prepared_authority`·preflight/병합/동기화 계획·기록 최종 트랜잭션 4곳에서 잠금 중 fail-closed(읽기 전용·생성된 PR 기록은 미차단).
+
+신규 시험9(실제 WF07·로컬 Git), 결함 변형 7/7, 전체1696 통과. 상세 `ai-ops/docs/gitops-drift-lock-local-20261120.md`·검증 JSON. 다음 조각2 원복 실행기(직전 재검증·잠금·기준선 고정 sync 1회·실패=시도 소진→수동 인계, 실제 실행 차단). 이 커밋 시점 PR CI/main 대기. 실제 배포·Slack·장애·인프라 없음.
+
 ## 2026-11-20 PR 경로 원복 관측 CI/main 반영 완료 (Claude)
 
 [PR #51](https://github.com/joungGo/url-shortener-ai-ops/pull/51) head `d375e4bf35203e567f438a33a2a2b38b8b78d75a`를 head 고정 일반 squash 병합해 main `e16b61494fa8d5644d82670a08e23ded43ab34c6`에 반영했다. PR CI44657902367 7종(1687개)·main CI44658449019 성공, tree `f8bca149d56c87c537740fefcb3bc7faecc63179` 일치. 보호 변경/우회 없음. 병합 후 branch 정리(복구용 SHA는 inventory). 최종 메타데이터(이 기록·작업표·구현 문서 최종 절·검증 JSON)는 병합 후 로컬 갱신이다.

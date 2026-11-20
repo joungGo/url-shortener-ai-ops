@@ -21,6 +21,7 @@ from ai_ops.c_pr_link import RecoveryPRLink
 from ai_ops.c_execution_preflight import verify_execution_preflight, _check_live, MAX_PREFLIGHT_DURATION
 from ai_ops.c_merge_guard import plan_exact_merge_request, verify_merged_commit
 from ai_ops.c_sync_guard import plan_exact_sync, verify_sync_result
+from ai_ops.gitops_drift_lock import assert_unlocked
 
 
 def body(model):
@@ -302,7 +303,7 @@ class ImageRecoveryPRBridge:
                 raise ValueError('recovery_pr_cancelled_during_preflight')
             # WF06 cancellation can change its own ledger without changing this row.
             # Recheck it atomically, including retention after DB/source lookup waits.
-            self._check_prepared_authority(self.approvals._get(db,key),actor,current)
+            self._check_prepared_authority(self.approvals._get(db,key),actor,current);assert_unlocked(db)
             moment=self.now()
             if (not started<=moment or moment-started>MAX_PREFLIGHT_DURATION
                     or not proposal.created_at<=moment<min(proposal.expires_at,link.expires_at)):
@@ -312,11 +313,13 @@ class ImageRecoveryPRBridge:
                     execution_allowed=False,merge_request_created=False,sync_allowed=False)
 
     def _ready_in_db(self,db,key,original):
+        assert_unlocked(db)  # a baseline-pinned rollback leaves main ahead: no new PR on it
         current=self.approvals._get(db,key)
         self._same(original,current)
         if current['state']!='proposal_ready':raise ValueError('recovery_pr_approval_inactive')
 
     def _prepared_authority(self,key,actor,record):
+        with self.queue.transaction() as db:assert_unlocked(db)
         current=self.approvals.show(key,actor=actor)
         return self._check_prepared_authority(current,actor,record)
 
@@ -344,7 +347,7 @@ class ImageRecoveryPRBridge:
             current=self._get(db,key)
             if current['generation']!=record['generation'] or current['cancel_requested']:
                 raise ValueError('recovery_pr_changed')
-            self._check_prepared_authority(self.approvals._get(db,key),actor,current)
+            self._check_prepared_authority(self.approvals._get(db,key),actor,current);assert_unlocked(db)
             request=plan_exact_merge_request(locked=locked,proposal=proposal,pr_link=link,now=self.now())
             current['locked']=json.loads(json.dumps(locked,default=lambda x:x.isoformat()))
             self._save(db,current)
@@ -375,7 +378,7 @@ class ImageRecoveryPRBridge:
             current=self._get(db,key)
             if current['generation']!=record['generation'] or current['cancel_requested']:
                 raise ValueError('recovery_pr_changed')
-            self._check_prepared_authority(self.approvals._get(db,key),actor,current)
+            self._check_prepared_authority(self.approvals._get(db,key),actor,current);assert_unlocked(db)
             for observation in observations:
                 _check_live(observation,proposal,link,self.now(),held)
             current.update(state='merge_verified',reason='pinned_sync_plan_only',merge_response=merge_response,
@@ -394,7 +397,7 @@ class ImageRecoveryPRBridge:
             current=self._get(db,key)
             if current['generation']!=record['generation'] or current['cancel_requested']:
                 raise ValueError('recovery_pr_changed')
-            self._check_prepared_authority(self.approvals._get(db,key),actor,current)
+            self._check_prepared_authority(self.approvals._get(db,key),actor,current);assert_unlocked(db)
             observed=_utc_datetime(snapshot['checked_at'])
             if not 0<=(self.now()-observed).total_seconds()<=15:
                 raise ValueError('recovery_pr_sync_observation_expired')

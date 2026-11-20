@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-19 KST. 기준 AI main `e16b614`(PR 경로 원복 관측 PR51), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 없음(main detached, 다음 조각에서 새 branch). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-19 KST. 기준 AI main `e16b614`(PR 경로 원복 관측 PR51), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/recovery-drift-lock-20261120`(원복 실행 조각1). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -339,3 +339,7 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### PR 경로 원복 관측 최종 반영 · 2026-11-20
 
 [PR #51](https://github.com/joungGo/url-shortener-ai-ops/pull/51) head `d375e4b` → main `e16b61494fa8d5644d82670a08e23ded43ab34c6`. PR CI44657902367 7종·main CI44658449019 성공, tree `f8bca14` 일치, 보호 변경/우회 없음. 다음 작업은 사용자 허락 후.
+
+### 원복 실행 조각1 GitOps 드리프트 잠금 · 2026-11-20
+
+[구현 기록](gitops-drift-lock-local-20261120.md)·[검증 JSON](gitops-drift-lock-local-validation-20261120.json): 원복 전 대상 잠금, 잠금 중 WF07 준비·게시·preflight·병합·동기화 fail-closed(상태 변경 트랜잭션 안), 해제=main `ai-ops/lab` 트리==기준선 트리. 시험9·변형 7/7·전체1696 통과. 이 커밋 시점 PR CI/main 대기. 다음 조각2 원복 실행기.
