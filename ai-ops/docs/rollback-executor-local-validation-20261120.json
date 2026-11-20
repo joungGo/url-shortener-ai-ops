@@ -1,0 +1,64 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "Rollback execution slice 2: baseline-pin rollback executor",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "564571836e33c71540313645308c258a99d3e126",
+  "decision": "llm-council 2026-11-20: rollback = pin Argo to the pre-approved baseline commit and sync once; drift lock before the write; failure = attempt consumed -> manual handoff; no retry",
+  "flow": [
+    "refuse without reservation: non-fixture port/identity, WF09 decision not this exact rollback_candidate, scope revoked/expired/used/unbound",
+    "reserve exactly one attempt per plan (rollback_already_attempted afterwards, even after a crash)",
+    "pre-write revalidation: deployed vs baseline ai-ops/lab trees differ only in values.yaml with exact canonical failed->baseline digests; Argo source exactly {repoURL,path,targetRevision} (no overrides), manual sync, no operation in progress; Deployment runs the failed digest; Lease acquired only if free",
+    "engage GitOps drift lock before the write; re-read live state, Lease, scope and WF09 decision",
+    "pin once; definite conflict -> not_applied; anything else or unconfirmed readback -> needs_review",
+    "release owned Lease after confirmed pin -> pinned_unverified; sync and service judged later by WF09 rollback observation"
+  ],
+  "new_tests": 11,
+  "mutation_checks": {
+    "count": 9,
+    "detected": 9,
+    "mutations": [
+      "one-attempt guard removed",
+      "tree diff check removed",
+      "source exact match relaxed",
+      "lock moved after the write",
+      "recheck removed",
+      "operation in progress ignored",
+      "expiry ignored",
+      "conflict treated as applied",
+      "pin readback removed"
+    ]
+  },
+  "test_note": "a helper named run() shadowed unittest.TestCase.run and was renamed (test issue, not product)",
+  "full_suite": {
+    "count": 1707,
+    "seconds": 344.009,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261119/rollback-executor-full.log",
+      "sha256": "a7bd428cd61b517c30db74c7005eea84ec100a1e21415dc48f7a2b4bedd589ea"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "compile": "passed"
+  },
+  "known_behaviour": [
+    "Lease is not auto-released after a pre-write failure (same as WF08); WF09 cleanup and people handle it",
+    "a stop after the lock but before the write leaves the lock engaged (fail closed) for manual review",
+    "attempts_used across paths awaits the authenticated approval reader; executor ledger guarantees one per plan",
+    "C04 independent rollback is separate frozen lab code"
+  ],
+  "not_in_scope": [
+    "live Argo writer port and RBAC (applications patch)",
+    "registry image existence pre-check (optional)",
+    "irreversible side-effect judgement (approval-time human item)",
+    "process wiring"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/rollback_executor.py": "c4d2052d899c921f3827857d0a91e7d6bcce21d8d6b0577d3db5f3342c78452b",
+    "ai-ops/tests/test_rollback_executor.py": "b4a82a00ab2476a38d8ebcc3e17cd4134bea3fc041342f175490a5aaa1cb8838"
+  },
+  "no_external_actions": "no cluster, GitHub write, deploy, Slack, incident drill, Terraform, paid model call"
+}

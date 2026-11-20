@@ -1,6 +1,6 @@
 # 원복 실행 조각 1: GitOps 드리프트 잠금 로컬 구현 · 2026-11-20
 
-상태: **로컬 구현·검증 완료, 이 커밋 시점 PR CI/main 대기.** 기준 main `e16b61494fa8d5644d82670a08e23ded43ab34c6`. 실행·전송·클러스터·GitHub 쓰기는 없다.
+상태: **PR52로 main 반영 완료.** 기준 main `e16b61494fa8d5644d82670a08e23ded43ab34c6`. 실행·전송·클러스터·GitHub 쓰기는 없다.
 
 ## 배경 (llm-council 결정, 2026-11-20)
 
@@ -86,3 +86,7 @@
 전체 결과는 [검증 기록](gitops-drift-lock-local-validation-20261120.json)에 있다.
 
 실제 클러스터·GitHub·배포·Slack·장애 실습 없음. 기존 시간·실행별 승인·정확 head 리뷰/CI·잠금·원복 조건 변경 없음.
+
+## 최종 반영 결과
+
+[PR #52](https://github.com/joungGo/url-shortener-ai-ops/pull/52) head `d7fd6c82296ec25bd1c1136a6d117bc56cac9750`를 head 고정 일반 squash 병합해 main `564571836e33c71540313645308c258a99d3e126`에 반영했다. [PR CI44665694359](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44665694359) 7종(1696개, skip5 기준선 동일)·[main CI44666355792](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/44666355792) 성공(PR전용 gate skip은 설계대로). tree `98eab6fb4a8c4bd56dc13e7d4e9fd9e73c46d262` 일치. 보호 변경/우회 없음. 병합 후 branch를 정리했고 최종 메타데이터는 로컬 갱신했다.
