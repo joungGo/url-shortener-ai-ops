@@ -10,6 +10,7 @@ from ai_ops.job_queue import RETENTION_SECONDS, utc
 
 UNAVAILABLE = ('사건 접수 확인 중이거나 조회할 수 없는 참조입니다. 아직 조사 작업을 만들지 않았습니다. '
                '참조·대상 권한·보관 기간을 확인하고 새 메시지로 다시 요청하세요.')
+APPROVAL_DISABLED = '이 배포에서는 복구 승인 요청 기능이 활성화되어 있지 않습니다. 승인 대기를 만들지 않았습니다.'
 AMBIGUOUS = '이 스레드의 사건을 하나로 정할 수 없습니다. alert_ref 또는 evt-ID를 명시해 주세요. 조사 작업은 없습니다.'
 
 
@@ -96,6 +97,11 @@ class SlackEventBridge:
             return self._ready(row,entry,'사건 상세의 보관 기간이 만료됐습니다. 새 조사 작업은 없습니다.',view)
         if entry['command']=='plan-recovery':
             return self._plan(row, entry, view)
+        if entry['command']=='request-approval':
+            service = self.adapter.recovery_approvals
+            if service is None:
+                return self._ready(row,entry,APPROVAL_DISABLED,view)
+            return self._ready(row,entry,service.request(row,entry['event_id'],row['question']),view)
         if entry['command']=='status-event':
             # Status sees only this principal's requests, never another audience's job IDs.
             with self.adapter._db() as db:

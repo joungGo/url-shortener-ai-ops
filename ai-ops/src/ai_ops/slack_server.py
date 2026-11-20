@@ -1,5 +1,9 @@
 """Explicitly enabled TLS ingress / reply relay; no worker or recovery launcher.
 
+With an enabled ``recovery-approval.json`` the ingress also serves signed
+approval buttons and the relay handles ``request-approval`` and approval notices
+(record/notify only; see ``recovery_approval_wiring``).
+
 Only check-config and probes are safe without connection approval. Ingress owns
 only the signing secret; relay owns bot + signing credentials. No credentials
 are read, store created or socket opened at import or during config checking.
@@ -21,7 +25,8 @@ from ai_ops.job_queue import JobQueue
 from ai_ops.path_policy import cli_paths
 from ai_ops.runtime_settings import runbook_settings_kwargs
 from ai_ops.slack_adapter import SlackAdapter, SlackPolicy
-from ai_ops.slack_ingress import SlackEventsApp
+from ai_ops.recovery_approval_wiring import CONFIG_NAME, RecoveryApprovalConfig, RecoveryApprovalService
+from ai_ops.slack_ingress import SlackEventsApp, SlackInteractivityApp, SlackRouter
 from ai_ops.slack_process import check_process, process_lock
 from ai_ops.slack_runtime import SlackRuntime, SlackWebConfig
 from ai_ops.slack_web import read_private_secret
@@ -30,6 +35,7 @@ from ai_ops.workflow_config import read_config
 
 POLL_SECONDS = 1
 RETENTION_INTERVAL = 60
+APPROVAL_SYNC_INTERVAL = 5
 
 
 def load_settings(config):
@@ -47,12 +53,24 @@ def load_settings(config):
     return settings, policy
 
 
-def make_ingress(tasks, policy, config):
+def make_ingress(tasks, policy, config, recovery=None):
     if not config.enabled:
         raise ValueError('slack_web_disabled')
     # Deliberately never construct SlackRuntime / transport or read bot_token_file.
     secret = read_private_secret(config.signing_secret_file)
-    return SlackEventsApp(SlackAdapter(tasks, policy, secret, transport_mode='slack_web_api',event_sources=config.sources()))
+    adapter = SlackAdapter(tasks, policy, secret, transport_mode='slack_web_api',event_sources=config.sources())
+    events = SlackEventsApp(adapter)
+    if recovery is None or not recovery.enabled:
+        return events
+    # Button presses only record a ledger decision; same signing secret, no bot token.
+    service = RecoveryApprovalService(adapter, recovery)
+    return SlackRouter(events, SlackInteractivityApp(service.receiver(secret)))
+
+
+def load_recovery(config_dir):
+    """Optional approval wiring config; None (off) when absent or disabled."""
+    recovery = RecoveryApprovalConfig.load_optional(config_dir / CONFIG_NAME)
+    return recovery if recovery is not None and recovery.enabled else None
 
 
 class ManagedIngress:
@@ -130,13 +148,33 @@ def server_config(app, certificate, key):
                                ('uvicorn','uvicorn.error','uvicorn.access','uvicorn.asgi')}})
 
 
-def relay_loop(runtime, stopped, progress, *, monotonic=time.monotonic):
+def recovery_tick(recovery, transport, stopped, state, now):
+    """Approval notices: periodic ledger->outbox sync, then at most one delivery.
+
+    Failures are swallowed by design (no exception text in logs) and retried on a
+    later tick; an ambiguous send is never retried by the outbox itself.
+    """
+    if now >= state['next_sync']:
+        state['next_sync'] = now + APPROVAL_SYNC_INTERVAL
+        with suppress(Exception):
+            recovery.sync_once()
+    if not stopped.is_set():
+        with suppress(Exception):
+            recovery.deliver_once(transport)
+
+
+def relay_loop(runtime, stopped, progress, *, monotonic=time.monotonic, recovery=None):
     next_prune = 0.0
+    approvals = {'next_sync': 0.0}
     while not stopped.is_set():
         # Complete the current tick/journal on SIGTERM; no later tick or retry.
         runtime.relay_once(stopped=stopped.is_set)
         if stopped.is_set():
             break
+        if recovery is not None:
+            recovery_tick(recovery, runtime.transport, stopped, approvals, monotonic())
+            if stopped.is_set():
+                break
         now = monotonic()
         if now >= next_prune:
             runtime.adapter.prune()
@@ -168,9 +206,13 @@ def main(argv=None):
         if args.action != 'check-config' and not web.enabled:
             raise ValueError('slack_web_disabled')
         settings, policy = load_settings(args.config)
+        recovery = load_recovery(args.config)
+        if recovery is not None and not set(recovery.prepare_proposal.approvers) <= {g.user_id for g in policy.grants}:
+            raise ValueError('recovery_approvers_not_granted')
         if args.action == 'check-config':
             print(json.dumps({'status':'valid', 'enabled':web.enabled,
                 'config_hash':settings.config_hash, 'runbook_policy_hash':settings.runbooks.policy_hash,
+                'recovery_approval':recovery is not None,
                 'execution_allowed':False, 'connected':False}))
             return 0
         os.umask(0o077)
@@ -180,7 +222,7 @@ def main(argv=None):
             tasks = TaskService(queue, settings)
             if args.action == 'ingress':
                 import uvicorn
-                app = ManagedIngress(make_ingress(tasks, policy, web), progress)
+                app = ManagedIngress(make_ingress(tasks, policy, web, recovery), progress)
                 server = uvicorn.Server(server_config(app, args.tls_cert, args.tls_key))
                 server.run()
                 return 0 if server.started else 1
@@ -190,7 +232,11 @@ def main(argv=None):
                 for sig in previous:
                     signal.signal(sig, lambda *_: stopped.set())
                 runtime = SlackRuntime(tasks, policy, web)
-                relay_loop(runtime, stopped, progress)
+                service = None
+                if recovery is not None:
+                    service = RecoveryApprovalService(runtime.adapter, recovery)
+                    runtime.adapter.recovery_approvals = service
+                relay_loop(runtime, stopped, progress, recovery=service)
             finally:
                 for sig, handler in previous.items():
                     signal.signal(sig, handler)
