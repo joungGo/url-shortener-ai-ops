@@ -286,6 +286,24 @@ class ServerWiringTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(receipt['accepted'])
 
+    def relay_kwargs(self):
+        with patch.object(slack_server, 'relay_loop') as loop, redirect_stdout(io.StringIO()):
+            self.assertEqual(slack_server.main(self.s.args('relay', '--enable-web')), 0)
+        return loop.call_args.kwargs
+
+    def test_relay_entrypoint_wires_retention_with_or_without_feature(self):
+        from ai_ops.recovery_approval_wiring import OrphanOutboxRetention
+        from ai_ops.recovery_retention import RecoveryRetention
+        with patch('socket.create_connection', side_effect=AssertionError('network')):
+            off = self.relay_kwargs()
+            self.assertIsNone(off['recovery'])
+            self.assertIsInstance(off['retention'], OrphanOutboxRetention)
+            self.write()
+            on = self.relay_kwargs()
+        self.assertIsInstance(on['recovery'], RecoveryApprovalService)
+        self.assertIsInstance(on['retention'], RecoveryRetention)
+        self.assertEqual(on['retention'].ledgers, {'prepare_proposal': on['recovery'].ledger})
+
     def test_invalid_or_ungranted_config_is_rejected(self):
         self.write(enabled='yes')
         with self.assertRaisesRegex(ValueError, 'recovery_approval_config_rejected'):
@@ -298,3 +316,104 @@ class ServerWiringTest(unittest.TestCase):
         self.write(prepare_proposal={**self.policy.model_dump(), 'scope': 'execute_command'})
         with self.assertRaises(ValueError):
             slack_server.load_recovery(self.s.config)
+
+
+class RetentionWiringTest(WiringFixture, unittest.TestCase):
+    def outbox_rows(self):
+        with self.adapter._db() as db:
+            if db.execute("SELECT 1 FROM sqlite_master WHERE name='recovery_outbox'").fetchone() is None:
+                return None
+            return db.execute('SELECT count(*) FROM recovery_outbox').fetchone()[0]
+
+    def ledger_document(self):
+        with self.f.queue.transaction() as db:
+            return json.loads(db.execute('SELECT document FROM recovery_approvals WHERE plan_hash=?',
+                                         (self.key,)).fetchone()['document'])
+
+    def expire_plan_request(self):
+        self.f.fixture.time = self.ledger_document()['retained_until'] + 1
+        self.adapter.prune()
+
+    def test_pass_tombstones_ledger_and_deletes_messages_of_expired_requests(self):
+        self.ask()
+        self.service.sync_once()
+        self.service.deliver_once(self.transport)
+        retention = self.service.retention()
+        kept = retention.tick()
+        self.assertEqual((kept['failures'], kept['outbox_removed']), ([], 0))
+        self.assertEqual(self.outbox_rows(), 1)
+        self.assertIsNotNone(self.ledger_document()['identity'])
+        self.expire_plan_request()
+        report = retention.tick()
+        self.assertEqual((report['failures'], report['outbox_removed'], report['execution_allowed']), ([], 1, False))
+        self.assertEqual(self.outbox_rows(), 0)
+        document = self.ledger_document()
+        self.assertEqual((document['identity'], document['approved_by_hash'], document['proof_hash']),
+                         (None, None, None))
+        self.assertEqual(self.posts()[-1]['blocks'][1]['elements'][0]['action_id'], 'recovery_prepare_approve')
+        self.assertEqual(len(self.posts()), 1)  # retention never sends
+
+    def test_enabled_relay_uses_full_pass_over_its_own_ledger(self):
+        from ai_ops.recovery_approval_wiring import relay_retention
+        from ai_ops.recovery_retention import RecoveryRetention
+        retention = relay_retention(self.adapter, self.service)
+        self.assertIsInstance(retention, RecoveryRetention)
+        self.assertEqual(retention.ledgers, {'prepare_proposal': self.service.ledger})
+        self.assertIs(retention.outbox, self.service.outbox)
+
+    def test_feature_off_prunes_left_messages_without_creating_tables(self):
+        from ai_ops.recovery_approval_wiring import OrphanOutboxRetention, relay_retention
+        self.ask()
+        self.service.sync_once()
+        self.adapter.recovery_approvals = None
+        orphan = relay_retention(self.adapter)
+        self.assertIsInstance(orphan, OrphanOutboxRetention)
+        self.assertEqual(orphan.tick()['outbox_removed'], 0)
+        self.expire_plan_request()
+        self.assertEqual(orphan.tick(), {'failures': [], 'outbox_removed': 1, 'execution_allowed': False})
+        with self.adapter._db() as db:
+            db.execute('DROP TABLE recovery_outbox')
+        self.assertEqual(orphan.tick()['outbox_removed'], 0)
+        self.assertIsNone(self.outbox_rows())  # never created by the feature-off pass
+
+    def test_busy_processing_lock_is_a_named_failure_retried_later(self):
+        from ai_ops.recovery_approval_wiring import OrphanOutboxRetention
+        with self.adapter._lock():
+            self.assertEqual(OrphanOutboxRetention(self.adapter).tick()['failures'], ['outbox'])
+            self.assertEqual(self.service.retention().tick()['failures'], ['outbox'])
+
+
+class RelayRetentionLoopTest(unittest.TestCase):
+    def test_interval_failure_containment_and_none(self):
+        retention = Mock()
+        retention.tick.side_effect = OSError('busy')
+        state = {'next_retention': 0.0}
+        for now in (0.0, 1.0, 599.0, 600.0):
+            slack_server.retention_tick(retention, state, now)
+        self.assertEqual(retention.tick.call_count, 2)
+        slack_server.retention_tick(None, state, 5000.0)
+
+    def test_loop_runs_retention_after_request_prune_and_not_when_stopping(self):
+        import threading
+        calls = Mock()
+        stopped = threading.Event()
+        runtime = Mock()
+        runtime.relay_once.side_effect = lambda **_: calls.relay()
+        runtime.adapter.prune.side_effect = lambda: calls.adapter_prune()
+        runtime.tasks.prune.side_effect = lambda: calls.tasks_prune()
+        retention = Mock()
+        retention.tick.side_effect = lambda: calls.retention()
+        progress = Mock()
+        progress.tick.side_effect = stopped.set
+        slack_server.relay_loop(runtime, stopped, progress, monotonic=lambda: 100.0, retention=retention)
+        self.assertEqual([c[0] for c in calls.mock_calls], ['relay', 'adapter_prune', 'tasks_prune', 'retention'])
+        stopped.clear()
+        runtime.relay_once.side_effect = lambda **_: stopped.set()
+        slack_server.relay_loop(runtime, stopped, progress, monotonic=lambda: 9999.0, retention=retention)
+        self.assertEqual(retention.tick.call_count, 1)
+        # Stop requested during the request prune: no retention pass afterwards.
+        stopped.clear()
+        runtime.relay_once.side_effect = None
+        runtime.tasks.prune.side_effect = stopped.set
+        slack_server.relay_loop(runtime, stopped, progress, monotonic=lambda: 99999.0, retention=retention)
+        self.assertEqual(retention.tick.call_count, 1)

@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-20 A7 프로세스 연결 조각2 복구 보관 정리 tick·CI 반영 준비 (Claude)
+
+branch `claude/a7-retention-tick-20261120`(기준 main `46789b1`). relay가 기존 Slack 요청·작업 정리(60초) 뒤 10분마다 A7-5 `RecoveryRetention.tick`: 승인 기능 켜짐→`RecoveryApprovalService.retention`(승인 장부 tombstone·outbox), 꺼짐→`OrphanOutboxRetention`(남은 outbox만, 테이블 생성·정책 읽기 없음). `recovery_outbox.prune_existing` 추가(`RecoveryOutbox.prune` 동작 동일). 종료 중 미실행, 실패는 이름만·다음 주기. 보관 정리 객체 없으면 기존 루프 호출 그대로. 증거·봉인 디렉터리 정리는 재시작 경로 연결 때. 시험7(모듈24)·변형 10/10. PR54 병합 결과 메타데이터 이관 포함. 실제 배포·Slack·장애·인프라 없음.
+
+## 2026-11-20 A7 프로세스 연결 조각1 CI/main 반영 완료 (Claude)
+
+[PR #54](https://github.com/joungGo/url-shortener-ai-ops/pull/54) head `73b8a5315bfaeacfd21bf5b30394a8b51eee8b03` → main `46789b11434736aad2531a22f40605dad44fe57c`(head 고정 squash). PR CI44724810023 7종(1724개)·main CI44728486857 성공, tree `43bd1aa` 일치, 보호 변경/우회 없음, branch 정리. 같은 날 사용자 지시로 AI 저장소 병합 branch 29개·플랫폼 F-Lab-DevOps 병합/닫힘 branch 원격61·로컬80개 삭제(복구 SHA는 `~/.local/share/url-shortener-ai-ops/logs-20261120/`). 다음: A7 조각2 보관 정리 tick 연결.
+
 ## 2026-11-20 A7 프로세스 연결 조각1 Slack 복구 승인 경로·CI 반영 준비 (Claude)
 
 사용자 허락으로 A7 프로세스 연결 시작, 결정: 승인 대기=명시 명령, 첫 조각=승인 경로. branch `claude/a7-process-wiring-20261120`(기준 main `9e70a3d`). 신규 `ai_ops.recovery_approval_wiring`: `@bot request-approval <사건|this> <계획hash>`(ACK는 정확 64hex만) → 계획 요청자·같은 채널/스레드/사건 확인 → WF06 `ledger.open` → 고정 문구 회신(예외 문구 없음). 계획 hash→요청 색인(`json_extract`, 정확 1건). 장부 `page`(시간 전이만, 열기·결정·재검증 없음)→A7-2 outbox 동기화(relay 5초)·틱당 전송1(실패 격리, 종료 중 전송 없음). ingress `SlackRouter`가 `/slack/interactivity` 장착(서명 키만, bot 토큰 없음). `recovery-approval.json` 없거나 `enabled:false`면 기존 동작, 잘못되거나 grants 밖 승인자면 시작·check-config 실패. 관측 포트는 `observation_not_connected`(항상 실패)라 실제 배포에선 승인 대기가 열리지 않음(fail-closed). 후속: PR 경로 현재 상태 관측기, 승인 뒤 재검증·WF07, execute_command, 보관 tick, renderer 마운트·Slack Interactivity URL, 정책 전환. 시험17·변형 12/12. 실제 배포·Slack·장애·인프라 없음.

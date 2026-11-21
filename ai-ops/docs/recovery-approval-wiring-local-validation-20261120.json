@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "A7 process wiring slice 1: Slack recovery approval path (prepare_proposal)",
   "author": "Claude Code (Opus 5.5)",
   "base": "9e70a3dd96fd1d51453b3b61afba64797c5791da",
@@ -32,7 +32,11 @@
       "check-config grants check removed"
     ]
   },
-  "related_existing_tests": {"modules": 6, "count": 140, "passed": true},
+  "related_existing_tests": {
+    "modules": 6,
+    "count": 140,
+    "passed": true
+  },
   "full_suite": {
     "count": 1724,
     "seconds": 324.053,
@@ -74,5 +78,24 @@
     "ai-ops/src/ai_ops/slack_server.py": "e5650aee394aefe13fbd14c80cc33480f577f352bb9e5ef4211d660abf2314a9",
     "ai-ops/tests/test_recovery_approval_wiring.py": "28ac443482b9b14064e5bbb4815cb3e2dbb2b67370b0c939cb30706b3b40dbfa"
   },
-  "no_external_actions": "no cluster, GitHub write, deploy, Slack, incident drill, Terraform, paid model call"
+  "no_external_actions": "no cluster, GitHub write, deploy, Slack, incident drill, Terraform, paid model call",
+  "merge": {
+    "pr": 54,
+    "head": "73b8a5315bfaeacfd21bf5b30394a8b51eee8b03",
+    "main": "46789b11434736aad2531a22f40605dad44fe57c",
+    "tree": "43bd1aa7129b519bb2d7b5acc96362816b0d4f26",
+    "pr_ci": {
+      "run": 44724810023,
+      "jobs": 7,
+      "tests": 1724,
+      "skipped": 5
+    },
+    "main_ci": {
+      "run": 44728486857,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true
+  }
 }

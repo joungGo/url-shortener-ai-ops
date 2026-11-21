@@ -36,6 +36,17 @@ REASON = re.compile(r'[a-z_]{1,64}\Z')
 HEX = re.compile(r'[a-f0-9]{64}\Z')
 
 
+def prune_existing(adapter):
+    """Outbox prune that never creates the table: also usable after the approval
+    feature was switched off, so earlier messages still end with their request."""
+    with adapter._lock():
+        with adapter._db() as db:
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='recovery_outbox'").fetchone() is None:
+                return 0
+            return db.execute('DELETE FROM recovery_outbox WHERE request_id NOT IN '
+                              '(SELECT request_id FROM slack_requests WHERE state!="expired")').rowcount
+
+
 def _utc(epoch):
     return datetime.fromtimestamp(epoch, timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
 
@@ -173,10 +184,7 @@ class RecoveryOutbox:
     def prune(self):
         """Delete messages whose Slack request expired: they can never be sent again
         (delivery re-checks the request) and their payload must not outlive it."""
-        with self.adapter._lock():
-            with self.adapter._db() as db:
-                return db.execute('DELETE FROM recovery_outbox WHERE request_id NOT IN '
-                                  '(SELECT request_id FROM slack_requests WHERE state!="expired")').rowcount
+        return prune_existing(self.adapter)
 
     def status(self, key):
         with self.adapter._db() as db:

@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-20 KST. 기준 AI main `9e70a3d`(원복 실행 조각2 원복 실행기 PR53), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-process-wiring-20261120`(A7 프로세스 연결 조각1 승인 경로). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-20 KST. 기준 AI main `46789b1`(A7 프로세스 연결 조각1 승인 경로 PR54), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-retention-tick-20261120`(A7 프로세스 연결 조각2 보관 정리 tick). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -359,3 +359,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7 프로세스 연결 조각1 Slack 복구 승인 경로 · 2026-11-20
 
 [구현 기록](recovery-approval-wiring-local-20261120.md)·[검증 JSON](recovery-approval-wiring-local-validation-20261120.json): 사용자 결정(승인 대기=명시 명령). `request-approval <사건|this> <계획hash>` → 계획 요청자·같은 스레드/사건 확인 → WF06 `open`; 계획 hash→요청 색인; 장부 `page`→outbox 동기화(5초)·틱당 전송1; ingress `SlackRouter`로 `/slack/interactivity`(서명 키만); `recovery-approval.json` 없거나 꺼지면 기존 동작. 관측 포트 미연결(항상 실패)이라 실제 배포에선 대기 미개시(fail-closed). 재검증·PR 준비·execute_command·보관 tick·renderer 마운트는 후속. 시험17·변형 12/12 통과. 이 커밋 시점 PR CI/main 대기.
+
+### A7 프로세스 연결 조각1 Slack 복구 승인 경로 최종 반영 · 2026-11-20
+
+[PR #54](https://github.com/joungGo/url-shortener-ai-ops/pull/54) head `73b8a53` → main `46789b11434736aad2531a22f40605dad44fe57c`. PR CI44724810023 7종·main CI44728486857 성공, tree `43bd1aa` 일치, 보호 변경/우회 없음. 다음: A7 조각2 보관 정리 tick 연결.
+
+### A7 프로세스 연결 조각2 복구 보관 정리 tick · 2026-11-20
+
+[구현 기록](recovery-retention-wiring-local-20261120.md)·[검증 JSON](recovery-retention-wiring-local-validation-20261120.json): relay가 기존 요청 정리 뒤 10분마다 `RecoveryRetention.tick`(켜짐: 승인 장부 tombstone·outbox / 꺼짐: 남은 outbox만, 테이블 생성 없음). 종료 중 미실행·실패 격리. 증거·봉인 디렉터리는 재시작 경로 연결 때 추가. 시험7(모듈 24)·변형 10/10. 이 커밋 시점 PR CI/main 대기.
