@@ -151,13 +151,17 @@ def server_config(app, certificate, key):
 
 
 def recovery_tick(recovery, transport, stopped, state, now):
-    """Approval notices: periodic ledger->outbox sync, then at most one delivery.
+    """Approval flow: periodic one-step advance (revalidate / WF07 prepare, read-only)
+    and ledger->outbox sync, then at most one delivery.
 
     Failures are swallowed by design (no exception text in logs) and retried on a
     later tick; an ambiguous send is never retried by the outbox itself.
     """
     if now >= state['next_sync']:
         state['next_sync'] = now + APPROVAL_SYNC_INTERVAL
+        if not stopped.is_set():
+            with suppress(Exception):
+                recovery.advance_once()  # before sync: its result is announced this cycle
         with suppress(Exception):
             recovery.sync_once()
     if not stopped.is_set():

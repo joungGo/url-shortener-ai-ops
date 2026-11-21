@@ -32,6 +32,14 @@ NOTICES = {
     'needs_review': '자동으로 판단할 수 없어 사람의 확인이 필요합니다. 자동 재시도나 변경은 하지 않습니다.',
     'proposal_ready': '재확인을 통과해 복구 PR 준비 단계로 넘길 수 있습니다. 실제 변경은 별도 PR 리뷰·CI가 필요합니다.',
 }
+# WF07 preparation results (ImageRecoveryPRBridge view states). Publication is not wired.
+PR_NOTICES = {
+    'prepared': ('정확한 변경(diff)과 PR 내용을 준비했습니다. GitHub PR 생성·병합·배포는 하지 않았으며, '
+                 '진행하려면 별도 PR 리뷰·CI와 실행 직전 검증이 필요합니다.'),
+    'no_pr': '현재 근거로는 복구 PR을 만들 조건이 아니어서 준비하지 않았습니다. 변경은 없습니다.',
+    'needs_review': 'PR 준비 결과를 확정할 수 없어 중지했습니다. 자동 재시도나 변경은 하지 않습니다.',
+    'cancelled': 'PR 준비가 취소되었습니다. 변경은 없습니다.',
+}
 REASON = re.compile(r'[a-z_]{1,64}\Z')
 HEX = re.compile(r'[a-f0-9]{64}\Z')
 
@@ -110,7 +118,27 @@ class RecoveryOutbox:
             return {'state': 'nothing_to_send', 'execution_allowed': False}
         kind, payload = message
         scope, plan_hash, approval_hash, generation = self._subject(view)
-        key = sha256_json([kind, scope, plan_hash, approval_hash, generation, view['state']])
+        return self._store(sha256_json([kind, scope, plan_hash, approval_hash, generation, view['state']]),
+                           request_id, kind, payload)
+
+    def enqueue_pr(self, request_id, view):
+        """WF07 preparation result for the same thread: fixed text, no URL/head/diff, idempotent."""
+        plan_hash, state, generation = view.get('plan_hash'), view.get('state'), view.get('generation')
+        if (not HEX.fullmatch(str(plan_hash)) or type(generation) is not int
+                or view.get('execution_allowed') is not False):
+            raise ValueError('recovery_outbox_view_rejected')
+        if state not in PR_NOTICES:
+            return {'state': 'nothing_to_send', 'execution_allowed': False}
+        channel, thread = self._thread(request_id)
+        text = f'[{SCOPE_LABEL["prepare_proposal"]}] 계획 {plan_hash[:12]} {PR_NOTICES[state]}'
+        reason = view.get('reason')
+        if isinstance(reason, str) and REASON.fullmatch(reason):
+            text += f' (사유 코드: {reason})'
+        kind = 'pr_' + state
+        return self._store(sha256_json([kind, plan_hash, generation, state]), request_id, kind,
+                           {'channel': channel, 'thread_ts': thread, 'text': text, **FLAGS})
+
+    def _store(self, key, request_id, kind, payload):
         digest = sha256_json(payload)
         now = self._now()
         with self.adapter._db() as db:
