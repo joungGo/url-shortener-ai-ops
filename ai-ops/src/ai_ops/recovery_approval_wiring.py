@@ -36,6 +36,9 @@ from ai_ops.workflow_config import read_config
 CONFIG_NAME = 'recovery-approval.json'
 PLAN_HASH = re.compile(r'[a-f0-9]{64}\Z')
 SYNC_PAGE = 50
+# Revalidation and WF07 preparation (<= 15s) block the relay loop; at most one per
+# tick, so a tick stays below the relay progress age (slack_process.MAX_PROGRESS_AGE=30).
+RELAY_BLOCK_SECONDS = 15
 
 UNAVAILABLE = ('승인 요청을 열 수 없습니다. 이 스레드에서 본인이 요청한 지원 복구 계획인지, '
                '승인 권한과 보관 기간을 확인하세요. 승인 대기를 만들지 않았습니다.')
@@ -75,6 +78,9 @@ class RecoveryApprovalConfig(StrictModel):
     def scope_matches(self):
         if self.prepare_proposal.scope != 'prepare_proposal':
             raise ValueError('approval_scope_mismatch')
+        # One blocking read per relay tick must stay well inside the relay health age.
+        if self.prepare_proposal.revalidation_seconds > RELAY_BLOCK_SECONDS:
+            raise ValueError('revalidation_exceeds_relay_budget')
         return self
 
     @classmethod
@@ -120,7 +126,10 @@ def _utc(epoch):
 
 
 class RecoveryApprovalService:
-    def __init__(self, adapter, config, *, observe=None):
+    """``pr_bridge`` is a factory ``ledger -> ImageRecoveryPRBridge`` with trusted
+    read ports. The process entrypoint passes none (no live GitHub/CI/ECR readers
+    exist yet), so WF07 preparation stays unconnected in a real deployment."""
+    def __init__(self, adapter, config, *, observe=None, pr_bridge=None):
         if not isinstance(adapter, SlackAdapter):
             raise ValueError('recovery_approval_adapter_required')
         if not isinstance(config, RecoveryApprovalConfig) or config.enabled is not True:
@@ -133,6 +142,13 @@ class RecoveryApprovalService:
                                              load_plan=slack_plan_index(adapter),
                                              observe=observe or observation_not_connected)
         self.outbox = RecoveryOutbox(adapter)
+        self.pr_bridge = None
+        if pr_bridge is not None:
+            from ai_ops.recovery_pr import ImageRecoveryPRBridge
+            bridge = pr_bridge(self.ledger)
+            if not isinstance(bridge, ImageRecoveryPRBridge) or bridge.approvals is not self.ledger:
+                raise ValueError('recovery_pr_bridge_rejected')
+            self.pr_bridge = bridge
         self._cursor = ''
 
     def receiver(self, signing_secret):
@@ -185,15 +201,74 @@ class RecoveryApprovalService:
                 continue
             if result['state'] == 'queued':
                 report['queued'] += 1
+            pr = self._pr_view(view['plan_hash'], request_id)
+            if pr is not None:
+                try:
+                    if self.outbox.enqueue_pr(request_id, pr)['state'] == 'queued':
+                        report['queued'] += 1
+                except (ValueError, OSError):
+                    report['skipped'] += 1
         return report
+
+    def _requester(self, plan_hash):
+        request_id = plan_request_id(self.adapter, plan_hash)
+        if request_id is None:
+            return None
+        return request_id, self.adapter._row(request_id)['user_id']
+
+    def _pr_exists(self, plan_hash):
+        with self.adapter.tasks.queue.transaction() as db:
+            return db.execute('SELECT 1 FROM recovery_pr_links WHERE plan_hash=?', (plan_hash,)).fetchone() is not None
+
+    def _pr_view(self, plan_hash, request_id):
+        if self.pr_bridge is None or not self._pr_exists(plan_hash):
+            return None
+        try:
+            return self.pr_bridge.show(plan_hash, actor=self.adapter._row(request_id)['user_id'])
+        except (ValueError, OSError):
+            return None
+
+    def advance_once(self):
+        """At most one read-only step per call (bounded blocking in the relay loop):
+
+        * ``approved`` -> ``ledger.revalidate`` as the approver (the plan requester):
+          the button press is consent to this read, as its notice says;
+        * ``proposal_ready`` without a WF07 record -> ``pr_bridge.prepare`` (exact
+          diff/PR payload, local only; publication is not wired).
+
+        A crash mid-step never repeats it: the ledger/WF07 records time out to
+        ``needs_review`` and a WF07 record, once created, is never prepared again.
+        """
+        views, _ = self.ledger.page(limit=SYNC_PAGE, states=('approved', 'proposal_ready'))
+        for view in views:
+            who = self._requester(view['plan_hash'])
+            if who is None:
+                continue
+            _, actor = who
+            if view['state'] == 'approved':
+                try:
+                    result = self.ledger.revalidate(view['plan_hash'], actor=actor, generation=view['generation'])
+                except (ValueError, OSError):
+                    return {'action': 'revalidate', 'state': 'rejected', 'execution_allowed': False}
+                return {'action': 'revalidate', 'state': result['state'], 'execution_allowed': False}
+            if (view['state'] == 'proposal_ready' and self.pr_bridge is not None
+                    and not self._pr_exists(view['plan_hash'])):
+                try:
+                    result = self.pr_bridge.prepare(view['plan_hash'], actor=actor)
+                except (ValueError, OSError):
+                    return {'action': 'prepare', 'state': 'failed', 'execution_allowed': False}
+                return {'action': 'prepare', 'state': result['state'], 'execution_allowed': False}
+        return {'action': 'none', 'execution_allowed': False}
 
     def deliver_once(self, transport):
         return self.outbox.deliver_one(transport)
 
     def retention(self):
-        """A7-5 pass over what this process owns: the approval ledger and the outbox."""
-        return RecoveryRetention(now=self.adapter.tasks.queue.now,
-                                 ledgers={'prepare_proposal': self.ledger}, outbox=self.outbox)
+        """A7-5 pass over what this process owns: approval ledger, WF07 records, outbox."""
+        ledgers = {'prepare_proposal': self.ledger}
+        if self.pr_bridge is not None:
+            ledgers['recovery_pr'] = self.pr_bridge  # its own prune drops copied proposals/payloads
+        return RecoveryRetention(now=self.adapter.tasks.queue.now, ledgers=ledgers, outbox=self.outbox)
 
 
 class OrphanOutboxRetention:

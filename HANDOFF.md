@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-21 A7 프로세스 연결 조각3 승인 뒤 자동 재검증·WF07 PR 준비·CI 반영 준비 (Claude)
+
+사용자 결정: 재검증=승인 후 자동, WF07=자동 준비까지(GitHub 쓰기 제외). branch `claude/a7-revalidate-prepare-20261121`(기준 main `a5f59dc`). `RecoveryApprovalService.advance_once`(relay 5초 주기, 1단계): `approved`→요청자 신원 `ledger.revalidate`, `proposal_ready`·WF07 기록 없음→`ImageRecoveryPRBridge.prepare`(로컬 diff·PR 내용, publish 없음), 반복 없음. 재검증 시간 ≤15초 설정 검증(relay 상태 확인 30초 이내). `RecoveryOutbox.enqueue_pr` WF07 결과 고정 문구(URL·head·diff 없음). 장부 `page(states=)`. 보관 정리에 WF07 기록 포함. 진입점은 WF07 포트를 넘기지 않음(실 GitHub/CI/ECR 읽기·ID 매핑 미구현) → 운영 미연결, 관측 포트도 미연결 유지. 한계: 준비 뒤 `observation_expired` 알림 혼동 가능, 매핑 없는 요청자 반복 거절. 시험11(모듈35)·변형 13/13(변형 검사 중 타 모듈 일시 실패로 1건 거짓 검출 → 상태 필터 시험 추가로 실제 검출). PR55 병합 결과 메타데이터 이관 포함.
+
+## 2026-11-21 A7 프로세스 연결 조각2 CI/main 반영 완료 (Claude)
+
+[PR #55](https://github.com/joungGo/url-shortener-ai-ops/pull/55) head `b973505b066cf364ab068d1a087cb816179fd243` → main `a5f59dc085b08114baeb44d950ab616e709dcace`(head 고정 squash, 사용자 "진행해" 후). PR CI44730619628 7종(1731개) 성공, tree `60ae06e` 일치, main CI44879917750, 보호 변경/우회 없음, branch 정리. 다음 A7 후보: 승인 뒤 재검증·WF07 연결, PR 경로 현재 상태 관측기(실제 연결 필수), execute_command 승인, renderer 마운트.
+
 ## 2026-11-20 A7 프로세스 연결 조각2 복구 보관 정리 tick·CI 반영 준비 (Claude)
 
 branch `claude/a7-retention-tick-20261120`(기준 main `46789b1`). relay가 기존 Slack 요청·작업 정리(60초) 뒤 10분마다 A7-5 `RecoveryRetention.tick`: 승인 기능 켜짐→`RecoveryApprovalService.retention`(승인 장부 tombstone·outbox), 꺼짐→`OrphanOutboxRetention`(남은 outbox만, 테이블 생성·정책 읽기 없음). `recovery_outbox.prune_existing` 추가(`RecoveryOutbox.prune` 동작 동일). 종료 중 미실행, 실패는 이름만·다음 주기. 보관 정리 객체 없으면 기존 루프 호출 그대로. 증거·봉인 디렉터리 정리는 재시작 경로 연결 때. 시험7(모듈24)·변형 10/10. PR54 병합 결과 메타데이터 이관 포함. 실제 배포·Slack·장애·인프라 없음.

@@ -1,0 +1,69 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "A7 process wiring slice 3: automatic revalidation after approval and WF07 PR preparation",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "a5f59dc085b08114baeb44d950ab616e709dcace",
+  "decision": "user 2026-11-21: revalidation starts automatically after approval; WF07 runs automatic preparation (no GitHub write)",
+  "flow": [
+    "relay every 5s: advance_once (skipped while stopping) then sync_once; one delivery per tick",
+    "advance_once, at most one step: approved -> ledger.revalidate as the approver (plan requester); proposal_ready without a WF07 record -> ImageRecoveryPRBridge.prepare (local exact diff/PR payload, no publish)",
+    "no repetition: interrupted revalidation times out to needs_review; a WF07 record is never prepared twice",
+    "revalidation_seconds <= 15 (RELAY_BLOCK_SECONDS) validated in config so one tick stays inside the 30s relay progress age",
+    "RecoveryOutbox.enqueue_pr: fixed texts for prepared/no_pr/needs_review/cancelled; no URL, head or diff; reason only if [a-z_]",
+    "ledger.page(states=...) selects approved/proposal_ready only",
+    "retention includes the WF07 record prune when a bridge is attached",
+    "entrypoint passes no pr_bridge (no live GitHub/CI/ECR readers or Slack->GitHub mapping yet) and the observe port stays unconnected"
+  ],
+  "new_tests": 11,
+  "module_tests": 35,
+  "mutation_checks": {
+    "count": 13,
+    "detected": 13,
+    "runner": "new wiring test module only",
+    "false_kill_note": "first run with two extra modules reported 'page state filter ignored' as killed due to a transient failure elsewhere; it actually survived; a dedicated state-filter test was added and now kills it",
+    "mutations": [
+      "re-prepare guard removed",
+      "awaiting records advanced",
+      "two steps per call",
+      "bridge ledger identity check removed",
+      "revalidation budget removed",
+      "PR notice missing",
+      "URL exposed",
+      "reason filter removed",
+      "PR view check removed",
+      "relay order swapped",
+      "advance while stopping",
+      "page state filter ignored",
+      "WF07 retention missing"
+    ]
+  },
+  "full_suite": {
+    "count": 1742,
+    "seconds": 323.017,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-advance-full-final.log",
+      "sha256": "ffa1577333edd9bb3319c5066382caba34a0b6ec7d46b10ed4f720b49d4738d1"
+    },
+    "earlier_run": "1741 passed before the WF07 retention addition (log a7-advance-full.log)"
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
+  "known_behaviour": [
+    "after preparation, the ledger's observation freshness expires and a needs_review (observation_expired) notice follows; real state, wording to be revisited with the publication path",
+    "a requester without a GitHub mapping is refused without a WF07 record; the refusal can repeat every 5s until fresh_until (no reads)",
+    "a WF07 record interrupted in 'preparing' stays until the existing interrupt path (not wired)",
+    "approver must be the plan requester (existing WF06 restriction)"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_approval_wiring.py": "31031ed26ced7f0730360fb05e804fc99b6c9b557bf74b1ea0a1577b0c15019d",
+    "ai-ops/src/ai_ops/recovery_approvals.py": "e9a34731556c58aab20d36705186d6956fe0a422a5053536c3e556554168889f",
+    "ai-ops/src/ai_ops/recovery_outbox.py": "824180a010a9eb2db53d1e74502773dc2412c2e76aa221de7b39d628fe09db25",
+    "ai-ops/src/ai_ops/slack_server.py": "e5d5d4e88cdd058557a6ae0f9298f3d9d56cd10b7514e23e12529183b3e9dd58",
+    "ai-ops/tests/test_recovery_approval_wiring.py": "e581846d33e69736948149f604a048626595493765fd0a606c5f4888fa2dd32c"
+  },
+  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, paid model call"
+}

@@ -287,20 +287,29 @@ class RecoveryApprovalLedger:
             self._save(db, record)
             return self._view(record)
 
-    def page(self, *, after='', limit=50):
+    STATES = ('awaiting_approval','approved','revalidating','proposal_ready','expired','rejected',
+              'cancelled','superseded','already_recovered','needs_review')
+
+    def page(self, *, after='', limit=50, states=None):
         """Maintenance read for the notifier: current views of still-retained records.
 
         Applies the same time transitions as ``show`` (expiry, timeouts) without a
-        principal. It never opens, decides or revalidates. Returns (views, cursor);
-        the cursor is '' after the last page.
+        principal. It never opens, decides or revalidates. ``states`` filters on the
+        stored state *before* those transitions, so callers re-check the returned
+        state. Returns (views, cursor); the cursor is '' after the last page.
         """
         if not isinstance(after, str) or len(after) > 64 or type(limit) is not int or not 1 <= limit <= 200:
             raise ValueError('approval_page_rejected')
+        if states is not None and (not isinstance(states, tuple) or not states
+                                   or any(s not in self.STATES for s in states)):
+            raise ValueError('approval_page_rejected')
+        wanted = states or ()
+        only = f"AND json_extract(document,'$.state') IN ({','.join('?' * len(wanted))}) " if wanted else ''
         with self.queue.transaction() as db:
             self._active(db)
             rows = db.execute(f'SELECT plan_hash FROM {self.TABLE_PREFIX}s WHERE plan_hash>? '
-                              "AND json_extract(document,'$.retained_until')>? ORDER BY plan_hash LIMIT ?",
-                              (after, self.queue.now(), limit)).fetchall()
+                              f"AND json_extract(document,'$.retained_until')>? {only}ORDER BY plan_hash LIMIT ?",
+                              (after, self.queue.now(), *wanted, limit)).fetchall()
             views = [self._view(self._get(db, row['plan_hash'])) for row in rows]
         return views, (rows[-1]['plan_hash'] if len(rows) == limit else '')
 

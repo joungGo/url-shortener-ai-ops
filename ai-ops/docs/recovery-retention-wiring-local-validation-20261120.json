@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "A7 process wiring slice 2: recovery retention tick in the Slack relay",
   "author": "Claude Code (Opus 5.5)",
   "base": "46789b11434736aad2531a22f40605dad44fe57c",
@@ -16,7 +16,11 @@
     "count": 10,
     "detected": 10,
     "first_run_detected": 7,
-    "strengthened_tests": ["enabled relay uses its own ledger/outbox", "stop during request prune skips retention", "relay entrypoint passes the retention object"],
+    "strengthened_tests": [
+      "enabled relay uses its own ledger/outbox",
+      "stop during request prune skips retention",
+      "relay entrypoint passes the retention object"
+    ],
     "mutations": [
       "table check replaced by creation",
       "delete all rows",
@@ -31,7 +35,11 @@
     ]
   },
   "test_note": "an existing relay-loop test counts stopped.is_set() calls; the extra stop check runs only when a retention object is present",
-  "related_existing_tests": {"modules": 6, "count": 130, "passed": true},
+  "related_existing_tests": {
+    "modules": 6,
+    "count": 130,
+    "passed": true
+  },
   "full_suite": {
     "count": 1731,
     "seconds": 329.744,
@@ -58,5 +66,24 @@
     "ai-ops/src/ai_ops/slack_server.py": "262904c2536b69e7c6065e3146ccc355ac8e0a660fc72855f79424e60e09b1ff",
     "ai-ops/tests/test_recovery_approval_wiring.py": "1b10d76cf70abb236d8604cf6114e235eefca69f1f64aa6d5c93352726578f32"
   },
-  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, paid model call"
+  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, paid model call",
+  "merge": {
+    "pr": 55,
+    "head": "b973505b066cf364ab068d1a087cb816179fd243",
+    "main": "a5f59dc085b08114baeb44d950ab616e709dcace",
+    "tree": "60ae06e12f9fe20e668f5a9f7f5d63d34e31d02e",
+    "pr_ci": {
+      "run": 44730619628,
+      "jobs": 7,
+      "tests": 1731,
+      "skipped": 5
+    },
+    "main_ci": {
+      "run": 44879917750,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true
+  }
 }

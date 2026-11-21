@@ -239,9 +239,19 @@ class LedgerPageTest(unittest.TestCase):
         self.assertEqual(a.ledger.page(after=cursor, limit=1), ([], ''))
         a.f.fixture.time = views[0]['retained_until']
         self.assertEqual(a.ledger.page(), ([], ''))
-        for bad in ({'limit': 0}, {'limit': True}, {'after': 1}):
+        for bad in ({'limit': 0}, {'limit': True}, {'after': 1}, {'states': ('bogus',)},
+                    {'states': ['approved']}, {'states': ()}):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 a.ledger.page(**bad)
+
+    def test_page_state_filter(self):
+        a = approvals.RecoveryApprovalsTest()
+        a.setUp()
+        self.addCleanup(a.doCleanups)
+        a.opened()
+        self.assertEqual(a.ledger.page(states=('approved', 'proposal_ready')), ([], ''))
+        self.assertEqual([v['state'] for v in a.ledger.page(states=('awaiting_approval',))[0]],
+                         ['awaiting_approval'])
 
 
 class ServerWiringTest(unittest.TestCase):
@@ -417,3 +427,180 @@ class RelayRetentionLoopTest(unittest.TestCase):
         runtime.tasks.prune.side_effect = stopped.set
         slack_server.relay_loop(runtime, stopped, progress, monotonic=lambda: 99999.0, retention=retention)
         self.assertEqual(retention.tick.call_count, 1)
+
+
+class AdvanceFixture:
+    """Real WF07 fixture (local Git, proof reads, drafts) under the wiring service."""
+    def setUp(self):
+        import test_recovery_pr as pr
+        from ai_ops.recovery_pr import ImageRecoveryPRBridge
+        self.t = pr.RecoveryPRTest()
+        self.t.setUp()
+        self.addCleanup(self.t.doCleanups)
+        self.f, self.key, self.actor = self.t.f, self.t.key, pr.ACTOR
+        self.adapter = self.f.adapter
+        token = self.f.queue.root / 'fake-bot-token'
+        token.write_bytes(TOKEN)
+        token.chmod(0o600)
+        self.wire = Wire(self.adapter.policy)
+        self.transport = SlackWebTransport(self.adapter.policy, token, enabled=True,
+                                           connection_factory=self.wire.connect, monotonic=lambda: 10.0)
+        self.transport.verify_identity()
+        self.Bridge = ImageRecoveryPRBridge
+        self.principals = {self.actor: 21}
+
+    def bridge(self, ledger):
+        t = self.t
+        return self.Bridge(ledger, t.drafts, principals=self.principals, reader=t.reader,
+                           read_proof=t.proof, author_id=22, prepare_seconds=15)
+
+    def service(self, *, observe='fixture', bridge=True):
+        kwargs = {'observe': self.t.observation} if observe == 'fixture' else {}
+        service = RecoveryApprovalService(self.adapter, config(self.t.policy),
+                                          pr_bridge=self.bridge if bridge else None, **kwargs)
+        self.adapter.recovery_approvals = service
+        return service
+
+    def approved(self, service):
+        event = self.f.command('request-approval')
+        event['event']['text'] += ' ' + self.key
+        self.f.run_request(event)
+        view = service.ledger.page()[0][0]
+        self.assertEqual(view['state'], 'awaiting_approval')
+        return service.ledger.decide(self.key, actor=self.actor, approval_hash=view['approval_hash'],
+                                     generation=view['generation'], request_id='press-1', decision='approve')
+
+    def deliver_all(self, service):
+        service.sync_once()
+        while service.deliver_once(self.transport)['state'] != 'idle':
+            pass
+        return [p['body']['text'] for p in self.wire.posts()]
+
+
+class AdvanceTest(AdvanceFixture, unittest.TestCase):
+    def test_approval_revalidates_then_prepares_exact_pr_once_and_announces_both(self):
+        service = self.service()
+        self.approved(service)
+        with patch('socket.socket.connect', side_effect=AssertionError('network')):
+            self.assertEqual(service.advance_once()['state'], 'proposal_ready')
+            prepared = service.advance_once()
+            self.assertEqual((prepared['action'], prepared['state'], prepared['execution_allowed']),
+                             ('prepare', 'prepared', False))
+            proof_calls = self.t.proof_calls
+            self.assertEqual(service.advance_once()['action'], 'none')  # never prepared twice
+            self.assertEqual(self.t.proof_calls, proof_calls)
+        texts = self.deliver_all(service)
+        self.assertTrue(any('재확인을 통과해 복구 PR 준비 단계로' in t for t in texts))
+        [pr_text] = [t for t in texts if '정확한 변경(diff)' in t]
+        self.assertIn('GitHub PR 생성·병합·배포는 하지 않았으며', pr_text)
+        self.assertNotIn('https://', pr_text)
+        self.assertEqual(self.t.writer.calls, 0)  # publication is not wired
+        link = self.t.bridge.show(self.key, actor=self.actor)
+        self.assertEqual((link['state'], link['url'], link['pull_number']), ('prepared', None, None))
+        self.assertEqual(self.deliver_all(service), texts)  # idempotent per state
+
+    def test_default_observation_turns_approval_into_needs_review_without_prepare(self):
+        self.approved(self.service())
+        service = self.service(observe=None)
+        result = service.advance_once()
+        self.assertEqual((result['action'], result['state']), ('revalidate', 'needs_review'))
+        self.assertEqual(service.advance_once()['action'], 'none')
+        self.assertFalse(service._pr_exists(self.key))
+        self.assertTrue(any('사람의 확인이 필요' in t and 'read_only_revalidation_failed' in t
+                            for t in self.deliver_all(service)))
+
+    def test_without_bridge_proposal_ready_is_announced_but_not_prepared(self):
+        service = self.service(bridge=False)
+        self.approved(service)
+        self.assertEqual(service.advance_once()['state'], 'proposal_ready')
+        self.assertEqual(service.advance_once()['action'], 'none')
+        self.assertEqual(self.t.proof_calls, 0)
+        texts = self.deliver_all(service)
+        self.assertTrue(any('복구 PR 준비 단계로' in t for t in texts))
+        self.assertFalse(any('정확한 변경(diff)' in t for t in texts))
+
+    def test_failed_preparation_is_announced_once_and_never_retried(self):
+        service = self.service()
+        self.approved(service)
+        service.advance_once()
+        self.t.proof_hook = lambda: (_ for _ in ()).throw(OSError('private-detail'))
+        self.assertEqual(service.advance_once(), {'action': 'prepare', 'state': 'failed', 'execution_allowed': False})
+        calls = self.t.proof_calls
+        self.assertEqual(service.advance_once()['action'], 'none')
+        self.assertEqual(self.t.proof_calls, calls)
+        [text] = [t for t in self.deliver_all(service) if 'PR 준비 결과를 확정할 수 없어' in t]
+        self.assertNotIn('private-detail', text)
+
+    def test_unmapped_github_principal_creates_no_record(self):
+        self.principals = {'UOTHER01': 21}
+        service = self.service()
+        self.approved(service)
+        service.advance_once()
+        self.assertEqual(service.advance_once()['state'], 'failed')
+        self.assertFalse(service._pr_exists(self.key))
+        self.assertEqual(self.t.proof_calls, 0)
+
+    def test_pending_or_unapproved_records_are_not_advanced(self):
+        service = self.service()
+        event = self.f.command('request-approval')
+        event['event']['text'] += ' ' + self.key
+        self.f.run_request(event)
+        probes = len(self.wire.posts())
+        self.assertEqual(service.advance_once()['action'], 'none')
+        self.assertEqual(service.ledger.page()[0][0]['state'], 'awaiting_approval')
+        self.assertEqual(len(self.wire.posts()), probes)
+
+    def test_bridge_must_wrap_the_service_ledger_and_revalidation_fits_relay(self):
+        with self.assertRaisesRegex(ValueError, 'recovery_pr_bridge_rejected'):
+            RecoveryApprovalService(self.adapter, config(self.t.policy), pr_bridge=lambda _: self.t.bridge)
+        with self.assertRaisesRegex(ValueError, 'revalidation_exceeds_relay_budget'):
+            config(self.t.policy.model_copy(update={'revalidation_seconds': 16}))
+
+    def test_pr_notice_rejects_unbound_views_and_ignores_other_states(self):
+        service = self.service()
+        request = self.t.plan.request_id
+        base = {'plan_hash': self.key, 'generation': 1, 'execution_allowed': False, 'state': 'prepared'}
+        for bad in ({'plan_hash': 'x'}, {'generation': True}, {'execution_allowed': True}):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                service.outbox.enqueue_pr(request, {**base, **bad})
+        self.assertEqual(service.outbox.enqueue_pr(request, {**base, 'state': 'publishing'})['state'],
+                         'nothing_to_send')
+        service.outbox.enqueue_pr(request, {**base, 'url': 'https://example.invalid/pr/1', 'reason': 'Bad Reason!'})
+        service.deliver_once(self.transport)
+        text = self.wire.posts()[-1]['body']['text']
+        self.assertNotIn('example.invalid', text)
+        self.assertNotIn('Bad Reason', text)
+
+
+class RecoveryTickOrderTest(unittest.TestCase):
+    def test_advance_before_sync_and_not_while_stopping(self):
+        calls, stopped = Mock(), Mock()
+        stopped.is_set.return_value = False
+        state = {'next_sync': 0.0}
+        slack_server.recovery_tick(calls, 'transport', stopped, state, 10.0)
+        self.assertEqual([c[0] for c in calls.mock_calls], ['advance_once', 'sync_once', 'deliver_once'])
+        calls.reset_mock()
+        stopped.is_set.return_value = True
+        slack_server.recovery_tick(calls, 'transport', stopped, state, 20.0)
+        self.assertEqual([c[0] for c in calls.mock_calls], ['sync_once'])
+
+
+class AdvanceRetentionTest(AdvanceFixture, unittest.TestCase):
+    def test_retention_also_expires_prepared_wf07_records(self):
+        service = self.service()
+        self.approved(service)
+        service.advance_once()
+        self.assertEqual(service.advance_once()['state'], 'prepared')
+        retention = service.retention()
+        self.assertEqual(set(retention.ledgers), {'prepare_proposal', 'recovery_pr'})
+        with self.f.queue.transaction() as db:
+            document = json.loads(db.execute('SELECT document FROM recovery_pr_links WHERE plan_hash=?',
+                                             (self.key,)).fetchone()['document'])
+        self.assertIsNotNone(document['payload'])
+        self.f.fixture.time = document['retained_until']
+        self.assertEqual(retention.tick()['failures'], [])
+        with self.f.queue.transaction() as db:
+            document = json.loads(db.execute('SELECT document FROM recovery_pr_links WHERE plan_hash=?',
+                                             (self.key,)).fetchone()['document'])
+        self.assertEqual((document['state'], document['payload'], document['proposal']), ('expired', None, None))
+        self.assertEqual(set(self.service(bridge=False).retention().ledgers), {'prepare_proposal'})
