@@ -1,0 +1,71 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "A7 PR-path current-state observer (WF06 observe port)",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "83b8e39efe3ce02405b1e1e3bb73a49b41471d3f",
+  "decision": "user 2026-11-21: failure from current container state (WF07 re-check rule, no event timestamps); no healthy verdict (unknown otherwise); connected only when the optional observe config is present",
+  "flow": [
+    "reject an unsupported plan target before any read",
+    "fixed GET reads via the PR48 ApiClient: lab-api Deployment, ai-ops-lab ReplicaSets, ai-ops-lab Pods, configured Argo application",
+    "identity: Deployment name/namespace/uid, single api container image, selector; Argo targetRevision == status.sync.revision else raise (fail closed)",
+    "image_failure: exactly one live selector Pod, controller-owned via a Deployment-owned ReplicaSet, Pod/ReplicaSet/status image == Deployment image, single api container ready=false waiting ErrImagePull|ImagePullBackOff, latest generation observed, readyReplicas 0",
+    "anything else -> unknown; healthy is never reported",
+    "proof_hash = hash of the per-response hashes; no bodies stored or returned; reads past the deadline are rejected",
+    "RecoveryApprovalConfig.observe (https URL, absolute token/CA paths, Argo app) -> make_observer; absent -> observation_not_connected; check-config reports recovery_observe only"
+  ],
+  "connection_stage_items": [
+    "read RBAC: deployments get, replicasets list (new vs the PR48 reader), pods list in ai-ops-lab, Argo applications get",
+    "renderer mount of recovery-approval.json and the reader token/CA",
+    "confirm live response shapes (waiting reason, image strings); mismatches lean to unknown (fail closed)"
+  ],
+  "new_tests": 15,
+  "mutation_checks": {
+    "count": 16,
+    "detected": 16,
+    "runner": "new observer test module only",
+    "mutations": [
+      "waiting reason ignored",
+      "ready ignored",
+      "single pod relaxed",
+      "owner chain ignored",
+      "pod image ignored",
+      "replicaset image ignored",
+      "readyReplicas ignored",
+      "generation ignored",
+      "sync revision ignored",
+      "selector ignored",
+      "reports healthy",
+      "target check removed",
+      "post-read deadline check removed",
+      "constant proof hash",
+      "http allowed",
+      "entrypoint not wired"
+    ]
+  },
+  "full_suite": {
+    "count": 1757,
+    "seconds": 307.789,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-observer-full.log",
+      "sha256": "9bf1aad8686f0c9ef131a209058debf0cc0d1b471ecb6796c4e2ea8649eb9896"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
+  "known_behaviour": [
+    "no healthy verdict: a naturally recovered service revalidates to needs_review (cause_not_verified); the 5 healthy checks are follow-up work",
+    "image hash is the hash of the exact image string; a different notation from the plan evidence makes open require a new plan",
+    "between pull retries a Pod may show another waiting reason (e.g. ContainerCreating) and is unknown at that instant"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_observe.py": "d8c784e309b4d507c83a9f49fbd7aac07a9a099c90593c3fbb74d416ef367f86",
+    "ai-ops/src/ai_ops/recovery_approval_wiring.py": "5b80d38a96db82a44da7a24f6588c8449c34c28b6ddc92e0ada5aa8444e465d4",
+    "ai-ops/src/ai_ops/slack_server.py": "a3a2304d529271399eda1ee19aaa31d9168cc2241854c52c187f6c37c4ced18b",
+    "ai-ops/tests/test_recovery_observe.py": "31adc5efde6bc78c1d4d9ddd82c80d135e9929124b251a7093b0f2e95cf25e13"
+  },
+  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, paid model call"
+}

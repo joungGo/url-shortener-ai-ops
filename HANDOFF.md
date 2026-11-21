@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-21 A7 PR 경로 현재 상태 관측기·CI 반영 준비 (Claude)
+
+사용자 결정: 실패 판정=현재 컨테이너 상태(WF07 재확인과 동일, 이벤트 시각 미사용), healthy 판정 안 함(실패 아니면 unknown), 설정 있을 때만 연결. branch `claude/a7-recovery-observer-20261121`(기준 main `83b8e39`). 신규 `ai_ops.recovery_observe`: PR48 `ApiClient` 재사용, 고정 GET 4개(Deployment·ReplicaSets·Pods·Argo application), 대상 외 계획은 읽기 0. `image_failure`=selector Pod 1개·Deployment→RS→Pod controller 소유·Pod/RS/상태 이미지=Deployment 이미지·`api` 단일 컨테이너 ready=false·waiting `ErrImagePull|ImagePullBackOff`·최신 generation·readyReplicas 0, 그 외 `unknown`. revision=targetRevision==sync.revision(WF07 base_sha와 동일) 아니면 예외. proof_hash=원시 응답 hash의 hash. `RecoveryApprovalConfig.observe`(https·절대 경로·Argo 앱) 있을 때만 사용, check-config는 `recovery_observe` 여부만. 연결 단계: 읽기 RBAC(replicasets list 신규)·renderer 마운트·실응답 형태 확인. 시험15·변형 16/16. PR56 병합 결과 메타데이터 이관 포함.
+
+## 2026-11-21 A7 프로세스 연결 조각3 CI/main 반영 완료 (Claude)
+
+[PR #56](https://github.com/joungGo/url-shortener-ai-ops/pull/56) head `e61c4427821e5a4ea9b0be218c28c4d5213067f5` → main `83b8e39efe3ce02405b1e1e3bb73a49b41471d3f`(head 고정 squash, 사용자 "진행해" 후). PR CI44881773956 7종(1742개) 성공, tree `3f2a4bf` 일치, 보호 변경/우회 없음, branch 정리. 다음(사용자 허락): PR 경로 현재 상태 관측기(observe 포트 실구현, 가짜 K8s API 서버 검증).
+
 ## 2026-11-21 A7 프로세스 연결 조각3 승인 뒤 자동 재검증·WF07 PR 준비·CI 반영 준비 (Claude)
 
 사용자 결정: 재검증=승인 후 자동, WF07=자동 준비까지(GitHub 쓰기 제외). branch `claude/a7-revalidate-prepare-20261121`(기준 main `a5f59dc`). `RecoveryApprovalService.advance_once`(relay 5초 주기, 1단계): `approved`→요청자 신원 `ledger.revalidate`, `proposal_ready`·WF07 기록 없음→`ImageRecoveryPRBridge.prepare`(로컬 diff·PR 내용, publish 없음), 반복 없음. 재검증 시간 ≤15초 설정 검증(relay 상태 확인 30초 이내). `RecoveryOutbox.enqueue_pr` WF07 결과 고정 문구(URL·head·diff 없음). 장부 `page(states=)`. 보관 정리에 WF07 기록 포함. 진입점은 WF07 포트를 넘기지 않음(실 GitHub/CI/ECR 읽기·ID 매핑 미구현) → 운영 미연결, 관측 포트도 미연결 유지. 한계: 준비 뒤 `observation_expired` 알림 혼동 가능, 매핑 없는 요청자 반복 거절. 시험11(모듈35)·변형 13/13(변형 검사 중 타 모듈 일시 실패로 1건 거짓 검출 → 상태 필터 시험 추가로 실제 검출). PR55 병합 결과 메타데이터 이관 포함.

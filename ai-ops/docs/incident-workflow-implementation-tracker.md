@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-21 KST. 기준 AI main `a5f59dc`(A7 프로세스 연결 조각2 보관 정리 tick PR55), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-revalidate-prepare-20261121`(A7 프로세스 연결 조각3 재검증·WF07 준비). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-21 KST. 기준 AI main `83b8e39`(A7 프로세스 연결 조각3 재검증·WF07 준비 PR56), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-recovery-observer-20261121`(A7 PR 경로 현재 상태 관측기). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -375,3 +375,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7 프로세스 연결 조각3 승인 뒤 자동 재검증·WF07 PR 준비 · 2026-11-21
 
 [구현 기록](recovery-advance-wiring-local-20261121.md)·[검증 JSON](recovery-advance-wiring-local-validation-20261121.json): 사용자 결정(재검증=승인 후 자동, WF07=자동 준비까지). relay 5초 주기 `advance_once` 1단계(approved→revalidate, proposal_ready·WF07 기록 없음→`prepare`, 반복 없음), 재검증 시간 ≤15초. WF07 결과 고정 문구 알림(URL·head·diff 없음), WF07 기록 보관 정리 포함. 진입점은 WF07 포트 미전달(운영 미연결)·관측 미연결 유지. GitHub 쓰기 없음. 시험11(모듈35)·변형 13/13. 이 커밋 시점 PR CI/main 대기.
+
+### A7 프로세스 연결 조각3 승인 뒤 자동 재검증·WF07 준비 최종 반영 · 2026-11-21
+
+[PR #56](https://github.com/joungGo/url-shortener-ai-ops/pull/56) head `e61c442` → main `83b8e39efe3ce02405b1e1e3bb73a49b41471d3f`. PR CI44881773956 7종 성공, tree `3f2a4bf` 일치, 보호 변경/우회 없음. 다음: PR 경로 현재 상태 관측기(사용자 허락).
+
+### A7 PR 경로 현재 상태 관측기 · 2026-11-21
+
+[구현 기록](recovery-observer-local-20261121.md)·[검증 JSON](recovery-observer-local-validation-20261121.json): 사용자 결정(실패=현재 컨테이너 상태, healthy 판정 안 함, 설정 있을 때만 연결). `ai_ops.recovery_observe`: 고정 GET 4개(Deployment·ReplicaSets·Pods·Argo app) → selector·소유 체인·이미지 일치·`ErrImagePull`/`ImagePullBackOff`·ready=false·readyReplicas 0·최신 generation이면 `image_failure`, 아니면 `unknown`, revision=targetRevision==sync.revision. `recovery-approval.json`의 선택적 `observe` 절이 있을 때만 relay·ingress 사용. 연결 단계 RBAC: deployments get·replicasets list(신규)·pods list·Argo applications get. 시험15·변형 16/16. 이 커밋 시점 PR CI/main 대기.
