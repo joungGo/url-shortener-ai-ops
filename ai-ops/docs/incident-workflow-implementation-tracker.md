@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-24 KST. 기준 AI main `de0a291`(A7 PR 경로 현재 상태 관측기 PR57), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-wf07-sources-20261124`(WF07 실제 읽기 포트 조각 A). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-24 KST. 기준 AI main `f219d04`(WF07 실제 읽기 포트 조각 A PR58), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-wf07-proof-20261124`(WF07 실제 읽기 포트 조각 B). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -391,3 +391,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### WF07 실제 읽기 포트 조각 A · 2026-11-24
 
 [구현 기록](recovery-wf07-sources-local-20261124.md)·[검증 JSON](recovery-wf07-sources-local-validation-20261124.json): 사용자 결정(ECR=boto3+IRSA는 조각 B, GitHub=토큰 파일, 2조각 분할). `ai_ops.recovery_sources`: `TokenRepoReader`(격리 저장소 Git 데이터 경로만·요청마다 토큰 재읽기·proxy 무시·redirect 미추적·본문 없는 고정 오류), `values_at`, `ProofObjectsReader`(Argo·Deployment·Lease·ReplicaSet·Pod 고정 GET 5개, 선택만), `PrepareConfig`(ID 매핑·작성자·초안·토큰, observe 필수·승인자 매핑 필수). 진입점 미연결(조각 B). 조각 3 변형 검사 근거 정정(실행기 최소 환경에서 helm 부재로 기준선 실패 → 병합 커밋 전체 환경 재검사 13/13). 시험13·변형 19/19. 이 커밋 시점 PR CI/main 대기.
+
+### WF07 실제 읽기 포트 조각 A 최종 반영 · 2026-11-24
+
+[PR #58](https://github.com/joungGo/url-shortener-ai-ops/pull/58) head `dcfa034` → main `f219d046013ca131930568c59dcad01ae6937d93`. PR CI45347993050 7종 성공, tree `2ed22aa` 일치, 보호 변경/우회 없음. 다음: 조각 B(사용자 결정: 정상 CI=NormalCIInbox 재사용, 실행 선택=binding 일치 최신 ready, ECR=boto3+IRSA).
+
+### WF07 실제 읽기 포트 조각 B · 2026-11-24
+
+[구현 기록](recovery-wf07-proof-local-20261124.md)·[검증 JSON](recovery-wf07-proof-local-validation-20261124.json): 사용자 결정(정상 CI=`NormalCIInbox` 재사용, binding 일치 최신 ready, ECR=boto3+IRSA). 실행 lock에 boto3 계열 7개 hash 고정 추가. `NormalCIInbox.latest_ready_history`(HMAC·binding·시각 확인), `EcrImageChecker`(호출자 역할·계정 확인, 증거 필드 3개만, `ImageNotFoundException`만 부재 인정, SDK 오류 고정 코드), `LiveRecoveryProof`(Kubernetes→SHA revision→values→inbox→ECR→기존 `assess_recovery_proof`), `live_pr_bridge`·relay 연결(`prepare` 있을 때만, ingress 제외). 설정이 갖춰지면 실제 배포에서 PR 준비까지 연결(발행 없음). 시험16·변형 21/21. 첫 PR CI 실패(boto3가 client 생성 시 IMDS까지 자격 탐색) → 자격을 IRSA web identity만으로 제한·역할 일치 확인·ECR client 지연 생성으로 수정. 이 커밋 시점 PR CI/main 대기.

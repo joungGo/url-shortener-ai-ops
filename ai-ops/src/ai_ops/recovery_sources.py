@@ -174,6 +174,10 @@ class PrepareConfig(StrictModel):
     drafts_dir: StrictStr
     github_token_file: StrictStr
     prepare_seconds: StrictInt = Field(default=15, ge=1, le=15)
+    # Slice B: the normal-CI binding that pins the known-good image, and the IRSA
+    # role name the ECR reader must be running as.
+    normal_binding_file: StrictStr
+    aws_role_name: StrictStr = Field(pattern=r'^[A-Za-z0-9+=,.@_-]{1,64}$')
 
     @model_validator(mode='after')
     def valid(self):
@@ -181,6 +185,7 @@ class PrepareConfig(StrictModel):
             raise ValueError('prepare_principals_rejected')
         if len(set(self.principals.values())) != len(self.principals) or self.author_id in self.principals.values():
             raise ValueError('prepare_author_must_differ_from_reviewers')
-        if not self.drafts_dir.startswith('/') or not self.github_token_file.startswith('/'):
+        if any(not path.startswith('/') for path in (self.drafts_dir, self.github_token_file,
+                                                     self.normal_binding_file)):
             raise ValueError('prepare_path_rejected')
         return self

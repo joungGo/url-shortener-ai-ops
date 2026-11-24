@@ -1,0 +1,102 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "WF07 live read sources slice B: inbox history, ECR, read_proof assembly, relay wiring",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "f219d046013ca131930568c59dcad01ae6937d93",
+  "decision": "user 2026-11-24 (all recommended): normal-CI evidence from NormalCIInbox (CI-relay verified, HMAC); latest ready receipt bound to the configured binding; ECR via boto3 + IRSA with hash-pinned runtime lock",
+  "dependencies_added": {
+    "boto3": "1.44.0 sha256:ae3009db1294fd4ca2e30d9592ead8ab56f0e270bcad0b95e555f03f7875716d",
+    "botocore": "1.44.0 sha256:9055745fc16400377ac7e825ac63b8f77af17305e1c77c9a5519a648d7b2e87c",
+    "jmespath": "1.1.0 sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64",
+    "python-dateutil": "2.9.0.post0 sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427",
+    "s3transfer": "0.19.3 sha256:24eb7535804306355e31c952a90022bf5b2f9d760f9a11062c7493a217c08553",
+    "six": "1.17.0 sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
+    "urllib3": "2.8.0 sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+    "source": "PyPI public JSON metadata; pure-Python wheels; all published on or before 2026-11-10; same versions as requirements-trial.lock",
+    "install_check": "python3.14 venv: pip --require-hashes --only-binary=:all: -r requirements.lock succeeded (18 packages)",
+    "image_build": "not run locally (docker unavailable); verified by the CI image job"
+  },
+  "flow": [
+    "NormalCIInbox.latest_ready_history(before): ready rows only; key+HMAC integrity; bound to the current binding; finished before; latest finished wins; else normal_ci_history_unavailable",
+    "EcrImageChecker: IRSA default chain, fixed region, 2s/3s timeouts, 2 attempts; STS caller must be arn:aws:sts::764428911194:assumed-role/<role>/ before any ECR read; prior digest DescribeImages -> only registryId/repositoryName/imageDigest; failed digest absent only on ImageNotFoundException (class name or error code); every other SDK error -> fixed code; deadline between steps; digest format checked",
+    "LiveRecoveryProof: Kubernetes objects -> 40-hex Argo targetRevision -> values_at -> inbox history -> ECR -> deadline -> assess_recovery_proof(repository=isolated lab)",
+    "live_pr_bridge(config, queue): binding file read at startup; readers read tokens per request; principals/author/prepare_seconds from config",
+    "slack_server relay builds the WF07 bridge only with a prepare section; ingress never; retention includes WF07 records; PR publication remains unwired"
+  ],
+  "product_fix_found_by_tests": "an SDK error on the known-good digest lookup (and STS) escaped as the raw exception (may carry ARNs/request IDs); now fixed codes",
+  "new_tests": 16,
+  "updated_tests": "test_recovery_sources PrepareConfig base gains normal_binding_file and aws_role_name (+2 rejection cases)",
+  "mutation_checks": {
+    "count": 21,
+    "detected": 21,
+    "runner": "full inherited environment, baseline must pass first",
+    "first_run": "15/18 -> added tests for access error on the failed digest (never absent), non-SHA revision rejected before any read, exact config passed to the bridge",
+    "mutations": [
+      "inbox hmac ignored",
+      "inbox binding ignored",
+      "inbox before ignored",
+      "inbox first not latest",
+      "inbox any state",
+      "ecr account ignored",
+      "ecr role ignored",
+      "ecr any error absent",
+      "ecr raw response",
+      "ecr error leaks",
+      "ecr digest unchecked",
+      "ecr deadline removed",
+      "proof revision unchecked",
+      "proof wrong repository",
+      "proof bad digest not from values",
+      "relay bridge always",
+      "ingress builds bridge",
+      "bridge author changed",
+      "irsa fallback providers allowed",
+      "irsa role unchecked",
+      "clients created eagerly"
+    ],
+    "environment": "AWS_CONFIG_FILE/AWS_SHARED_CREDENTIALS_FILE pointed at nonexistent files, AWS_PROFILE unset (CI-like)"
+  },
+  "test_notes": [
+    "the PR fixture moves only the normal receipt finished_at, breaking started<=collected<=finished; tests shift every receipt time equally and recompute the view hash (product unchanged)",
+    "WF07 requires the second proof strictly later than the first; fake Kubernetes reads advance the fake clock (real time passes in production)"
+  ],
+  "full_suite": {
+    "count": 1786,
+    "seconds": 316.652,
+    "passed": true,
+    "skipped": 1,
+    "environment": "no AWS profile (CI-like)",
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-wf07-proof-full-2.log",
+      "sha256": "19b3e4e4fd342cd56fc09a3be7be21c7006b977b505f92c84cda0510e17485db"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
+  "connection_stage_items": [
+    "IRSA role allowing only ecr:DescribeImages on repository urlshortener, bound to the relay ServiceAccount",
+    "read-only GitHub token (isolated repository Contents: Read) mounted",
+    "read RBAC (observer + Lease get)",
+    "renderer: recovery-approval.json, normal-ci-binding.json, tokens, drafts on the PVC",
+    "CI relay running against the same queue so normal-CI receipts exist"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_proof_live.py": "0dd1b5468f287d29d31b6d7ed7db71bb9f0c31927a5a6a2052964016836f84d8",
+    "ai-ops/src/ai_ops/normal_ci_inbox.py": "05a812cd5d8ac5542f7d66c26db3098e9b0d05b1defce05125a18412d358135b",
+    "ai-ops/src/ai_ops/recovery_sources.py": "23171c8ee93b90a226bc03d67d3898ab28c3a3482ab0722892ac3da2f65a0f5b",
+    "ai-ops/src/ai_ops/slack_server.py": "5a9da4f955aa16abb3255a25c9baa2d48ac646e3a4f8f91b3ce3f171df151b20",
+    "ai-ops/requirements.lock": "0e11ac05febbbc3f58cd745d08e2f25b047d91aa66f1754298aae90625fbbd46",
+    "ai-ops/pyproject.toml": "3348ecfde39df0e4582ac6799341e1dad9dd3321c1faab1c63b35a1f40ec0867",
+    "ai-ops/tests/test_recovery_proof_live.py": "a2e19134b8c6d0ee5ce3122cd5cb601cdc743a0bf93d0c16c816706a66613ac0",
+    "ai-ops/tests/test_recovery_sources.py": "c82e268805014019e60677fa099e4a4b7e5017a6ef40f73d438884038674ca8e"
+  },
+  "no_external_actions": "no cluster, AWS, GitHub write besides this PR, deploy, Slack, incident drill, token/role issuance; only public PyPI metadata was read for wheel hashes",
+  "first_pr_ci": {
+    "run": 45351079366,
+    "conclusion": "failure",
+    "cause": "boto3 resolves credentials at client creation; with no AWS profile on the CI runner the default chain reached the instance metadata service and the network-forbidding test caught it (locally a profile masked it)",
+    "fix": "irsa_clients: only the assume-role-with-web-identity provider (env keys, profiles, IMDS removed), AWS_ROLE_ARN must equal the configured role in the fixed account, deferred credentials; ECR clients created on first use so a missing IRSA stops only WF07 preparation, not the relay"
+  }
+}
