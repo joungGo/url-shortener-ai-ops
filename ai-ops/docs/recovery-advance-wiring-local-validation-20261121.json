@@ -35,7 +35,13 @@
       "advance while stopping",
       "page state filter ignored",
       "WF07 retention missing"
-    ]
+    ],
+    "correction_20261124": {
+      "finding": "the original mutation runner used a minimal environment (PATH=/usr/bin:/bin) where helm is not found; two WF07 tests (AdvanceTest end-to-end, AdvanceRetentionTest) failed at baseline, so the original 13/13 kills were not valid evidence",
+      "re_run": "same 13 mutations against the merged commit 83b8e39 (temporary detached worktree) with the full inherited environment; baseline passed first",
+      "result": "13/13 detected",
+      "runner_fix": "inherit the full environment and refuse to run mutations unless the baseline passes"
+    }
   },
   "full_suite": {
     "count": 1742,

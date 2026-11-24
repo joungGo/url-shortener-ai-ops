@@ -31,6 +31,7 @@ from pydantic import StrictBool, model_validator
 from ai_ops.contracts import StrictModel
 from ai_ops.recovery_approvals import ApprovalPolicy, RecoveryApprovalLedger, slack_plan_source
 from ai_ops.recovery_observe import ObserveConfig, make_observer
+from ai_ops.recovery_sources import PrepareConfig
 from ai_ops.recovery_outbox import RecoveryOutbox, prune_existing
 from ai_ops.recovery_retention import RecoveryRetention
 from ai_ops.recovery_slack_approval import SlackApprovalReceiver
@@ -79,6 +80,8 @@ class RecoveryApprovalConfig(StrictModel):
     prepare_proposal: ApprovalPolicy
     # Absent -> no current-state reads at all (approval waits cannot open).
     observe: ObserveConfig | None = None
+    # WF07 live sources (slice A config; read_proof/entrypoint wiring is slice B).
+    prepare: PrepareConfig | None = None
 
     @model_validator(mode='after')
     def scope_matches(self):
@@ -87,6 +90,12 @@ class RecoveryApprovalConfig(StrictModel):
         # One blocking read per relay tick must stay well inside the relay health age.
         if self.prepare_proposal.revalidation_seconds > RELAY_BLOCK_SECONDS:
             raise ValueError('revalidation_exceeds_relay_budget')
+        if self.prepare is not None:
+            # Proof objects use the observer's Kubernetes read identity.
+            if self.observe is None:
+                raise ValueError('prepare_requires_observe')
+            if not set(self.prepare_proposal.approvers) <= set(self.prepare.principals):
+                raise ValueError('prepare_principal_missing')
         return self
 
     @classmethod

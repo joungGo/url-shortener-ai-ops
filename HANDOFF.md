@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-24 WF07 실제 읽기 포트 조각 A·CI 반영 준비 (Claude)
+
+사용자 결정(추천안): ECR=boto3 추가+IRSA(조각 B), GitHub=토큰 파일 마운트, 2조각 분할. branch `claude/a7-wf07-sources-20261124`(기준 main `de0a291`). 신규 `ai_ops.recovery_sources`: `TokenRepoReader`(격리 저장소 `git/ref/heads/main`·`git/{commits,trees,blobs}/<sha>`만, 토큰 파일 요청마다 재읽기·권한/형식 검사, proxy 무시·redirect 미추적·8초·2MiB, 본문 없는 고정 오류), `values_at`, `ProofObjectsReader`(Argo argocd/lab-target·Deployment·Lease·ReplicaSets·Pods 고정 GET 5개, selector Pod·소유 RS 선택만), `PrepareConfig`(principals·author·drafts_dir·github_token_file·prepare_seconds≤15, observe 필수·승인자 매핑 필수). check-config `recovery_prepare_configured`. 진입점 연결·read_proof 조립은 조각 B. **정정:** 조각 3(PR56) 변형 검사 근거 무효(실행기 최소 PATH에서 helm 부재로 기준선 실패) → 병합 커밋 임시 worktree 전체 환경 재검사 13/13 실제 검출, 실행기는 전체 환경 상속·기준선 선확인으로 수정. 조각 1·관측기는 최소 환경 기준선 통과, 조각 2는 생존 변형 존재로 유효. 시험13·변형 19/19. PR57 병합 결과 메타데이터 이관 포함.
+
+## 2026-11-24 A7 PR 경로 현재 상태 관측기 CI/main 반영 완료 (Claude)
+
+[PR #57](https://github.com/joungGo/url-shortener-ai-ops/pull/57) head `cd0fedec51bc4e92c0631a70225b696437e05718` → main `de0a2919f36682147b09abe1ac1219b602c71515`(head 고정 squash, 사용자 "진행해" 후). PR CI44883281788 7종(1757개) 성공, tree `5d7a235` 일치, 보호 변경/우회 없음, branch 정리. A7 로컬 연결: 요청→관측→승인→재검증→PR 준비. 다음 후보: execute_command·재시작 조정기 연결, WF07 실제 읽기 포트(GitHub·CI·ECR·ID 매핑), A8 WF12 문서.
+
 ## 2026-11-21 A7 PR 경로 현재 상태 관측기·CI 반영 준비 (Claude)
 
 사용자 결정: 실패 판정=현재 컨테이너 상태(WF07 재확인과 동일, 이벤트 시각 미사용), healthy 판정 안 함(실패 아니면 unknown), 설정 있을 때만 연결. branch `claude/a7-recovery-observer-20261121`(기준 main `83b8e39`). 신규 `ai_ops.recovery_observe`: PR48 `ApiClient` 재사용, 고정 GET 4개(Deployment·ReplicaSets·Pods·Argo application), 대상 외 계획은 읽기 0. `image_failure`=selector Pod 1개·Deployment→RS→Pod controller 소유·Pod/RS/상태 이미지=Deployment 이미지·`api` 단일 컨테이너 ready=false·waiting `ErrImagePull|ImagePullBackOff`·최신 generation·readyReplicas 0, 그 외 `unknown`. revision=targetRevision==sync.revision(WF07 base_sha와 동일) 아니면 예외. proof_hash=원시 응답 hash의 hash. `RecoveryApprovalConfig.observe`(https·절대 경로·Argo 앱) 있을 때만 사용, check-config는 `recovery_observe` 여부만. 연결 단계: 읽기 RBAC(replicasets list 신규)·renderer 마운트·실응답 형태 확인. 시험15·변형 16/16. PR56 병합 결과 메타데이터 이관 포함.

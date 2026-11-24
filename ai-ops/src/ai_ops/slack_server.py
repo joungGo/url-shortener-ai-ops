@@ -232,6 +232,7 @@ def main(argv=None):
                 'config_hash':settings.config_hash, 'runbook_policy_hash':settings.runbooks.policy_hash,
                 'recovery_approval':recovery is not None,
                 'recovery_observe':recovery is not None and recovery.observe is not None,
+                'recovery_prepare_configured':recovery is not None and recovery.prepare is not None,
                 'execution_allowed':False, 'connected':False}))
             return 0
         os.umask(0o077)
