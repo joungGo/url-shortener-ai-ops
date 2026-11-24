@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-24 relay 외부 송신 proxy 조각 1·CI 반영 준비 (Claude)
+
+사용자 결정(추천 3번): 고정 목적지 송신 proxy. branch `claude/a7-egress-proxy-20261124`(기준 main `4a62309`). 신규 `ai_ops.recovery_egress_proxy`(`api.github.com`·`sts.ap-northeast-2.amazonaws.com`·`api.ecr.ap-northeast-2.amazonaws.com` :443만, CONNECT 한 줄+일치 Host 하나, DNS 전부 공개 IPv4, 동시 8·유휴 35초·수명 120초, 고정 응답·무기록; `model_egress_proxy`는 불변). `PrepareConfig.egress_proxy`, `TokenRepoReader`·`irsa_clients`/`EcrImageChecker`가 설정 proxy만 사용 — botocore 세션 단계에 리전·지역 STS·proxy·dualstack/FIPS 끔·설정 endpoint URL 무시 → web-identity 자격 교환도 proxy 경유(로컬 기록 proxy로 CONNECT 대상 확인). **시험에서 제품 결함 2건 발견·수정:** dualstack 환경 변수 시 자격 교환이 `sts.ap-northeast-2.api.aws`로, `AWS_ENDPOINT_URL[_STS]` 시 projected 토큰을 실은 자격 교환이 임의 주소로. 시험12·변형 19/21(동등 2)·전체1798(skip1). 다음: 조각 2 renderer proxy Pod·NetworkPolicy·WF12 갱신. PR60 main CI45356948426 성공 기록 포함.
+
+## 2026-11-24 A8 WF12 인계 초안 main 반영 완료 (Claude)
+
+[PR #60](https://github.com/joungGo/url-shortener-ai-ops/pull/60) head `87f8d05d155e93b94026b0b31aab8a5904d81ad6` → main `4a623096fdf17dea464ae100fd45ec388395d8e1`(head 고정 squash, 사용자 "진행해" 후). PR CI45355975980 7종 성공, tree `9f282f4` 일치, branch 정리. 다음: (1) relay 외부 송신 방식 결정(메인 Pod 송신 추가/별도 송신 Pod/송신 proxy), (2) 인프라 재설치 요청·Terraform 실행 주체 결정 후 WF12 5절 체크리스트를 실제 값으로, (3) WF11 실환경 검증, (4) PR 발행 경로·원복/재시작 프로세스 연결.
+
 ## 2026-11-24 A8 WF12 인계 문서 초안 (Claude)
 
 사용자 허락(추천 3번). branch `claude/a8-wf12-handoff-20261124`(기준 main `5d0c439`), 문서만. [WF12 인계 초안](ai-ops/docs/wf12-recovery-handoff-20261124.md): 흐름표·근거·설정 예시(모델 검증)·프로세스 동작·연결 체크리스트·지원 범위·미결정·안전 경계. **새 미결정 발견:** WF10 renderer에서 `slack-relay`는 메인 Pod에 있고 메인 Pod 송신은 DNS·수집 CIDR만(B′: 인터넷 송신은 sender Pod만) → WF07의 `api.github.com`·AWS STS/ECR 읽기가 막힘(그 경우 준비는 `needs_review`로 안전 중단). 선택지: 메인 Pod 송신 추가 / 별도 송신 Pod / 송신 proxy. PR59 main CI45354867715 성공 기록 포함.

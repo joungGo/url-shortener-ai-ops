@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-24 KST. 기준 AI main `5d0c439`(WF07 실제 읽기 포트 조각 B PR59), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a8-wf12-handoff-20261124`(A8 WF12 인계 문서 초안). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-24 KST. 기준 AI main `4a62309`(A8 WF12 인계 초안 PR60), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-egress-proxy-20261124`(relay 송신 proxy 조각 1). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -407,3 +407,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A8 WF12 인계 문서 초안 · 2026-11-24
 
 [WF12 인계 초안](wf12-recovery-handoff-20261124.md): 요청→관측→승인→재검증→PR 준비 흐름표, 조각별 근거(PR54~59), `recovery-approval.json` 예시(실제 모델로 검증)와 항목 규칙, relay·ingress 동작과 시간 상한, 연결 단계 체크리스트(이미지·읽기 RBAC·GitHub 토큰·IRSA·CI relay·binding·초안 PVC·Slack Interactivity URL·renderer·check-config), 지원 범위, 미결정·한계, 안전 경계. **새 미결정:** WF10 B′에서 메인 Pod(relay 포함) 송신이 DNS·수집 CIDR로 제한돼 WF07 GitHub·AWS 읽기가 네트워크에서 막힘 → 송신 허용/별도 송신 Pod/송신 proxy 중 결정 필요. 문서만, WF11 결과로 확정.
+
+### A8 WF12 인계 초안 최종 반영 · 2026-11-24
+
+[PR #60](https://github.com/joungGo/url-shortener-ai-ops/pull/60) head `87f8d05` → main `4a623096fdf17dea464ae100fd45ec388395d8e1`. PR CI45355975980 7종 성공, tree `9f282f4` 일치. 다음: relay 외부 송신 방식 결정(WF12 7절 1항), 인프라 재설치·실행 주체 결정 후 연결 체크리스트, WF11.
+
+### relay 외부 송신 proxy 조각 1 · 2026-11-24
+
+[구현 기록](recovery-egress-proxy-local-20261124.md)·[검증 JSON](recovery-egress-proxy-local-validation-20261124.json): 사용자 결정(고정 목적지 송신 proxy). `ai_ops.recovery_egress_proxy`(CONNECT 3목적지·공개 IPv4만·동시8·유휴35초·수명120초·고정 403/503) + `PrepareConfig.egress_proxy`, GitHub reader·IRSA client가 설정된 proxy만 사용(자격 교환 STS 포함, 환경 proxy 무시). 시험에서 boto3 내부 STS 결함 2건(dualstack 주소, endpoint 재지정으로 projected 토큰 임의 주소 전송 가능) 발견·세션 단계에서 수정. 시험12·변형 19/21(동등 2). renderer·NetworkPolicy는 조각 2. 이 커밋 시점 PR CI/main 대기.
