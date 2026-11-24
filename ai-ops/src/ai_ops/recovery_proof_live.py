@@ -31,6 +31,31 @@ DIGEST = re.compile(r'sha256:[a-f0-9]{64}\Z')
 SHA = re.compile(r'[a-f0-9]{40}\Z')
 
 
+def irsa_clients(role_name):
+    """STS/ECR clients whose ONLY credential source is IRSA web identity.
+
+    boto3's default chain would fall back to profiles or the instance metadata
+    service (the EKS node role) when IRSA is missing; here every other provider is
+    removed, and the projected role must be the configured one. Credentials stay
+    deferred (no network) until the first call.
+    """
+    import os
+    role_arn, token_file = os.environ.get('AWS_ROLE_ARN', ''), os.environ.get('AWS_WEB_IDENTITY_TOKEN_FILE', '')
+    if not token_file.startswith('/') or role_arn != f'arn:aws:iam::{AWS_ACCOUNT}:role/{role_name}':
+        raise ValueError('ecr_irsa_not_configured')
+    import boto3  # runtime lock pins boto3; imported only when actually used
+    import botocore.session
+    from botocore.config import Config
+    core = botocore.session.get_session()
+    resolver = core.get_component('credential_provider')
+    resolver.providers = [p for p in resolver.providers if p.METHOD == 'assume-role-with-web-identity']
+    if len(resolver.providers) != 1:
+        raise ValueError('ecr_irsa_not_configured')
+    config = Config(connect_timeout=2, read_timeout=3, retries={'total_max_attempts': 2, 'mode': 'standard'})
+    session = boto3.Session(botocore_session=core, region_name=AWS_REGION)
+    return session.client('sts', config=config), session.client('ecr', config=config)
+
+
 class EcrImageChecker:
     """``check(prior, bad) -> (ecr_response, bad_absent)`` for ``assess_recovery_proof``.
 
@@ -41,14 +66,19 @@ class EcrImageChecker:
         if not re.fullmatch(r'[A-Za-z0-9+=,.@_-]{1,64}', str(role_name)):
             raise ValueError('ecr_role_rejected')
         self.role_name, self._now = role_name, now
-        if clients is None:
-            import boto3  # runtime lock pins boto3; imported only when actually used
-            from botocore.config import Config
-            config = Config(connect_timeout=2, read_timeout=3,
-                            retries={'total_max_attempts': 2, 'mode': 'standard'})
-            session = boto3.Session(region_name=AWS_REGION)  # IRSA web identity from the Pod env
-            clients = (session.client('sts', config=config), session.client('ecr', config=config))
-        self.sts, self.ecr = clients
+        # Created on first use: a missing IRSA setup then stops only WF07 preparation
+        # (needs_review), never the relay process that also serves Slack replies.
+        self.sts, self.ecr = clients if clients is not None else (None, None)
+
+    def _clients(self):
+        if self.sts is None:
+            try:
+                self.sts, self.ecr = irsa_clients(self.role_name)
+            except ValueError:
+                raise
+            except Exception:
+                raise ValueError('ecr_irsa_not_configured') from None
+        return self.sts, self.ecr
 
     def _in_time(self, deadline):
         if self._now() >= deadline:
@@ -58,6 +88,7 @@ class EcrImageChecker:
         if not DIGEST.fullmatch(str(prior_digest)) or not DIGEST.fullmatch(str(bad_digest)):
             raise ValueError('ecr_digest_rejected')
         self._in_time(deadline)
+        self._clients()
         try:  # SDK errors can carry ARNs, request IDs or messages: never pass them on
             identity = self.sts.get_caller_identity()
         except Exception:

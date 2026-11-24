@@ -254,13 +254,40 @@ class EcrCheckerTest(unittest.TestCase):
             EcrImageChecker(role_name='bad role', now=lambda: 0, clients=(self.aws, self.aws))
         self.assertEqual(self.aws.calls, [])
 
-    def test_default_clients_use_pinned_region_without_network(self):
+    def irsa_env(self, role=ROLE):
+        import os, tempfile
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        token = os.path.join(directory.name, 'token')
+        with open(token, 'w') as handle:
+            handle.write('projected-service-account-token')
+        missing = os.path.join(directory.name, 'none')
+        return {'AWS_ROLE_ARN': f'arn:aws:iam::{AWS_ACCOUNT}:role/{role}', 'AWS_WEB_IDENTITY_TOKEN_FILE': token,
+                'AWS_CONFIG_FILE': missing, 'AWS_SHARED_CREDENTIALS_FILE': missing,
+                'AWS_ACCESS_KEY_ID': 'AKIAFAKEFORTESTONLY0', 'AWS_SECRET_ACCESS_KEY': 'fake-secret-must-be-ignored'}
+
+    def test_irsa_is_the_only_credential_source_and_nothing_is_fetched_eagerly(self):
+        import os
+        from ai_ops.recovery_proof_live import irsa_clients
+        with patch.dict(os.environ, self.irsa_env()), \
+             patch('socket.socket.connect', side_effect=AssertionError('network')):
+            sts, ecr = irsa_clients(ROLE)
+            credentials = sts._request_signer._credentials
+        self.assertEqual((sts.meta.region_name, ecr.meta.region_name), ('ap-northeast-2', 'ap-northeast-2'))
+        self.assertEqual((sts.meta.service_model.service_name, ecr.meta.service_model.service_name), ('sts', 'ecr'))
+        # Environment keys present but ignored: only the web identity provider remains.
+        self.assertEqual(credentials.method, 'assume-role-with-web-identity')
+        self.assertEqual(type(credentials).__name__, 'DeferredRefreshableCredentials')
+
+    def test_missing_or_other_irsa_role_fails_only_at_first_use_without_network(self):
+        import os
         with patch('socket.socket.connect', side_effect=AssertionError('network')):
-            checker = EcrImageChecker(role_name=ROLE, now=lambda: 0)
-        self.assertEqual((checker.sts.meta.region_name, checker.ecr.meta.region_name),
-                         ('ap-northeast-2', 'ap-northeast-2'))
-        self.assertEqual((checker.sts.meta.service_model.service_name, checker.ecr.meta.service_model.service_name),
-                         ('sts', 'ecr'))
+            checker = EcrImageChecker(role_name=ROLE, now=lambda: 0)  # construction never needs IRSA
+            for env in ({k: '' for k in ('AWS_ROLE_ARN', 'AWS_WEB_IDENTITY_TOKEN_FILE')},
+                        self.irsa_env(role='ec2-node-role')):
+                with self.subTest(env=sorted(env)), patch.dict(os.environ, env), \
+                     self.assertRaisesRegex(ValueError, r'^ecr_irsa_not_configured$'):
+                    checker.check('sha256:' + 'b' * 64, 'sha256:' + 'c' * 64, deadline=10)
 
 
 class EntrypointTest(LiveFixture, unittest.TestCase):

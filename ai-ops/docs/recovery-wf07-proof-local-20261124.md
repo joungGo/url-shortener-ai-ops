@@ -32,12 +32,36 @@
 
 ### 3. `EcrImageChecker` (`ai_ops.recovery_proof_live`)
 
-- boto3 기본 자격 체인(Pod의 IRSA web identity)을 쓰고, 리전은 `ap-northeast-2`로 고정한다. 연결 2초, 읽기 3초, 최대 2회 시도다. boto3는 실제로 쓸 때만 import한다.
+- 자격은 IRSA web identity만 쓴다(3-1). 리전은 `ap-northeast-2`로 고정한다. 연결 2초, 읽기 3초, 최대 2회 시도다. boto3는 실제로 쓸 때만 import한다.
 - **호출자 확인:** STS 호출자가 고정 계정(`764428911194`)의 `assumed-role/<설정된 역할>/`이 아니면 ECR을 읽기 전에 거절한다.
 - **정상 이미지:** `describe_images`로 정상 digest를 조회한다. 증거 함수에 넘기는 값은 `registryId`·`repositoryName`·`imageDigest` 세 필드뿐이다(태그·크기는 넘기지 않음).
 - **실패 이미지가 없는지:** `ImageNotFoundException`(예외 이름 또는 오류 코드)만 "없음"으로 인정한다. 권한 오류 같은 다른 오류는 모두 `ecr_read_failed`로 거절한다. **"없음"으로 잘못 판정하지 않는다.**
 - **오류 처리:** SDK 오류는 ARN·요청 ID·메시지를 담을 수 있어 고정 코드로만 바꾼다. 처음에는 정상 이미지 조회 오류가 원래 예외 그대로 밖으로 나가는 결함이 있었고, 시험에서 발견해 고쳤다.
 - 각 단계 사이에 마감을 확인하고, digest 형식이 다르면 거절한다.
+
+### 3-1. 자격 증명은 IRSA만 사용 (PR CI 실패에서 발견해 수정)
+
+첫 PR CI([run 45351079366](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45351079366))에서 contracts 작업이 실패했다.
+
+**원인.** boto3는 client를 만드는 순간 자격 증명을 찾는다. 로컬에는 AWS 프로필이 있어서 거기서 끝났지만, CI 러너에는 프로필이 없다. 그래서 기본 자격 체인이 인스턴스 메타데이터(IMDS)까지 내려가 네트워크를 시도했고, 네트워크를 금지한 시험이 이를 잡았다.
+
+**운영 위험.** Pod에서 IRSA 설정이 빠지면 같은 경로로 EKS 노드 역할 등 다른 자격으로 조용히 넘어갈 수 있다. 호출자 역할 확인이 막기는 하지만, 그 경로 자체를 타면 안 된다.
+
+**수정.**
+
+- `irsa_clients`는 아래 조건을 모두 만족할 때만 client를 만든다. 어긋나면 `ecr_irsa_not_configured`로 거절한다.
+  - `AWS_ROLE_ARN`이 `arn:aws:iam::764428911194:role/<설정 역할>`이다.
+  - `AWS_WEB_IDENTITY_TOKEN_FILE`이 절대 경로다.
+  - botocore 자격 해석기에서 web identity 제공자 하나만 남긴다. 환경 키·프로필·IMDS는 쓰지 않는다.
+- 자격은 지연(`DeferredRefreshableCredentials`) 상태라, 첫 호출 전에는 네트워크를 쓰지 않는다.
+- ECR client는 **처음 쓸 때** 만든다. IRSA가 빠졌을 때 relay 전체(Slack 회신 포함)가 시작에 실패하지 않고, WF07 준비만 `needs_review`로 멈춘다.
+
+**시험.**
+
+- AWS 프로필이 없는 CI 조건에서 시험을 다시 했다.
+- 환경 변수에 접근 키가 있어도 무시하고 web identity만 쓰는 것을 확인했다.
+- IRSA가 없거나 역할이 다르면 첫 사용 때 거절되고, 네트워크는 0회다.
+- 변형 3종(대체 경로 허용, 역할 확인 제거, 즉시 생성)을 추가해 21/21을 검출했다.
 
 ### 4. `LiveRecoveryProof`: WF07 `read_proof` 포트
 
@@ -81,7 +105,7 @@
 
 시험 기준:
 
-- 신규 `test_recovery_proof_live.py` 15개.
+- 신규 `test_recovery_proof_live.py` 16개.
 - 기존 `test_recovery_sources.py`의 설정 시험을 새 필수 항목(`normal_binding_file`·`aws_role_name`)에 맞게 갱신했다.
 - 실제 WF07 fixture(로컬 Git·증거·초안·승인 장부) 위에 가짜 Kubernetes·GitHub·AWS를 붙였다. 네트워크는 쓰지 않았다.
 
@@ -96,7 +120,7 @@
 
 변형 검사:
 
-- **결과:** 결함 변형 18종을 모두 검출했다. 전체 환경을 상속하고 기준선을 먼저 확인하는 실행기를 썼다.
+- **결과:** 결함 변형 21종을 모두 검출했다(IRSA 3종 포함). 전체 환경을 상속하고 기준선을 먼저 확인하는 실행기를 썼다.
 - **처음 결과는 15/18이었다.** 남은 3종은 다음과 같이 처리했다.
   - 실패 digest 조회 오류를 "없음"으로 보는 변형: 진짜 빈틈이어서 시험을 추가했다.
   - revision 검사 제거: GitHub reader도 막지만, 오류 코드와 읽기 0회를 시험으로 고정했다.

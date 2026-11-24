@@ -24,35 +24,57 @@
     "slack_server relay builds the WF07 bridge only with a prepare section; ingress never; retention includes WF07 records; PR publication remains unwired"
   ],
   "product_fix_found_by_tests": "an SDK error on the known-good digest lookup (and STS) escaped as the raw exception (may carry ARNs/request IDs); now fixed codes",
-  "new_tests": 15,
+  "new_tests": 16,
   "updated_tests": "test_recovery_sources PrepareConfig base gains normal_binding_file and aws_role_name (+2 rejection cases)",
   "mutation_checks": {
-    "count": 18,
-    "detected": 18,
+    "count": 21,
+    "detected": 21,
     "runner": "full inherited environment, baseline must pass first",
     "first_run": "15/18 -> added tests for access error on the failed digest (never absent), non-SHA revision rejected before any read, exact config passed to the bridge",
     "mutations": [
-      "inbox hmac ignored", "inbox binding ignored", "inbox before ignored", "inbox first not latest", "inbox any state",
-      "ecr account ignored", "ecr role ignored", "ecr any error absent", "ecr raw response", "ecr error leaks",
-      "ecr digest unchecked", "ecr deadline removed", "proof revision unchecked", "proof wrong repository",
-      "proof bad digest not from values", "relay bridge always", "ingress builds bridge", "bridge author changed"
-    ]
+      "inbox hmac ignored",
+      "inbox binding ignored",
+      "inbox before ignored",
+      "inbox first not latest",
+      "inbox any state",
+      "ecr account ignored",
+      "ecr role ignored",
+      "ecr any error absent",
+      "ecr raw response",
+      "ecr error leaks",
+      "ecr digest unchecked",
+      "ecr deadline removed",
+      "proof revision unchecked",
+      "proof wrong repository",
+      "proof bad digest not from values",
+      "relay bridge always",
+      "ingress builds bridge",
+      "bridge author changed",
+      "irsa fallback providers allowed",
+      "irsa role unchecked",
+      "clients created eagerly"
+    ],
+    "environment": "AWS_CONFIG_FILE/AWS_SHARED_CREDENTIALS_FILE pointed at nonexistent files, AWS_PROFILE unset (CI-like)"
   },
   "test_notes": [
     "the PR fixture moves only the normal receipt finished_at, breaking started<=collected<=finished; tests shift every receipt time equally and recompute the view hash (product unchanged)",
     "WF07 requires the second proof strictly later than the first; fake Kubernetes reads advance the fake clock (real time passes in production)"
   ],
   "full_suite": {
-    "count": 1785,
-    "seconds": 316.754,
+    "count": 1786,
+    "seconds": 316.652,
     "passed": true,
     "skipped": 1,
+    "environment": "no AWS profile (CI-like)",
     "log": {
-      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-wf07-proof-full.log",
-      "sha256": "c6ee82280c7dfff7cfbd1caa12f4a22dc76514bf479710a8187eae074b8b87d8"
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-wf07-proof-full-2.log",
+      "sha256": "19b3e4e4fd342cd56fc09a3be7be21c7006b977b505f92c84cda0510e17485db"
     }
   },
-  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
   "connection_stage_items": [
     "IRSA role allowing only ecr:DescribeImages on repository urlshortener, bound to the relay ServiceAccount",
     "read-only GitHub token (isolated repository Contents: Read) mounted",
@@ -61,14 +83,20 @@
     "CI relay running against the same queue so normal-CI receipts exist"
   ],
   "source_hashes": {
-    "ai-ops/src/ai_ops/recovery_proof_live.py": "fd4079d0e589c3213e261043a7f615d58b0d7dedf5294aceb45ff301f0b9935f",
+    "ai-ops/src/ai_ops/recovery_proof_live.py": "0dd1b5468f287d29d31b6d7ed7db71bb9f0c31927a5a6a2052964016836f84d8",
     "ai-ops/src/ai_ops/normal_ci_inbox.py": "05a812cd5d8ac5542f7d66c26db3098e9b0d05b1defce05125a18412d358135b",
     "ai-ops/src/ai_ops/recovery_sources.py": "23171c8ee93b90a226bc03d67d3898ab28c3a3482ab0722892ac3da2f65a0f5b",
     "ai-ops/src/ai_ops/slack_server.py": "5a9da4f955aa16abb3255a25c9baa2d48ac646e3a4f8f91b3ce3f171df151b20",
     "ai-ops/requirements.lock": "0e11ac05febbbc3f58cd745d08e2f25b047d91aa66f1754298aae90625fbbd46",
     "ai-ops/pyproject.toml": "3348ecfde39df0e4582ac6799341e1dad9dd3321c1faab1c63b35a1f40ec0867",
-    "ai-ops/tests/test_recovery_proof_live.py": "5d75a98fe0066d48a6ee50bdf00f0b84e70bcbfd64da76723f2c82b03a869230",
+    "ai-ops/tests/test_recovery_proof_live.py": "a2e19134b8c6d0ee5ce3122cd5cb601cdc743a0bf93d0c16c816706a66613ac0",
     "ai-ops/tests/test_recovery_sources.py": "c82e268805014019e60677fa099e4a4b7e5017a6ef40f73d438884038674ca8e"
   },
-  "no_external_actions": "no cluster, AWS, GitHub write besides this PR, deploy, Slack, incident drill, token/role issuance; only public PyPI metadata was read for wheel hashes"
+  "no_external_actions": "no cluster, AWS, GitHub write besides this PR, deploy, Slack, incident drill, token/role issuance; only public PyPI metadata was read for wheel hashes",
+  "first_pr_ci": {
+    "run": 45351079366,
+    "conclusion": "failure",
+    "cause": "boto3 resolves credentials at client creation; with no AWS profile on the CI runner the default chain reached the instance metadata service and the network-forbidding test caught it (locally a profile masked it)",
+    "fix": "irsa_clients: only the assume-role-with-web-identity provider (env keys, profiles, IMDS removed), AWS_ROLE_ARN must equal the configured role in the fixed account, deferred credentials; ECR clients created on first use so a missing IRSA stops only WF07 preparation, not the relay"
+  }
 }
