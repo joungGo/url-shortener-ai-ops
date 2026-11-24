@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-24 WF07 실제 읽기 포트 조각 B·CI 반영 준비 (Claude)
+
+branch `claude/a7-wf07-proof-20261124`(기준 main `f219d04`). 사용자 결정(모두 추천): 정상 CI 근거=`NormalCIInbox` 재사용, binding 일치 최신 `ready`, ECR=boto3+IRSA. `requirements.lock`에 boto3 1.44.0·botocore 1.44.0·s3transfer 0.19.3·jmespath 1.1.0·python-dateutil 2.9.0.post0·six 1.17.0·urllib3 2.8.0(PyPI 공개 wheel sha256, 순수 Python, `--require-hashes` 설치 확인), `pyproject` dependencies에 boto3. 신규 `ai_ops.recovery_proof_live`: `EcrImageChecker`(IRSA 기본 체인·고정 리전·STS 호출자=고정 계정 assumed-role/<설정 역할>, 증거 필드 3개만, `ImageNotFoundException`만 부재, SDK 오류 고정 코드 — 정상 이미지 조회 오류 원문 노출 결함을 시험에서 발견해 수정), `LiveRecoveryProof`(Kubernetes 객체→SHA revision→values→inbox→ECR→`assess_recovery_proof`), `live_pr_bridge`. `NormalCIInbox.latest_ready_history`. `PrepareConfig`에 `normal_binding_file`·`aws_role_name`. relay는 `prepare` 있을 때만 WF07 bridge(ingress 제외) → 설정이 갖춰지면 실제 배포에서 PR 준비까지 연결, 발행(GitHub 쓰기) 없음. 연결 단계: IRSA(ecr:DescribeImages)·GitHub 토큰·RBAC·renderer·CI relay 실행. 시험15·변형 18/18(고친 실행기, 처음 15/18 → 빈틈 시험 3개 추가). PR58 병합 결과 메타데이터 이관 포함.
+
+## 2026-11-24 WF07 실제 읽기 포트 조각 A CI/main 반영 완료 (Claude)
+
+[PR #58](https://github.com/joungGo/url-shortener-ai-ops/pull/58) head `dcfa034a5e39d2127ae60849c24274df9da57672` → main `f219d046013ca131930568c59dcad01ae6937d93`(head 고정 squash, 사용자 "진행해" 후). PR CI45347993050 7종(1770개) 성공, tree `2ed22aa` 일치, 보호 변경/우회 없음, branch 정리. 다음: 조각 B — 사용자 결정(2026-11-24, 모두 추천): 정상 CI 근거=CI relay가 검증한 `NormalCIInbox` 재사용(HMAC 확인), 실행 선택=설정 binding 일치 최신 `ready`, ECR=boto3+IRSA(실행 lock hash 고정 추가).
+
 ## 2026-11-24 WF07 실제 읽기 포트 조각 A·CI 반영 준비 (Claude)
 
 사용자 결정(추천안): ECR=boto3 추가+IRSA(조각 B), GitHub=토큰 파일 마운트, 2조각 분할. branch `claude/a7-wf07-sources-20261124`(기준 main `de0a291`). 신규 `ai_ops.recovery_sources`: `TokenRepoReader`(격리 저장소 `git/ref/heads/main`·`git/{commits,trees,blobs}/<sha>`만, 토큰 파일 요청마다 재읽기·권한/형식 검사, proxy 무시·redirect 미추적·8초·2MiB, 본문 없는 고정 오류), `values_at`, `ProofObjectsReader`(Argo argocd/lab-target·Deployment·Lease·ReplicaSets·Pods 고정 GET 5개, selector Pod·소유 RS 선택만), `PrepareConfig`(principals·author·drafts_dir·github_token_file·prepare_seconds≤15, observe 필수·승인자 매핑 필수). check-config `recovery_prepare_configured`. 진입점 연결·read_proof 조립은 조각 B. **정정:** 조각 3(PR56) 변형 검사 근거 무효(실행기 최소 PATH에서 helm 부재로 기준선 실패) → 병합 커밋 임시 worktree 전체 환경 재검사 13/13 실제 검출, 실행기는 전체 환경 상속·기준선 선확인으로 수정. 조각 1·관측기는 최소 환경 기준선 통과, 조각 2는 생존 변형 존재로 유효. 시험13·변형 19/19. PR57 병합 결과 메타데이터 이관 포함.

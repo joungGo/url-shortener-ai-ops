@@ -266,7 +266,8 @@ class ProofObjectsTest(unittest.TestCase):
 class PrepareConfigTest(unittest.TestCase):
     def base(self, **changes):
         value = dict(principals={'UALICE01': 21}, author_id=22, drafts_dir='/data/incidents/drafts',
-                     github_token_file='/run/ai-github/token')
+                     github_token_file='/run/ai-github/token', normal_binding_file='/etc/ai-ops/normal-ci-binding.json',
+                     aws_role_name='ai-ops-recovery-reader')
         value.update(changes)
         return value
 
@@ -275,6 +276,7 @@ class PrepareConfigTest(unittest.TestCase):
         for changes in ({'principals': {}}, {'principals': {'alice': 21}}, {'principals': {'UALICE01': 0}},
                         {'author_id': 21}, {'principals': {'UALICE01': 21, 'UBOB0001': 21}},
                         {'drafts_dir': 'drafts'}, {'github_token_file': 'token'}, {'prepare_seconds': 16},
+                        {'normal_binding_file': 'binding.json'}, {'aws_role_name': 'bad role/x'},
                         {'unexpected': True}):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 PrepareConfig(**self.base(**changes))

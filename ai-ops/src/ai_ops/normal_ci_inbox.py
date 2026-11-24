@@ -118,6 +118,37 @@ class NormalCIInbox:
                        "WHERE episode_key=? AND state='queued'", (state, body, time.time(), row["episode_key"]))
             return {"episode_key": row["episode_key"], "state": state}
 
+    def latest_ready_history(self, *, before) -> VerifiedNormalHistory:
+        """WF07 근거: 이 binding의 'ready' 영수증 중 HMAC·결합을 다시 확인한 최신 1건.
+
+        submit은 GitHub 검증(``verify_normal_ci_history``)을 통과한 기록만 받는다.
+        여기서는 저장 무결성(키·HMAC)과 현재 binding 결합을 재확인하고, ``before``
+        이전에 끝난 실행 중 가장 늦게 끝난 것을 고른다. 없으면 거절한다.
+        """
+        with self.queue.transaction() as db:
+            rows = db.execute("SELECT * FROM normal_ci_receipts WHERE state='ready'").fetchall()
+        best = None
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"])
+                if (self._key(row["run_id"], row["attempt"]) != row["episode_key"]
+                        or not hmac.compare_digest(self._fingerprint(row["episode_key"], payload),
+                                                   row["fingerprint"])):
+                    continue
+                receipt = self._validate(payload)
+            except (ValueError, TypeError, KeyError, AttributeError):
+                continue
+            if receipt.finished_at >= before:
+                continue
+            if best is None or receipt.finished_at > best.receipt.finished_at:
+                best = VerifiedNormalHistory(run_id=payload["run_id"], run_attempt=payload["run_attempt"],
+                                             artifact_id=payload["artifact_id"],
+                                             archive_digest=payload["archive_digest"],
+                                             source_revision=payload["source_revision"], receipt=receipt)
+        if best is None:
+            raise ValueError("normal_ci_history_unavailable")
+        return best
+
     def prune(self) -> int:
         """정제 영수증·요약도 7일이 지나면 보관소에서 제거한다."""
         with self.queue.transaction() as db:
