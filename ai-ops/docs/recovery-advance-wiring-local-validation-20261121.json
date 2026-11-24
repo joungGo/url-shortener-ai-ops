@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "A7 process wiring slice 3: automatic revalidation after approval and WF07 PR preparation",
   "author": "Claude Code (Opus 5.5)",
   "base": "a5f59dc085b08114baeb44d950ab616e709dcace",
@@ -65,5 +65,24 @@
     "ai-ops/src/ai_ops/slack_server.py": "e5d5d4e88cdd058557a6ae0f9298f3d9d56cd10b7514e23e12529183b3e9dd58",
     "ai-ops/tests/test_recovery_approval_wiring.py": "e581846d33e69736948149f604a048626595493765fd0a606c5f4888fa2dd32c"
   },
-  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, paid model call"
+  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, paid model call",
+  "merge": {
+    "pr": 56,
+    "head": "e61c4427821e5a4ea9b0be218c28c4d5213067f5",
+    "main": "83b8e39efe3ce02405b1e1e3bb73a49b41471d3f",
+    "tree": "3f2a4bfd2a10b17f6f44a15f757ac93dbd4820a7",
+    "pr_ci": {
+      "run": 44881773956,
+      "jobs": 7,
+      "tests": 1742,
+      "skipped": 5
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 44882341093,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    }
+  }
 }

@@ -9,12 +9,15 @@
 * The ingress serves signed button presses on ``/slack/interactivity`` (A7-1),
   which only record a ledger decision.
 
+* Slice 3: after approval the relay revalidates (read-only) and, with a WF07
+  bridge, prepares the exact PR payload locally (never publishes).
+
 Disabled unless ``recovery-approval.json`` exists with ``enabled: true``. The
-current-state observation is not connected yet: the default ``observe`` port
-always fails, so ``open`` (which needs a fresh observation) is refused and no
-approval wait can start in a real deployment until a verified reader is wired.
-Nothing here revalidates, prepares a PR, executes, or reads/writes a cluster;
-every result keeps ``execution_allowed`` false.
+current-state observation uses the read-only Kubernetes/Argo observer
+(``recovery_observe``) only when the optional ``observe`` section is present;
+otherwise the default port always fails, so ``open`` (which needs a fresh
+observation) is refused and no approval wait can start. Nothing here executes,
+publishes or writes a cluster; every result keeps ``execution_allowed`` false.
 """
 from __future__ import annotations
 
@@ -27,6 +30,7 @@ from pydantic import StrictBool, model_validator
 
 from ai_ops.contracts import StrictModel
 from ai_ops.recovery_approvals import ApprovalPolicy, RecoveryApprovalLedger, slack_plan_source
+from ai_ops.recovery_observe import ObserveConfig, make_observer
 from ai_ops.recovery_outbox import RecoveryOutbox, prune_existing
 from ai_ops.recovery_retention import RecoveryRetention
 from ai_ops.recovery_slack_approval import SlackApprovalReceiver
@@ -73,6 +77,8 @@ class RecoveryApprovalConfig(StrictModel):
     schema_version: Literal[1] = 1
     enabled: StrictBool = False
     prepare_proposal: ApprovalPolicy
+    # Absent -> no current-state reads at all (approval waits cannot open).
+    observe: ObserveConfig | None = None
 
     @model_validator(mode='after')
     def scope_matches(self):
@@ -129,7 +135,8 @@ class RecoveryApprovalService:
     """``pr_bridge`` is a factory ``ledger -> ImageRecoveryPRBridge`` with trusted
     read ports. The process entrypoint passes none (no live GitHub/CI/ECR readers
     exist yet), so WF07 preparation stays unconnected in a real deployment."""
-    def __init__(self, adapter, config, *, observe=None, pr_bridge=None):
+    def __init__(self, adapter, config, *, observe=None, pr_bridge=None, connection_factory=None):
+        self._connection_factory = connection_factory  # tests only: fake Kubernetes API
         if not isinstance(adapter, SlackAdapter):
             raise ValueError('recovery_approval_adapter_required')
         if not isinstance(config, RecoveryApprovalConfig) or config.enabled is not True:
@@ -140,7 +147,7 @@ class RecoveryApprovalService:
         self.adapter = adapter
         self.ledger = RecoveryApprovalLedger(adapter.tasks.queue, config.prepare_proposal,
                                              load_plan=slack_plan_index(adapter),
-                                             observe=observe or observation_not_connected)
+                                             observe=observe or self._configured_observer(config))
         self.outbox = RecoveryOutbox(adapter)
         self.pr_bridge = None
         if pr_bridge is not None:
@@ -150,6 +157,13 @@ class RecoveryApprovalService:
                 raise ValueError('recovery_pr_bridge_rejected')
             self.pr_bridge = bridge
         self._cursor = ''
+
+    def _configured_observer(self, config):
+        """Read-only observer from the optional config; never reads credentials here."""
+        if config.observe is None:
+            return observation_not_connected
+        return make_observer(config.observe, now=self.adapter.tasks.queue.now,
+                             connection_factory=self._connection_factory)
 
     def receiver(self, signing_secret):
         """Ingress side: signed button presses -> ledger decision record only."""
