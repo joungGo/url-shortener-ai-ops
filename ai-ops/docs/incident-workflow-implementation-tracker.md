@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-24 KST. 기준 AI main `f219d04`(WF07 실제 읽기 포트 조각 A PR58), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-wf07-proof-20261124`(WF07 실제 읽기 포트 조각 B). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-24 KST. 기준 AI main `5d0c439`(WF07 실제 읽기 포트 조각 B PR59), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a8-wf12-handoff-20261124`(A8 WF12 인계 문서 초안). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -399,3 +399,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### WF07 실제 읽기 포트 조각 B · 2026-11-24
 
 [구현 기록](recovery-wf07-proof-local-20261124.md)·[검증 JSON](recovery-wf07-proof-local-validation-20261124.json): 사용자 결정(정상 CI=`NormalCIInbox` 재사용, binding 일치 최신 ready, ECR=boto3+IRSA). 실행 lock에 boto3 계열 7개 hash 고정 추가. `NormalCIInbox.latest_ready_history`(HMAC·binding·시각 확인), `EcrImageChecker`(호출자 역할·계정 확인, 증거 필드 3개만, `ImageNotFoundException`만 부재 인정, SDK 오류 고정 코드), `LiveRecoveryProof`(Kubernetes→SHA revision→values→inbox→ECR→기존 `assess_recovery_proof`), `live_pr_bridge`·relay 연결(`prepare` 있을 때만, ingress 제외). 설정이 갖춰지면 실제 배포에서 PR 준비까지 연결(발행 없음). 시험16·변형 21/21. 첫 PR CI 실패(boto3가 client 생성 시 IMDS까지 자격 탐색) → 자격을 IRSA web identity만으로 제한·역할 일치 확인·ECR client 지연 생성으로 수정. 이 커밋 시점 PR CI/main 대기.
+
+### WF07 실제 읽기 포트 조각 B 최종 반영 · 2026-11-24
+
+[PR #59](https://github.com/joungGo/url-shortener-ai-ops/pull/59) head `72fbc51` → main `5d0c43984c27754921c2d5b7f30cc1e883b3542d`. PR CI45353120230 7종 성공(skip1: boto3 설치로 기존 skip 4건 실행), tree `0ba1390` 일치, 보호 변경/우회 없음. 설정이 갖춰지면 실제 배포에서 요청→관측→승인→재검증→PR 준비까지 연결(발행 없음). 다음 후보: 실제 연결 준비(IRSA·토큰·RBAC·renderer, 인프라 재설치·실행 주체 결정 선행), PR 발행 경로, A8 WF12 문서.
+
+### A8 WF12 인계 문서 초안 · 2026-11-24
+
+[WF12 인계 초안](wf12-recovery-handoff-20261124.md): 요청→관측→승인→재검증→PR 준비 흐름표, 조각별 근거(PR54~59), `recovery-approval.json` 예시(실제 모델로 검증)와 항목 규칙, relay·ingress 동작과 시간 상한, 연결 단계 체크리스트(이미지·읽기 RBAC·GitHub 토큰·IRSA·CI relay·binding·초안 PVC·Slack Interactivity URL·renderer·check-config), 지원 범위, 미결정·한계, 안전 경계. **새 미결정:** WF10 B′에서 메인 Pod(relay 포함) 송신이 DNS·수집 CIDR로 제한돼 WF07 GitHub·AWS 읽기가 네트워크에서 막힘 → 송신 허용/별도 송신 Pod/송신 proxy 중 결정 필요. 문서만, WF11 결과로 확정.

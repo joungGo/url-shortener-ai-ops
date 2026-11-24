@@ -134,3 +134,7 @@
 전체 결과는 [검증 기록](recovery-wf07-proof-local-validation-20261124.json)에 있다.
 
 실제 클러스터·AWS·GitHub 쓰기·배포·Slack·장애 실습·토큰/역할 발급 없음. 기존 시간·실행별 승인·정확 head 리뷰/CI·잠금·원복 조건 변경 없음.
+
+## 최종 반영 결과
+
+[PR #59](https://github.com/joungGo/url-shortener-ai-ops/pull/59) head `72fbc518e2999c9c574b45896a2136e60d2709e0`를 head 고정 일반 squash 병합해 main `5d0c43984c27754921c2d5b7f30cc1e883b3542d`에 반영했다(사용자 "진행해" 후). 첫 PR CI(45351079366)는 IMDS 탐색으로 실패했고, 수정 커밋 뒤 [PR CI45353120230](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45353120230) 7종이 성공했다(1786개, skip1, image 빌드 통과). skip이 5에서 1로 준 것은 boto3가 설치되면서 `test_c_trial_aws`의 boto3 의존 시험이 실행되기 때문이다. tree `0ba1390bf4d28fafbfd49a86e306e59b60727c15` 일치, [main CI45354867715](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45354867715) 성공(PR전용 gate skip은 설계대로). 보호 변경/우회 없음. 병합 후 branch를 정리했다.
