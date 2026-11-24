@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-21 KST. 기준 AI main `83b8e39`(A7 프로세스 연결 조각3 재검증·WF07 준비 PR56), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-recovery-observer-20261121`(A7 PR 경로 현재 상태 관측기). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-24 KST. 기준 AI main `de0a291`(A7 PR 경로 현재 상태 관측기 PR57), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-wf07-sources-20261124`(WF07 실제 읽기 포트 조각 A). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -383,3 +383,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7 PR 경로 현재 상태 관측기 · 2026-11-21
 
 [구현 기록](recovery-observer-local-20261121.md)·[검증 JSON](recovery-observer-local-validation-20261121.json): 사용자 결정(실패=현재 컨테이너 상태, healthy 판정 안 함, 설정 있을 때만 연결). `ai_ops.recovery_observe`: 고정 GET 4개(Deployment·ReplicaSets·Pods·Argo app) → selector·소유 체인·이미지 일치·`ErrImagePull`/`ImagePullBackOff`·ready=false·readyReplicas 0·최신 generation이면 `image_failure`, 아니면 `unknown`, revision=targetRevision==sync.revision. `recovery-approval.json`의 선택적 `observe` 절이 있을 때만 relay·ingress 사용. 연결 단계 RBAC: deployments get·replicasets list(신규)·pods list·Argo applications get. 시험15·변형 16/16. 이 커밋 시점 PR CI/main 대기.
+
+### A7 PR 경로 현재 상태 관측기 최종 반영 · 2026-11-24
+
+[PR #57](https://github.com/joungGo/url-shortener-ai-ops/pull/57) head `cd0fede` → main `de0a2919f36682147b09abe1ac1219b602c71515`. PR CI44883281788 7종 성공, tree `5d7a235` 일치, 보호 변경/우회 없음. 다음 후보: execute_command·재시작 조정기 연결, WF07 실제 읽기 포트, A8 WF12 문서.
+
+### WF07 실제 읽기 포트 조각 A · 2026-11-24
+
+[구현 기록](recovery-wf07-sources-local-20261124.md)·[검증 JSON](recovery-wf07-sources-local-validation-20261124.json): 사용자 결정(ECR=boto3+IRSA는 조각 B, GitHub=토큰 파일, 2조각 분할). `ai_ops.recovery_sources`: `TokenRepoReader`(격리 저장소 Git 데이터 경로만·요청마다 토큰 재읽기·proxy 무시·redirect 미추적·본문 없는 고정 오류), `values_at`, `ProofObjectsReader`(Argo·Deployment·Lease·ReplicaSet·Pod 고정 GET 5개, 선택만), `PrepareConfig`(ID 매핑·작성자·초안·토큰, observe 필수·승인자 매핑 필수). 진입점 미연결(조각 B). 조각 3 변형 검사 근거 정정(실행기 최소 환경에서 helm 부재로 기준선 실패 → 병합 커밋 전체 환경 재검사 13/13). 시험13·변형 19/19. 이 커밋 시점 PR CI/main 대기.

@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "A7 PR-path current-state observer (WF06 observe port)",
   "author": "Claude Code (Opus 5.5)",
   "base": "83b8e39efe3ce02405b1e1e3bb73a49b41471d3f",
@@ -67,5 +67,24 @@
     "ai-ops/src/ai_ops/slack_server.py": "a3a2304d529271399eda1ee19aaa31d9168cc2241854c52c187f6c37c4ced18b",
     "ai-ops/tests/test_recovery_observe.py": "31adc5efde6bc78c1d4d9ddd82c80d135e9929124b251a7093b0f2e95cf25e13"
   },
-  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, paid model call"
+  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, paid model call",
+  "merge": {
+    "pr": 57,
+    "head": "cd0fedec51bc4e92c0631a70225b696437e05718",
+    "main": "de0a2919f36682147b09abe1ac1219b602c71515",
+    "tree": "5d7a235317dd49984973fe8677381b47b46732b7",
+    "pr_ci": {
+      "run": 44883281788,
+      "jobs": 7,
+      "tests": 1757,
+      "skipped": 5
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45344972367,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    }
+  }
 }

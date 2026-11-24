@@ -1,0 +1,52 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "WF07 live read sources slice A: token GitHub Git reader, Kubernetes proof objects, prepare config",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "de0a2919f36682147b09abe1ac1219b602c71515",
+  "decision": "user 2026-11-24 (recommended): ECR via boto3 + IRSA in slice B; GitHub via mounted token file; two slices (A: GitHub Git + Kubernetes proof objects + config, B: normal CI + ECR + read_proof assembly + entrypoint)",
+  "flow": [
+    "TokenRepoReader: only repos/joungGo/c03-execution-lab git/ref/heads/main and git/{commits,trees,blobs}/<sha>; token file re-read per request (regular, no group/other write, <=4096 bytes, [A-Za-z0-9_]{20,}); header only; no proxy; no redirects; 8s; <=2MiB; JSON object only; fixed errors without bodies",
+    "values_at: lab values.yaml at a revision through the same WF07 helpers",
+    "ProofObjectsReader: fixed GETs (Argo argocd/lab-target, Deployment, Lease, ReplicaSets, Pods) via ApiClient; selector Pods; owning ReplicaSet only for a single Pod controller-owned by a Deployment-owned ReplicaSet, else {} so the proof blocks; deadline after reads",
+    "PrepareConfig: principals (Slack->GitHub, distinct), author_id not a reviewer, absolute drafts_dir/github_token_file, prepare_seconds<=15; requires observe; approvers must be mapped; check-config reports recovery_prepare_configured only",
+    "no entrypoint wiring yet (slice B)"
+  ],
+  "new_tests": 13,
+  "mutation_checks": {
+    "count": 19,
+    "detected": 19,
+    "runner": "full inherited environment, baseline must pass first",
+    "first_valid_run": "17/19: token_cached was an equivalent mutant (unused attribute) -> replaced by a real token-caching mutant; deadline_removed exposed a test gap -> added a mid-read deadline test",
+    "mutations": [
+      "path allowlist opened", "git read widened", "token file mode ignored", "token format ignored",
+      "token cached", "default proxy", "redirect followed", "size unbounded", "non-dict accepted",
+      "error leaks body", "selector ignored", "replicaset owner relaxed", "pod owner relaxed",
+      "deadline removed", "argo application unpinned", "author may review", "relative paths",
+      "prepare without observe", "approver unmapped"
+    ]
+  },
+  "slice3_mutation_correction": "PR56 mutation evidence re-run at merged 83b8e39 with full environment after its original minimal-PATH baseline failed: 13/13 detected (recorded in recovery-advance-wiring docs)",
+  "full_suite": {
+    "count": 1770,
+    "seconds": 316.582,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-wf07-sources-full.log",
+      "sha256": "dd1bc6ccb7c9a940fb6a4e533b1e04d090c78e7caf74792eea104969ea5fa4e5"
+    }
+  },
+  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+  "connection_stage_items": [
+    "issue/mount a read-only GitHub token (isolated repository Contents: Read)",
+    "read RBAC adds Lease get (ai-ops-lab/b6-scenario-lock) to the observer list",
+    "renderer mount of prepare config and token"
+  ],
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_sources.py": "eef88b0fc1270e3bf7f84a936884d8cf2337eb2db81e463dc3731a0d47898e0f",
+    "ai-ops/src/ai_ops/recovery_approval_wiring.py": "45fc1b9fa4a49ef4595153b0bd210ecd570e043c084d889354a8a6f99cbf7a7e",
+    "ai-ops/src/ai_ops/slack_server.py": "0e6b3b629bc7c95c9d24c4f33b067a2e656b08adc7489a1766829c7795c13566",
+    "ai-ops/tests/test_recovery_sources.py": "0aa13290adfe50c05d8edfafcc686dc9f2bf49e405e2bdc373137ac4ae858586"
+  },
+  "no_external_actions": "no cluster, GitHub write besides this PR, deploy, Slack, incident drill, Terraform, token issuance, paid model call"
+}
