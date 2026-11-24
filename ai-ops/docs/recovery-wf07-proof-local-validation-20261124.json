@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "WF07 live read sources slice B: inbox history, ECR, read_proof assembly, relay wiring",
   "author": "Claude Code (Opus 5.5)",
   "base": "f219d046013ca131930568c59dcad01ae6937d93",
@@ -98,5 +98,26 @@
     "conclusion": "failure",
     "cause": "boto3 resolves credentials at client creation; with no AWS profile on the CI runner the default chain reached the instance metadata service and the network-forbidding test caught it (locally a profile masked it)",
     "fix": "irsa_clients: only the assume-role-with-web-identity provider (env keys, profiles, IMDS removed), AWS_ROLE_ARN must equal the configured role in the fixed account, deferred credentials; ECR clients created on first use so a missing IRSA stops only WF07 preparation, not the relay"
+  },
+  "merge": {
+    "pr": 59,
+    "head": "72fbc518e2999c9c574b45896a2136e60d2709e0",
+    "main": "5d0c43984c27754921c2d5b7f30cc1e883b3542d",
+    "tree": "0ba1390bf4d28fafbfd49a86e306e59b60727c15",
+    "pr_ci": {
+      "run": 45353120230,
+      "jobs": 7,
+      "tests": 1786,
+      "skipped": 1,
+      "skip_note": "boto3 now installed: test_c_trial_aws boto3-dependent tests run instead of skipping",
+      "image_build": "passed"
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45354867715,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    }
   }
 }

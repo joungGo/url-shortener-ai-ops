@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-24 A8 WF12 인계 문서 초안 (Claude)
+
+사용자 허락(추천 3번). branch `claude/a8-wf12-handoff-20261124`(기준 main `5d0c439`), 문서만. [WF12 인계 초안](ai-ops/docs/wf12-recovery-handoff-20261124.md): 흐름표·근거·설정 예시(모델 검증)·프로세스 동작·연결 체크리스트·지원 범위·미결정·안전 경계. **새 미결정 발견:** WF10 renderer에서 `slack-relay`는 메인 Pod에 있고 메인 Pod 송신은 DNS·수집 CIDR만(B′: 인터넷 송신은 sender Pod만) → WF07의 `api.github.com`·AWS STS/ECR 읽기가 막힘(그 경우 준비는 `needs_review`로 안전 중단). 선택지: 메인 Pod 송신 추가 / 별도 송신 Pod / 송신 proxy. PR59 main CI45354867715 성공 기록 포함.
+
+## 2026-11-24 WF07 실제 읽기 포트 조각 B CI/main 반영 완료 (Claude)
+
+[PR #59](https://github.com/joungGo/url-shortener-ai-ops/pull/59) head `72fbc518e2999c9c574b45896a2136e60d2709e0` → main `5d0c43984c27754921c2d5b7f30cc1e883b3542d`(head 고정 squash, 사용자 "진행해" 후). 첫 PR CI 실패(IMDS 탐색) → 수정 후 PR CI45353120230 7종 성공(1786개, skip1 — boto3 설치로 `test_c_trial_aws` 시험 실행, image 빌드 통과), tree `0ba1390` 일치, 보호 변경/우회 없음, branch 정리. **설정이 갖춰지면 실제 배포에서 요청→관측→승인→재검증→PR 준비까지 코드 연결 완료(발행 없음).** 다음 후보: 실제 연결 준비(IRSA·GitHub 토큰·RBAC·renderer — 인프라 재설치·실행 주체 결정 선행), PR 발행 경로, A8 WF12 문서.
+
 ## 2026-11-24 WF07 실제 읽기 포트 조각 B·CI 반영 준비 (Claude)
 
 branch `claude/a7-wf07-proof-20261124`(기준 main `f219d04`). 사용자 결정(모두 추천): 정상 CI 근거=`NormalCIInbox` 재사용, binding 일치 최신 `ready`, ECR=boto3+IRSA. `requirements.lock`에 boto3 1.44.0·botocore 1.44.0·s3transfer 0.19.3·jmespath 1.1.0·python-dateutil 2.9.0.post0·six 1.17.0·urllib3 2.8.0(PyPI 공개 wheel sha256, 순수 Python, `--require-hashes` 설치 확인), `pyproject` dependencies에 boto3. 신규 `ai_ops.recovery_proof_live`: `EcrImageChecker`(IRSA 기본 체인·고정 리전·STS 호출자=고정 계정 assumed-role/<설정 역할>, 증거 필드 3개만, `ImageNotFoundException`만 부재, SDK 오류 고정 코드 — 정상 이미지 조회 오류 원문 노출 결함을 시험에서 발견해 수정), `LiveRecoveryProof`(Kubernetes 객체→SHA revision→values→inbox→ECR→`assess_recovery_proof`), `live_pr_bridge`. `NormalCIInbox.latest_ready_history`. `PrepareConfig`에 `normal_binding_file`·`aws_role_name`. relay는 `prepare` 있을 때만 WF07 bridge(ingress 제외) → 설정이 갖춰지면 실제 배포에서 PR 준비까지 연결, 발행(GitHub 쓰기) 없음. 연결 단계: IRSA(ecr:DescribeImages)·GitHub 토큰·RBAC·renderer·CI relay 실행. 시험16·변형 21/21(고친 실행기, 처음 15/18 → 빈틈 시험 3개 추가). 첫 PR CI(run 45351079366) 실패: boto3가 client 생성 시 자격을 찾다 CI 러너에서 IMDS까지 내려감 → `irsa_clients`로 IRSA web identity 제공자만 남기고 역할 ARN 일치 확인, ECR client는 첫 사용 때 생성(IRSA 누락 시 relay가 아닌 WF07 준비만 멈춤). PR58 병합 결과 메타데이터 이관 포함.
