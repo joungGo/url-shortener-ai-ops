@@ -13,7 +13,7 @@ import json
 import os
 from pathlib import Path
 
-from ai_ops.wf10_deployment import LIVE_GATES, verify as verify_candidate
+from ai_ops.wf10_deployment import LIVE_GATES, PACKAGE_LIMIT, verify as verify_candidate
 from ai_ops.wf10_preparation import LIMITS, digest, encoded, read_regular
 
 # Policies before workloads (no unrestricted start window), config and Services
@@ -21,6 +21,12 @@ from ai_ops.wf10_preparation import LIMITS, digest, encoded, read_regular
 APPLY_ORDER = (('ConfigMap', '-config'), ('NetworkPolicy', '-sender'), ('NetworkPolicy', ''),
                ('Service', '-sender'), ('Service', '-events'), ('Service', '-slack'),
                ('Deployment', '-sender'), ('Deployment', ''))
+# With the optional recovery section: the egress proxy policy/Service/Pod come
+# before the main Pod that needs them (same ordering rule as the sender).
+APPLY_ORDER_RECOVERY = (('ConfigMap', '-config'), ('NetworkPolicy', '-sender'), ('NetworkPolicy', '-egress'),
+                        ('NetworkPolicy', ''), ('Service', '-sender'), ('Service', '-egress'),
+                        ('Service', '-events'), ('Service', '-slack'), ('Deployment', '-sender'),
+                        ('Deployment', '-egress'), ('Deployment', ''))
 # Pre-existing inputs the plan must never create, change or delete.
 PROTECTED = ('Namespace', 'PersistentVolumeClaim', 'PersistentVolume', 'Secret', 'ServiceAccount',
              'Role', 'RoleBinding', 'ClusterRole', 'ClusterRoleBinding', 'Ingress', 'StorageClass')
@@ -46,13 +52,15 @@ def _startup_window(resource):
 def plan(candidate_directory):
     verify_candidate(candidate_directory)  # re-renders inputs; rejects any change
     root = Path(candidate_directory)
-    raw = read_regular(root / 'candidate.json')
+    raw = read_regular(root / 'candidate.json', PACKAGE_LIMIT)
     candidate = json.loads(raw)
     resources = candidate['resources']
-    main = next(r for r in resources if r['kind'] == 'Deployment' and not r['metadata']['name'].endswith('-sender'))
+    main = next(r for r in resources if r['kind'] == 'Deployment'
+                and not r['metadata']['name'].endswith(('-sender', '-egress')))
     name, namespace = main['metadata']['name'], main['metadata']['namespace']
     index = {(r['kind'], r['metadata']['name']): r for r in resources}
-    expected = [(kind, name + suffix) for kind, suffix in APPLY_ORDER]
+    egress = 'recovery' in candidate  # optional WF07 egress proxy resources
+    expected = [(kind, name + suffix) for kind, suffix in (APPLY_ORDER_RECOVERY if egress else APPLY_ORDER)]
     if set(index) != set(expected) or len(index) != len(resources):
         raise ValueError('wf10_plan_resource_set_rejected')
     if any(r['metadata']['namespace'] != namespace or r['kind'] in PROTECTED for r in resources):
@@ -89,7 +97,9 @@ def plan(candidate_directory):
         'execution_allowed': False, 'live_verified': False,
         'candidate': {'candidate_json_sha256': digest(raw), 'manifest_sha256': candidate['manifest_sha256'],
                       'source_revision': candidate['source_revision'], 'namespace': namespace, 'name': name},
-        'pre_checks': list(PRE_CHECKS), 'apply': apply_steps, 'post_checks': list(POST_CHECKS),
+        'pre_checks': list(PRE_CHECKS), 'apply': apply_steps,
+        'post_checks': list(POST_CHECKS) + (['egress_proxy_only_fixed_destinations',
+                                             'main_pod_internet_egress_only_via_proxy'] if egress else []),
         'required_live_gates': list(LIVE_GATES), 'rollback': rollback, 'rollback_bundle_sha256': rollback_hash,
         'approval_binding': {'binds': ['change_plan_sha256', 'manifest_sha256', 'rollback_bundle_sha256'],
                              'granted': False, 'reuse_of_past_approvals': False},

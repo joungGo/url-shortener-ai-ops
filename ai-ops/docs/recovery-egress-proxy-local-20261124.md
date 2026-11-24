@@ -98,3 +98,7 @@ AWS 관련 환경 변수를 일부러 넣은 시험에서 내부 STS client의 �
 전체 결과는 [검증 기록](recovery-egress-proxy-local-validation-20261124.json)에 있다.
 
 실제 클러스터·AWS·GitHub 쓰기·배포·Slack 없음.
+
+## 최종 반영 결과
+
+[PR #61](https://github.com/joungGo/url-shortener-ai-ops/pull/61) head `33614a74b1547e6c0eb545acf9a4ab227850e971`를 head 고정 일반 squash 병합해 main `65a32a14202973dd9fdfb3853071a8a4dfa6ec38`에 반영했다(사용자 "진행해" 후). [PR CI45359117834](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45359117834) 7종 성공(1798개, skip1), tree `22a87e505612ca47b59df91976c2392ec72a8c33` 일치, [main CI45360108241](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45360108241) 성공(PR전용 gate skip은 설계대로). 보호 변경/우회 없음. 병합 후 branch를 정리했다.

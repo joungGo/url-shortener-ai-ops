@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-24 relay 외부 송신 proxy 조각 2 renderer·CI 반영 준비 (Claude)
+
+사용자 결정(추천): 선택적 recovery 입력 전체. branch `claude/a7-egress-proxy-renderer-20261124`(기준 main `65a32a1`). WF10 renderer에 선택적 `recovery` 절(approvers=렌더링 grant 사용자, approval 시간, principals, author_id, aws_role_name, secrets{reader,github}, normal_binding) → 있을 때만 `recovery-approval.json`(런타임 모델 검증, observe api_url=기존 collector API·reader `/run/recovery-reader`, prepare drafts `/data/recovery-drafts`·GitHub `/run/ai-github`·egress_proxy `http://<name>-egress.<ns>.svc:8080`)·`normal-ci-binding.json`, relay 전용 Secret 마운트, `-egress` proxy Deployment(비밀·토큰·PVC 없음)·Service·NetworkPolicy, 메인 Pod 송신에 proxy 8080 추가(직접 인터넷 없음), 후보 `recovery` 요약·선행 조건 5·잔여 위험 2. 없으면 main과 manifest/후보 hash 동일. 변경 계획: proxy NP·Service·Deployment를 메인 Pod 앞에, 사후 확인 2개 추가. 후보 패키지만 128KiB 상한. WF12 7절 1항 해결로 갱신. 시험8·변형 15/15. PR61 병합·main CI 결과 메타데이터 이관 포함.
+
+## 2026-11-24 relay 외부 송신 proxy 조각 1 CI/main 반영 완료 (Claude)
+
+[PR #61](https://github.com/joungGo/url-shortener-ai-ops/pull/61) head `33614a74b1547e6c0eb545acf9a4ab227850e971` → main `65a32a14202973dd9fdfb3853071a8a4dfa6ec38`(head 고정 squash, 사용자 "진행해" 후). PR CI45359117834 7종(1798개) 성공, tree `22a87e5` 일치, 보호 변경/우회 없음, branch 정리. 다음: 조각 2 — WF10 renderer에 proxy Deployment·Service·NetworkPolicy(메인 Pod 송신은 proxy로만, proxy는 메인 Pod 수신·인터넷 443 송신) 추가, WF12 체크리스트 갱신.
+
 ## 2026-11-24 relay 외부 송신 proxy 조각 1·CI 반영 준비 (Claude)
 
 사용자 결정(추천 3번): 고정 목적지 송신 proxy. branch `claude/a7-egress-proxy-20261124`(기준 main `4a62309`). 신규 `ai_ops.recovery_egress_proxy`(`api.github.com`·`sts.ap-northeast-2.amazonaws.com`·`api.ecr.ap-northeast-2.amazonaws.com` :443만, CONNECT 한 줄+일치 Host 하나, DNS 전부 공개 IPv4, 동시 8·유휴 35초·수명 120초, 고정 응답·무기록; `model_egress_proxy`는 불변). `PrepareConfig.egress_proxy`, `TokenRepoReader`·`irsa_clients`/`EcrImageChecker`가 설정 proxy만 사용 — botocore 세션 단계에 리전·지역 STS·proxy·dualstack/FIPS 끔·설정 endpoint URL 무시 → web-identity 자격 교환도 proxy 경유(로컬 기록 proxy로 CONNECT 대상 확인). **시험에서 제품 결함 2건 발견·수정:** dualstack 환경 변수 시 자격 교환이 `sts.ap-northeast-2.api.aws`로, `AWS_ENDPOINT_URL[_STS]` 시 projected 토큰을 실은 자격 교환이 임의 주소로. 시험12·변형 19/21(동등 2)·전체1798(skip1). 다음: 조각 2 renderer proxy Pod·NetworkPolicy·WF12 갱신. PR60 main CI45356948426 성공 기록 포함.

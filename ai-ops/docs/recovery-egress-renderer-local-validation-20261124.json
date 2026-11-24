@@ -1,0 +1,53 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "relay egress proxy slice 2: WF10 renderer optional recovery section",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "65a32a14202973dd9fdfb3853071a8a4dfa6ec38",
+  "decision": "user 2026-11-24 (recommended): render the whole optional recovery section (config, mounts, egress proxy, NetworkPolicy); absent -> unchanged candidate",
+  "absent_section_identity": {
+    "method": "candidate(test fixture) rendered by origin/main code and by this branch",
+    "manifest_sha256": "f8908414260ec6795859032e34ac9ff752b432580bfe17e459c5aaada69cc5ef",
+    "candidate_sha256": "37253142c2e4502a43cbe4651581654e64bc496a543463aa2db4367ada618a3f",
+    "equal": true
+  },
+  "rendered_when_present": [
+    "ConfigMap: recovery-approval.json (validated by RecoveryApprovalConfig; observe api_url = existing Kubernetes collector API, reader /run/recovery-reader; prepare drafts /data/recovery-drafts, GitHub /run/ai-github, binding /etc/ai-ops/normal-ci-binding.json, egress_proxy http://<name>-egress.<ns>.svc:8080) and normal-ci-binding.json",
+    "relay-only Secret mounts (reader token/ca.crt, GitHub token) via the existing init-copy pattern",
+    "<name>-egress Deployment (proxy only; no secrets, no SA token, no PVC; read-only root, no capabilities) and Service",
+    "NetworkPolicy: main Pod adds egress to the proxy :8080 only; proxy ingress only from the main Pod, egress DNS + public IPv4 :443 (NON_PUBLIC excluded)",
+    "candidate recovery summary, 5 external prerequisites, 2 residual risks"
+  ],
+  "input_checks": "exact fields; approvers == rendered grant user; secret names distinct and disjoint from existing 6; NormalCIBinding; runtime model (principals, author != reviewer, role name, revalidation <= 15); nothing written on rejection",
+  "change_plan": "with recovery: proxy NetworkPolicy/Service/Deployment applied before the main Pod; rollback 11 reverse steps; post checks egress_proxy_only_fixed_destinations and main_pod_internet_egress_only_via_proxy; main Deployment excludes -sender/-egress",
+  "package_limit": "candidate package files (inputs.json, candidate.json) bounded at 128KiB (with recovery ~69KB); read_regular accepts only 64KiB or 128KiB; other files stay 64KiB",
+  "new_tests": 8,
+  "mutation_checks": {
+    "count": 15,
+    "detected": 15,
+    "runner": "full inherited environment, baseline must pass first",
+    "first_run": "14/15: approver check survived because the test case was rejected by the principal mapping instead; test now changes approvers and principals together"
+  },
+  "full_suite": {
+    "count": 1806,
+    "seconds": 320.439,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-egress-renderer-full.log",
+      "sha256": "baa49ba1687a189ba76788fd90fcf718deeb2aa780944392fc700ba4d82bfd54"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed",
+    "wf10_preparation_verify": "disabled_review_verified"
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/wf10_deployment.py": "0abf70ee7e5cf7695e20e144ab60f649d62b9d75cd02a8d042a991e541d82a84",
+    "ai-ops/src/ai_ops/wf10_change_plan.py": "49bb4c99dde0401e382343b6faa558f4924bd3edc8c0752f349bfaacdb33e376",
+    "ai-ops/src/ai_ops/wf10_preparation.py": "6720c98268d682fbbd45518d1be1b141ec518784fe8db7d214bee9836e0b9e03",
+    "ai-ops/tests/test_wf10_recovery_render.py": "12747a18868c36b66006aeb9f9c688b749a4a8e993deea476d1b0589c6de0a06"
+  },
+  "no_external_actions": "offline renderer only; no cluster, deploy, Slack, AWS, GitHub write besides this PR",
+  "existing_renderer_tests": "51 unchanged and passing"
+}

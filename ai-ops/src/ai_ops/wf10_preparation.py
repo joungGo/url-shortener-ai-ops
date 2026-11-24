@@ -105,13 +105,14 @@ def artifacts(value):
     return files
 
 
-def read_regular(path):
+def read_regular(path, limit=65536):
+    if limit not in (65536, 131072):raise ValueError('wf10_file_limit_rejected')
     fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
     try:
         info=os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode) or info.st_size>65536:raise ValueError('wf10_file_rejected')
-        data=os.read(fd,65537)
-        if len(data)>65536:raise ValueError('wf10_file_rejected')
+        if not stat.S_ISREG(info.st_mode) or info.st_size>limit:raise ValueError('wf10_file_rejected')
+        data=os.read(fd,limit+1)
+        if len(data)>limit:raise ValueError('wf10_file_rejected')
         return data
     finally:os.close(fd)
 
