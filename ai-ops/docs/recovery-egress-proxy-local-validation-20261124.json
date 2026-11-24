@@ -1,0 +1,53 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "relay egress via fixed-destination CONNECT proxy, slice 1 (proxy + client use)",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "4a623096fdf17dea464ae100fd45ec388395d8e1",
+  "decision": "user 2026-11-24 (recommended option 3): fixed-destination egress proxy; TLS end to end; secrets stay in the relay; main Pod egress only to the proxy (renderer in slice 2)",
+  "proxy": {
+    "module": "ai_ops.recovery_egress_proxy (model_egress_proxy unchanged)",
+    "targets": ["api.github.com:443", "sts.ap-northeast-2.amazonaws.com:443", "api.ecr.ap-northeast-2.amazonaws.com:443"],
+    "request": "one CONNECT line (HTTP/1.0|1.1) + exactly one matching Host header, <=4096 bytes",
+    "dns": "every answer must be public IPv4; any private/CGNAT/loopback/link-local/metadata/IPv6/empty answer rejects",
+    "limits": "8 concurrent tunnels (503 beyond), idle 35s, lifetime 120s even with traffic",
+    "replies": "fixed 403/503; nothing logged"
+  },
+  "clients": [
+    "PrepareConfig.egress_proxy: http://<in-cluster host>:<port> (None = direct, dev only)",
+    "TokenRepoReader: ProxyHandler only for the configured proxy; environment proxies never used; redirects still not followed",
+    "irsa_clients: on the botocore session before the resolver is built: region, regional STS, default client config with proxy/timeouts, dualstack off, FIPS off, ignore configured endpoint URLs; STS/ECR endpoints pinned to the regional hosts"
+  ],
+  "product_fixes_found_by_tests": [
+    "AWS_USE_DUALSTACK_ENDPOINT=true sent the web-identity provider's AssumeRoleWithWebIdentity to sts.ap-northeast-2.api.aws (not allowed by the proxy)",
+    "AWS_ENDPOINT_URL[_STS] redirected AssumeRoleWithWebIdentity, carrying the projected token, to an arbitrary host (proxy blocks; direct mode could leak)"
+  ],
+  "new_tests": 12,
+  "mutation_checks": {
+    "count": 21,
+    "detected": 19,
+    "equivalent_survivors": ["sts_global_endpoint", "endpoints_unpinned"],
+    "equivalent_reason": "with botocore 1.44 the session region, disabled dualstack/FIPS and ignored endpoint URLs already guarantee the same regional hosts; kept as defense in depth",
+    "runner": "full inherited environment, baseline must pass first; AWS profile files absent (CI-like)",
+    "strengthened": ["explicit lifetime check independent of select timeout", "environment-proxy test in this module", "adversarial AWS_* environment (legacy STS, dualstack, FIPS, endpoint URL overrides, other region, env proxies)", "behavioral ECR checker proxy test"]
+  },
+  "full_suite": {
+    "count": 1798,
+    "seconds": 322.984,
+    "passed": true,
+    "skipped": 1,
+    "environment": "no AWS profile (CI-like)",
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-egress-proxy-full.log",
+      "sha256": "50fa2bfc38ed2b1420ba215bea398f8c33e7e7fe8cc6de1c8dd04db6469654a8"
+    }
+  },
+  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+  "next": "slice 2: renderer proxy Deployment/Service, NetworkPolicy (main Pod egress only to proxy; proxy ingress only from main Pod, egress 443 public), WF12 checklist update",
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_egress_proxy.py": "f342535dcba65b12bebfa4c07480cfacf6267dd6c568c28a5d4e266d4431676e",
+    "ai-ops/src/ai_ops/recovery_proof_live.py": "afa9edfe235a2864e4616eb446602f7802f06846390c65ee803c29e64a616f33",
+    "ai-ops/src/ai_ops/recovery_sources.py": "08e8b8f899cda1790b4b42fd3f5909be5a653f86a39659a52cf873f0de15223c",
+    "ai-ops/tests/test_recovery_egress_proxy.py": "c7485e5289cdc53246114c8a4b70546dbf6c042f7c97db53e944abc3ea5222a6"
+  },
+  "no_external_actions": "loopback only; no cluster, AWS, GitHub write besides this PR, deploy, Slack"
+}

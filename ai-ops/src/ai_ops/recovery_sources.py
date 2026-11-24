@@ -41,6 +41,7 @@ GITHUB_API = 'https://api.github.com/'
 GIT_READ = r'/git/(?:ref/heads/main|(?:commits|trees|blobs)/[a-f0-9]{40})\Z'
 READ_SECONDS = 8
 TOKEN = re.compile(r'[A-Za-z0-9_]{20,4096}')
+PROXY = re.compile(r'http://[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?:[1-9][0-9]{1,4}\Z')
 # assess_live_preflight pins the Argo application to argocd/lab-target.
 ARGO_NAMESPACE, ARGO_APPLICATION = 'argocd', 'lab-target'
 
@@ -48,16 +49,21 @@ ARGO_NAMESPACE, ARGO_APPLICATION = 'argocd', 'lab-target'
 class TokenRepoReader:
     mode = 'github_token'
 
-    def __init__(self, token_file, *, repository=ISOLATED_REPOSITORY, opener=None, read_seconds=READ_SECONDS):
+    def __init__(self, token_file, *, repository=ISOLATED_REPOSITORY, opener=None, read_seconds=READ_SECONDS,
+                 proxy=None):
         if not Path(token_file).is_absolute():
             raise ValueError('github_token_path_rejected')
+        if proxy is not None and not PROXY.fullmatch(str(proxy)):
+            raise ValueError('egress_proxy_rejected')
         if type(read_seconds) is not int or not 1 <= read_seconds <= 15:
             raise ValueError('github_read_budget_rejected')
         self.path = Path(token_file)
         self.repository = repository
         self.read_path = re.compile(re.escape(_repo_api(repository)) + GIT_READ)
         self.read_seconds = read_seconds
-        self.opener = opener or build_opener(ProxyHandler({}), NoRedirect())
+        # Only the explicitly configured egress proxy (CONNECT; TLS stays end to end).
+        # Environment proxy variables are never used.
+        self.opener = opener or build_opener(ProxyHandler({'https': proxy} if proxy else {}), NoRedirect())
 
     def _token(self):
         info = self.path.stat()
@@ -178,6 +184,8 @@ class PrepareConfig(StrictModel):
     # role name the ECR reader must be running as.
     normal_binding_file: StrictStr
     aws_role_name: StrictStr = Field(pattern=r'^[A-Za-z0-9+=,.@_-]{1,64}$')
+    # In-cluster fixed-destination CONNECT proxy (design B'); None = direct (dev only).
+    egress_proxy: StrictStr | None = Field(default=None, pattern=r'^http://[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?:[1-9][0-9]{1,4}$')
 
     @model_validator(mode='after')
     def valid(self):

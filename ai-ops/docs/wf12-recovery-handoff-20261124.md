@@ -200,3 +200,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
 2. **연결 준비:** 인프라 재설치 요청과 Terraform 실행 주체를 정한 뒤, 5절 체크리스트를 실제 값으로 채운다. 실제 입력은 추측하지 않는다.
 3. **WF11:** 합성 경보 또는 승인된 장애 실습으로 단계 1~6을 실물에서 확인하고, 이 문서를 확정한다.
 4. **그 뒤:** PR 발행 경로(쓰기, 별도 승인 설계)와 원복·재시작 프로세스 연결.
+
+## 반영 기록
+
+[PR #60](https://github.com/joungGo/url-shortener-ai-ops/pull/60) head `87f8d05d155e93b94026b0b31aab8a5904d81ad6`를 head 고정 일반 squash 병합해 main `4a623096fdf17dea464ae100fd45ec388395d8e1`에 반영했다(사용자 "진행해" 후). [PR CI45355975980](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45355975980) 7종 성공, tree `9f282f470649c4ba561d38cf2c2325f743d58df8` 일치, [main CI45356948426](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45356948426) 성공. 문서만 바꿨고, 병합 후 branch를 정리했다.

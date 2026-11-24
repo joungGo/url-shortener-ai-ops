@@ -31,29 +31,54 @@ DIGEST = re.compile(r'sha256:[a-f0-9]{64}\Z')
 SHA = re.compile(r'[a-f0-9]{40}\Z')
 
 
-def irsa_clients(role_name):
+PROXY = re.compile(r'http://[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?:[1-9][0-9]{1,4}\Z')
+STS_ENDPOINT = f'https://sts.{AWS_REGION}.amazonaws.com'
+ECR_ENDPOINT = f'https://api.ecr.{AWS_REGION}.amazonaws.com'
+
+
+def irsa_clients(role_name, *, proxy=None):
     """STS/ECR clients whose ONLY credential source is IRSA web identity.
 
     boto3's default chain would fall back to profiles or the instance metadata
     service (the EKS node role) when IRSA is missing; here every other provider is
     removed, and the projected role must be the configured one. Credentials stay
     deferred (no network) until the first call.
+
+    With ``proxy`` (the fixed-destination egress proxy, design B'), every HTTPS
+    call goes through it, *including* the provider's own AssumeRoleWithWebIdentity
+    STS client: the region, regional STS endpoint and proxy are set on the botocore
+    session before the credential resolver is built. Endpoints are pinned to the
+    regional STS/ECR hosts the proxy allows.
     """
     import os
     role_arn, token_file = os.environ.get('AWS_ROLE_ARN', ''), os.environ.get('AWS_WEB_IDENTITY_TOKEN_FILE', '')
     if not token_file.startswith('/') or role_arn != f'arn:aws:iam::{AWS_ACCOUNT}:role/{role_name}':
         raise ValueError('ecr_irsa_not_configured')
+    if proxy is not None and not PROXY.fullmatch(str(proxy)):
+        raise ValueError('egress_proxy_rejected')
     import boto3  # runtime lock pins boto3; imported only when actually used
     import botocore.session
     from botocore.config import Config
     core = botocore.session.get_session()
+    # Session-level (overrides AWS_* env/config): the provider's internal STS client
+    # must resolve to exactly the regional host the proxy allows.
+    core.set_config_variable('region', AWS_REGION)
+    core.set_config_variable('sts_regional_endpoints', 'regional')
+    core.set_config_variable('use_dualstack_endpoint', False)
+    core.set_config_variable('use_fips_endpoint', False)
+    # AWS_ENDPOINT_URL[_STS] would redirect the provider's AssumeRoleWithWebIdentity
+    # (carrying the projected token) to an arbitrary host: never honour them here.
+    core.set_config_variable('ignore_configured_endpoint_urls', True)
+    config = Config(connect_timeout=2, read_timeout=3, retries={'total_max_attempts': 2, 'mode': 'standard'},
+                    proxies={'https': proxy} if proxy else None)
+    core.set_default_client_config(config)  # also used by the web-identity provider's STS client
     resolver = core.get_component('credential_provider')
     resolver.providers = [p for p in resolver.providers if p.METHOD == 'assume-role-with-web-identity']
     if len(resolver.providers) != 1:
         raise ValueError('ecr_irsa_not_configured')
-    config = Config(connect_timeout=2, read_timeout=3, retries={'total_max_attempts': 2, 'mode': 'standard'})
     session = boto3.Session(botocore_session=core, region_name=AWS_REGION)
-    return session.client('sts', config=config), session.client('ecr', config=config)
+    return (session.client('sts', config=config, endpoint_url=STS_ENDPOINT),
+            session.client('ecr', config=config, endpoint_url=ECR_ENDPOINT))
 
 
 class EcrImageChecker:
@@ -62,10 +87,12 @@ class EcrImageChecker:
     Only the three fields the proof reads are passed on (no tags, sizes, URIs).
     """
 
-    def __init__(self, *, role_name, now, clients=None):
+    def __init__(self, *, role_name, now, clients=None, proxy=None):
         if not re.fullmatch(r'[A-Za-z0-9+=,.@_-]{1,64}', str(role_name)):
             raise ValueError('ecr_role_rejected')
-        self.role_name, self._now = role_name, now
+        if proxy is not None and not PROXY.fullmatch(str(proxy)):
+            raise ValueError('egress_proxy_rejected')
+        self.role_name, self._now, self.proxy = role_name, now, proxy
         # Created on first use: a missing IRSA setup then stops only WF07 preparation
         # (needs_review), never the relay process that also serves Slack replies.
         self.sts, self.ecr = clients if clients is not None else (None, None)
@@ -73,7 +100,7 @@ class EcrImageChecker:
     def _clients(self):
         if self.sts is None:
             try:
-                self.sts, self.ecr = irsa_clients(self.role_name)
+                self.sts, self.ecr = irsa_clients(self.role_name, proxy=self.proxy)
             except ValueError:
                 raise
             except Exception:
@@ -176,11 +203,12 @@ def live_pr_bridge(config, queue, *, kube_connection=None, github_opener=None, e
     now = queue.now
 
     def factory(ledger):
-        git = TokenRepoReader(prepare.github_token_file, opener=github_opener)
+        git = TokenRepoReader(prepare.github_token_file, opener=github_opener, proxy=prepare.egress_proxy)
         proof = LiveRecoveryProof(
             inbox=NormalCIInbox(queue, binding), binding=binding,
             proof_reader=make_proof_reader(observe, now=now, connection_factory=kube_connection),
-            git_reader=git, ecr=EcrImageChecker(role_name=prepare.aws_role_name, now=now, clients=ecr_clients),
+            git_reader=git, ecr=EcrImageChecker(role_name=prepare.aws_role_name, now=now, clients=ecr_clients,
+                                                 proxy=prepare.egress_proxy),
             now=now)
         return ImageRecoveryPRBridge(ledger, RecoveryDraftStore(Path(prepare.drafts_dir)),
                                      principals=dict(prepare.principals), reader=git, read_proof=proof,
