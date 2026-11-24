@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-24 KST. 기준 AI main `4a62309`(A8 WF12 인계 초안 PR60), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-egress-proxy-20261124`(relay 송신 proxy 조각 1). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-24 KST. 기준 AI main `65a32a1`(relay 송신 proxy 조각 1 PR61), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-egress-proxy-renderer-20261124`(relay 송신 proxy 조각 2 renderer). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -415,3 +415,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### relay 외부 송신 proxy 조각 1 · 2026-11-24
 
 [구현 기록](recovery-egress-proxy-local-20261124.md)·[검증 JSON](recovery-egress-proxy-local-validation-20261124.json): 사용자 결정(고정 목적지 송신 proxy). `ai_ops.recovery_egress_proxy`(CONNECT 3목적지·공개 IPv4만·동시8·유휴35초·수명120초·고정 403/503) + `PrepareConfig.egress_proxy`, GitHub reader·IRSA client가 설정된 proxy만 사용(자격 교환 STS 포함, 환경 proxy 무시). 시험에서 boto3 내부 STS 결함 2건(dualstack 주소, endpoint 재지정으로 projected 토큰 임의 주소 전송 가능) 발견·세션 단계에서 수정. 시험12·변형 19/21(동등 2). renderer·NetworkPolicy는 조각 2. 이 커밋 시점 PR CI/main 대기.
+
+### relay 외부 송신 proxy 조각 1 최종 반영 · 2026-11-24
+
+[PR #61](https://github.com/joungGo/url-shortener-ai-ops/pull/61) head `33614a7` → main `65a32a14202973dd9fdfb3853071a8a4dfa6ec38`. PR CI45359117834 7종 성공, tree `22a87e5` 일치, 보호 변경/우회 없음. 다음: 조각 2 renderer proxy Pod·NetworkPolicy·WF12 갱신.
+
+### relay 외부 송신 proxy 조각 2 renderer · 2026-11-24
+
+[구현 기록](recovery-egress-renderer-local-20261124.md)·[검증 JSON](recovery-egress-renderer-local-validation-20261124.json): 사용자 결정(선택적 recovery 입력 전체). WF10 renderer 입력에 선택적 `recovery` 절 → 있을 때만 `recovery-approval.json`·binding ConfigMap, relay 전용 reader/GitHub Secret 마운트, `-egress` proxy Deployment·Service·NetworkPolicy(메인 Pod→proxy 8080만, proxy→공개 IPv4 443만), 후보 요약·선행 조건·잔여 위험; 없으면 main과 바이트 동일(hash 확인). 변경 계획은 proxy를 메인 Pod 앞에 적용·사후 확인 2개 추가. 후보 패키지 파일만 상한 128KiB. 시험8(기존 51 유지)·변형 15/15. WF12 7절 1항 해결로 갱신. 이 커밋 시점 PR CI/main 대기.

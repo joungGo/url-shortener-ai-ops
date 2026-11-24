@@ -145,9 +145,12 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
 8. **Slack 앱**
    - Interactivity Request URL을 `https://<Slack 수신 호스트>/slack/interactivity`로 설정한다. `/slack/events`와 같은 리스너다.
    - 승인자를 `slack-policy.json` grants와 `principals`에 모두 넣는다.
-9. **renderer:** WF10 renderer는 아직 `recovery-approval.json`, binding, 토큰을 마운트하지 않는다(후속 작업).
+9. **renderer:** WF10 renderer 입력에 선택적 `recovery` 절을 넣으면 다음을 함께 렌더링한다(PR62, [조각 2 문서](recovery-egress-renderer-local-20261124.md)). `recovery` 절이 없으면 기존 후보와 바이트 단위로 같다.
+   - `recovery-approval.json`과 binding
+   - relay 전용 Secret 마운트
+   - 송신 proxy Pod와 NetworkPolicy
 10. **`check-config`:** 세 플래그를 확인한다.
-11. **네트워크 송신: 결정 필요(아래 7절 1항).**
+11. **네트워크 송신:** 고정 목적지 송신 proxy를 쓴다(7절 1항, PR61·62). `prepare.egress_proxy`를 proxy Service로 지정한다. 메인 Pod의 송신은 proxy로만 나가고, proxy는 GitHub·STS·ECR :443으로만 나간다.
 
 ## 6. 지원 범위
 
@@ -162,13 +165,10 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
 
 ## 7. 미결정·남은 한계
 
-1. **relay의 외부 송신과 B′ 설계가 충돌한다 (결정 필요).**
-   - WF10 renderer에서 `slack-relay` 컨테이너는 메인 Pod에 있다. 메인 Pod의 송신은 DNS와 수집 대상 CIDR로만 제한돼 있다. 인터넷 송신은 Slack sender Pod만 허용한다.
-   - WF07 PR 준비는 relay가 `api.github.com:443`과 AWS STS·ECR(`ap-northeast-2`)로 나가야 하므로, 지금 정책으로는 **네트워크에서 막힌다.** 이 경우 준비는 `needs_review`로 안전하게 멈춘다.
-   - 선택지:
-     - 메인 Pod에 이 엔드포인트들로 향하는 송신을 추가한다. B′ 원칙이 약해진다.
-     - 외부 읽기를 별도 송신 Pod(sender와 같은 패턴)로 분리한다.
-     - 송신 proxy를 거치게 한다. 기존 `model_egress_proxy`와 같은 형태다.
+1. **relay의 외부 송신은 해결됐다 (2026-11-24, 사용자 결정: 고정 목적지 송신 proxy).**
+   - [proxy 조각 1](recovery-egress-proxy-local-20261124.md)(PR61): proxy 본체를 만들고, GitHub reader와 IRSA client(자격 교환 STS 포함)가 설정된 proxy만 쓰게 했다. 이 과정에서 boto3 내부 STS의 dualstack·endpoint 재지정 결함을 고쳤다.
+   - [proxy 조각 2](recovery-egress-renderer-local-20261124.md)(PR62): renderer에 proxy Pod와 NetworkPolicy를 추가했다.
+   - 잔여 위험: relay가 침해되면 세 호스트에는 도달할 수 있다.
 2. **정상 판정이 없다.** 자연 회복된 경우에도 재검증은 `needs_review`가 된다.
 3. **준비 후 관측 만료 알림이 이어서 간다.** PR 준비가 끝난 뒤 관측 유효 시간이 지나면 "사람 확인 필요"(`observation_expired`) 알림이 뒤따른다. 실제 상태를 알리는 것이지만 혼동을 줄 수 있다. 발행 경로를 연결할 때 문구를 정리한다.
 4. **승인자는 계획 요청자 본인만 가능하다.**

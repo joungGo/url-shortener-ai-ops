@@ -1,12 +1,16 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "relay egress via fixed-destination CONNECT proxy, slice 1 (proxy + client use)",
   "author": "Claude Code (Opus 5.5)",
   "base": "4a623096fdf17dea464ae100fd45ec388395d8e1",
   "decision": "user 2026-11-24 (recommended option 3): fixed-destination egress proxy; TLS end to end; secrets stay in the relay; main Pod egress only to the proxy (renderer in slice 2)",
   "proxy": {
     "module": "ai_ops.recovery_egress_proxy (model_egress_proxy unchanged)",
-    "targets": ["api.github.com:443", "sts.ap-northeast-2.amazonaws.com:443", "api.ecr.ap-northeast-2.amazonaws.com:443"],
+    "targets": [
+      "api.github.com:443",
+      "sts.ap-northeast-2.amazonaws.com:443",
+      "api.ecr.ap-northeast-2.amazonaws.com:443"
+    ],
     "request": "one CONNECT line (HTTP/1.0|1.1) + exactly one matching Host header, <=4096 bytes",
     "dns": "every answer must be public IPv4; any private/CGNAT/loopback/link-local/metadata/IPv6/empty answer rejects",
     "limits": "8 concurrent tunnels (503 beyond), idle 35s, lifetime 120s even with traffic",
@@ -25,10 +29,18 @@
   "mutation_checks": {
     "count": 21,
     "detected": 19,
-    "equivalent_survivors": ["sts_global_endpoint", "endpoints_unpinned"],
+    "equivalent_survivors": [
+      "sts_global_endpoint",
+      "endpoints_unpinned"
+    ],
     "equivalent_reason": "with botocore 1.44 the session region, disabled dualstack/FIPS and ignored endpoint URLs already guarantee the same regional hosts; kept as defense in depth",
     "runner": "full inherited environment, baseline must pass first; AWS profile files absent (CI-like)",
-    "strengthened": ["explicit lifetime check independent of select timeout", "environment-proxy test in this module", "adversarial AWS_* environment (legacy STS, dualstack, FIPS, endpoint URL overrides, other region, env proxies)", "behavioral ECR checker proxy test"]
+    "strengthened": [
+      "explicit lifetime check independent of select timeout",
+      "environment-proxy test in this module",
+      "adversarial AWS_* environment (legacy STS, dualstack, FIPS, endpoint URL overrides, other region, env proxies)",
+      "behavioral ECR checker proxy test"
+    ]
   },
   "full_suite": {
     "count": 1798,
@@ -41,7 +53,10 @@
       "sha256": "50fa2bfc38ed2b1420ba215bea398f8c33e7e7fe8cc6de1c8dd04db6469654a8"
     }
   },
-  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
   "next": "slice 2: renderer proxy Deployment/Service, NetworkPolicy (main Pod egress only to proxy; proxy ingress only from main Pod, egress 443 public), WF12 checklist update",
   "source_hashes": {
     "ai-ops/src/ai_ops/recovery_egress_proxy.py": "f342535dcba65b12bebfa4c07480cfacf6267dd6c568c28a5d4e266d4431676e",
@@ -49,5 +64,24 @@
     "ai-ops/src/ai_ops/recovery_sources.py": "08e8b8f899cda1790b4b42fd3f5909be5a653f86a39659a52cf873f0de15223c",
     "ai-ops/tests/test_recovery_egress_proxy.py": "c7485e5289cdc53246114c8a4b70546dbf6c042f7c97db53e944abc3ea5222a6"
   },
-  "no_external_actions": "loopback only; no cluster, AWS, GitHub write besides this PR, deploy, Slack"
+  "no_external_actions": "loopback only; no cluster, AWS, GitHub write besides this PR, deploy, Slack",
+  "merge": {
+    "pr": 61,
+    "head": "33614a74b1547e6c0eb545acf9a4ab227850e971",
+    "main": "65a32a14202973dd9fdfb3853071a8a4dfa6ec38",
+    "tree": "22a87e505612ca47b59df91976c2392ec72a8c33",
+    "pr_ci": {
+      "run": 45359117834,
+      "jobs": 7,
+      "tests": 1798,
+      "skipped": 1
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45360108241,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    }
+  }
 }

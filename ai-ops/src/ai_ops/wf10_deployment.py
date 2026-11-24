@@ -22,6 +22,7 @@ from ai_ops.slack_runtime import SlackWebConfig
 from ai_ops.slack_sender import PORT as SENDER_PORT
 from ai_ops.slack_server import load_settings
 from ai_ops.wf10_preparation import encoded, digest, read_regular, LIMITS, UNRESOLVED
+from ai_ops.recovery_egress_proxy import PORT as EGRESS_PORT
 
 CONFIG_NAMES = ('bindings.json', 'runtime.json', 'metric-queries.json', 'runbook-policy.json')
 FIELDS = ('namespace', 'name', 'pvc_name', 'service_account', 'image', 'source_revision', 'source',
@@ -37,6 +38,15 @@ SECRET_KEYS = ('signing', 'bot', 'slack_tls', 'event_identity', 'collector', 'se
 # fall inside these exceptions (live gate).
 NON_PUBLIC = ['0.0.0.0/8', '10.0.0.0/8', '100.64.0.0/10', '127.0.0.0/8',
               '169.254.0.0/16', '172.16.0.0/12', '192.168.0.0/16']
+# Optional WF07 recovery approval/preparation (A7). Absent -> the candidate is
+# byte-identical to before. Present -> recovery-approval.json, the normal-CI
+# binding, the relay's reader/GitHub secrets and the fixed-destination egress
+# proxy Pod (the relay's only path to GitHub/STS/ECR, design B').
+RECOVERY_FIELDS = ('approvers', 'approval', 'principals', 'author_id', 'aws_role_name', 'secrets',
+                   'normal_binding')
+APPROVAL_FIELDS = ('wait_seconds', 'approval_seconds', 'observation_seconds', 'revalidation_seconds')
+RECOVERY_SECRET_KEYS = ('reader', 'github')
+PACKAGE_LIMIT = 131072
 
 
 def draft():
@@ -60,7 +70,9 @@ def name(value):
 
 
 def inputs(value):
-    exact(value, draft())
+    if type(value) is not dict:
+        raise ValueError('wf10_fields_rejected')
+    exact({k: x for k, x in value.items() if k != 'recovery'}, draft())
     if type(value['schema_version']) is not int or value['schema_version'] != 1 or value['kind'] != 'wf10_candidate_inputs' or value['execution_allowed'] is not False:
         raise ValueError('wf10_input_mode_rejected')
     missing = sorted(k for k in FIELDS if value[k] is None)
@@ -104,6 +116,8 @@ def inputs(value):
         if net.version != 4 or net.prefixlen != 32 or net.is_loopback or net.is_link_local:
             raise ValueError('wf10_network_rejected')
     exact(v['config'], CONFIG_NAMES)
+    if v.get('recovery') is not None:
+        recovery_config(v)  # validates the whole optional section before any write
     # Validate schemas BEFORE writing any temporary config. Do not echo input.
     registry = BindingRegistry.model_validate(v['config']['bindings.json'])
     runtime = BRuntime.model_validate(v['config']['runtime.json'])
@@ -152,6 +166,39 @@ def web(v):
         event_sources={source['alias']:{k:source[k] for k in ('source_id', 'cluster_id')}}).model_dump()
 
 
+def recovery_config(v):
+    """recovery-approval.json for the optional section, validated by the runtime models."""
+    from ai_ops.normal_ci_contract import NormalCIBinding
+    from ai_ops.recovery_approval_wiring import RecoveryApprovalConfig
+    r = v['recovery']
+    exact(r, RECOVERY_FIELDS)
+    exact(r['approval'], APPROVAL_FIELDS)
+    exact(r['secrets'], RECOVERY_SECRET_KEYS)
+    for x in r['secrets'].values():
+        name(x)
+    if len(set(r['secrets'].values()) | set(v['secrets'].values())) != len(RECOVERY_SECRET_KEYS) + len(SECRET_KEYS):
+        raise ValueError('wf10_credential_separation_rejected')
+    # Approvers must be able to press the buttons: the rendered policy grants one user.
+    if type(r['approvers']) is not list or not r['approvers'] or set(r['approvers']) != {v['slack']['user_id']}:
+        raise ValueError('wf10_recovery_approvers_rejected')
+    NormalCIBinding.model_validate(r['normal_binding'])
+    kubernetes = [c for c in v['config']['runtime.json']['connections'].values() if c['kind'] == 'kubernetes']
+    if len(kubernetes) != 1:
+        raise ValueError('wf10_recovery_api_rejected')
+    proxy = f"http://{v['name']}-egress.{v['namespace']}.svc:{EGRESS_PORT}"
+    return RecoveryApprovalConfig.model_validate({
+        'schema_version': 1, 'enabled': True,
+        'prepare_proposal': {'version': 1, 'scope': 'prepare_proposal', 'approvers': r['approvers'], **r['approval']},
+        # Same API server/egress rule as the existing Kubernetes collector, separate read identity.
+        'observe': {'api_url': kubernetes[0]['base_url'], 'token_file': '/run/recovery-reader/token',
+                    'ca_file': '/run/recovery-reader/ca.crt', 'argo_namespace': 'argocd',
+                    'argo_application': 'lab-target'},
+        'prepare': {'principals': r['principals'], 'author_id': r['author_id'],
+                    'drafts_dir': '/data/recovery-drafts', 'github_token_file': '/run/ai-github/token',
+                    'normal_binding_file': '/etc/ai-ops/normal-ci-binding.json',
+                    'aws_role_name': r['aws_role_name'], 'egress_proxy': proxy}}).model_dump()
+
+
 def candidate(value):
     v, missing = inputs(value)
     if missing:
@@ -163,6 +210,11 @@ def candidate(value):
     def obj(kind, suffix, spec, api='v1'):
         return {'apiVersion':api, 'kind':kind, 'metadata':{'name':n+suffix,'namespace':ns}, **spec}
     configs = {**v['config'], 'slack-policy.json':policy(v), 'slack-web.json':web(v)}
+    recovery = v.get('recovery')
+    egress_labels = {'app.kubernetes.io/name':n+'-egress', 'app.kubernetes.io/part-of':'wf10'}
+    if recovery is not None:
+        configs['recovery-approval.json'] = recovery_config(v)
+        configs['normal-ci-binding.json'] = recovery['normal_binding']
     config_data = {f:encoded(x).decode() for f,x in configs.items()}
     config_hash = digest(encoded(config_data))
     security = {'allowPrivilegeEscalation':False,'readOnlyRootFilesystem':True,'capabilities':{'drop':['ALL']}}
@@ -188,6 +240,11 @@ def candidate(value):
     tls=secret('slack-tls',v['secrets']['slack_tls'],['tls.crt','tls.key'],'/run/ai-slack-tls')
     event=secret('event-identity',v['secrets']['event_identity'],['token','tls.crt','tls.key'],'/etc/ai-ops-webhook')
     collector=secret('collector',v['secrets']['collector'],['token','ca.crt'],'/run/collector')
+    relay_extra=[]
+    if recovery is not None:
+        # Only the relay reads the cluster for recovery and calls GitHub (read token).
+        relay_extra=[secret('recovery-reader',recovery['secrets']['reader'],['token','ca.crt'],'/run/recovery-reader'),
+                     secret('github',recovery['secrets']['github'],['token'],'/run/ai-github')]
     volumes.append({'name':'kubernetes','projected':{'defaultMode':288,'sources':[
         {'serviceAccountToken':{'path':'token','expirationSeconds':3600}},
         {'configMap':{'name':'kube-root-ca.crt','items':[{'key':'ca.crt','path':'ca.crt'}]}}]}})
@@ -195,7 +252,7 @@ def candidate(value):
     roles=[('worker','ai_ops.worker_runtime',[],[collector,mount('kubernetes','/var/run/ai-ops/kubernetes',True)]),
         ('event-receiver','ai_ops.alert_receiver',['--cluster-id',source['cluster_id'],'--event-source-alias',source['alias'],'--event-source-id',source['source_id']],[event]),
         ('slack-ingress','ai_ops.slack_server',['ingress','--enable-web'],[signing,tls]),
-        ('slack-relay','ai_ops.slack_server',['relay','--enable-web'],[signing,client])]
+        ('slack-relay','ai_ops.slack_server',['relay','--enable-web'],[signing,client,*relay_extra])]
     for role,module,args,extra in roles:
         volumes.append({'name':role+'-tmp','emptyDir':{'sizeLimit':'64Mi'}})
         container={'name':role,'image':v['image'],'imagePullPolicy':'IfNotPresent',
@@ -234,7 +291,9 @@ def candidate(value):
         'egress':[{'to':[peer(net['dns'])],'ports':[{'protocol':p,'port':53} for p in ('TCP','UDP')]},
                   {'to':[{'ipBlock':{'cidr':c}} for c in net['collector_cidrs']],
                    'ports':[{'protocol':'TCP','port':p} for p in sorted({urlsplit(c['base_url']).port or 443 for c in v['config']['runtime.json']['connections'].values()})]},
-                  {'to':[{'podSelector':{'matchLabels':sender_labels}}],'ports':[{'protocol':'TCP','port':SENDER_PORT}]}]}},'networking.k8s.io/v1'))
+                  {'to':[{'podSelector':{'matchLabels':sender_labels}}],'ports':[{'protocol':'TCP','port':SENDER_PORT}]},
+                  *([{'to':[{'podSelector':{'matchLabels':egress_labels}}],'ports':[{'protocol':'TCP','port':EGRESS_PORT}]}]
+                    if recovery is not None else [])]}},'networking.k8s.io/v1'))
     # Separate stateless sender: bot token + client secret only. No PVC, no
     # Kubernetes token, no signing secret; only the policy file from the ConfigMap.
     s_volumes=[{'name':'policy','configMap':{'name':n+'-config','items':[{'key':'slack-policy.json','path':'slack-policy.json'}]}},
@@ -266,6 +325,31 @@ def candidate(value):
         'ingress':[{'from':[{'podSelector':{'matchLabels':labels}}],'ports':[{'protocol':'TCP','port':SENDER_PORT}]}],
         'egress':[{'to':[peer(net['dns'])],'ports':[{'protocol':p,'port':53} for p in ('TCP','UDP')]},
                   {'to':[{'ipBlock':{'cidr':'0.0.0.0/0','except':NON_PUBLIC}}],'ports':[{'protocol':'TCP','port':443}]}]}},'networking.k8s.io/v1'))
+    if recovery is not None:
+        # Fixed-destination CONNECT proxy: no secrets, no Kubernetes token, no PVC.
+        # TLS stays end to end; only GitHub/STS/ECR :443 (ai_ops.recovery_egress_proxy).
+        e_probe={'tcpSocket':{'port':EGRESS_PORT}}
+        egress={'name':'egress-proxy','image':v['image'],'imagePullPolicy':'IfNotPresent',
+            'command':['python','-m','ai_ops.recovery_egress_proxy'],'args':[],'securityContext':security,
+            'env':[{'name':'PYTHONDONTWRITEBYTECODE','value':'1'},{'name':'HOME','value':'/tmp'}],
+            'resources':{'requests':{'cpu':'25m','memory':'32Mi'},'limits':{'cpu':'250m','memory':'128Mi'}},
+            'volumeMounts':[mount('egress-tmp','/tmp')],
+            'readinessProbe':{**e_probe,'periodSeconds':10,'timeoutSeconds':5},
+            'startupProbe':{**e_probe,'periodSeconds':5,'timeoutSeconds':5,'failureThreshold':12},
+            'livenessProbe':{**e_probe,'periodSeconds':30,'timeoutSeconds':5,'failureThreshold':3}}
+        e_pod={'serviceAccountName':v['service_account'],'automountServiceAccountToken':False,
+             'enableServiceLinks':False,'terminationGracePeriodSeconds':30,
+             'securityContext':{'runAsNonRoot':True,'runAsUser':10001,'runAsGroup':10001,
+                'seccompProfile':{'type':'RuntimeDefault'}},'containers':[egress],
+             'volumes':[{'name':'egress-tmp','emptyDir':{'sizeLimit':'16Mi'}}]}
+        resources.append(obj('Deployment','-egress',{'spec':{'replicas':1,'strategy':{'type':'Recreate'},'selector':{'matchLabels':egress_labels},
+            'template':{'metadata':{'labels':egress_labels},'spec':e_pod}}},'apps/v1'))
+        resources.append(obj('Service','-egress',{'spec':{'type':'ClusterIP','selector':egress_labels,
+            'ports':[{'name':'connect','protocol':'TCP','port':EGRESS_PORT,'targetPort':EGRESS_PORT}]}}))
+        resources.append(obj('NetworkPolicy','-egress',{'spec':{'podSelector':{'matchLabels':egress_labels},'policyTypes':['Ingress','Egress'],
+            'ingress':[{'from':[{'podSelector':{'matchLabels':labels}}],'ports':[{'protocol':'TCP','port':EGRESS_PORT}]}],
+            'egress':[{'to':[peer(net['dns'])],'ports':[{'protocol':p,'port':53} for p in ('TCP','UDP')]},
+                      {'to':[{'ipBlock':{'cidr':'0.0.0.0/0','except':NON_PUBLIC}}],'ports':[{'protocol':'TCP','port':443}]}]}},'networking.k8s.io/v1'))
     # Offline v1.35 structural check (strict unknown fields). Never emit a manifest
     # the API server would reject on shape; server dry-run remains a live gate.
     for resource in resources:
@@ -273,7 +357,7 @@ def candidate(value):
             validate_manifest(resource)
         except SchemaError:
             raise ValueError('wf10_schema_rejected') from None
-    return {'status':'candidate_rendered_not_approved','execution_allowed':False,'live_verified':False,
+    result={'status':'candidate_rendered_not_approved','execution_allowed':False,'live_verified':False,
         'schema_validation':{'kubernetes':'v1.35.8','mode':'offline_openapi_subset_strict','server_dry_run':False},
         'source_revision':v['source_revision'],'preserved_c_limits_seconds':LIMITS,'manual_policy':{'rules':[],'strategy':'new_empty_active_queue_archive_old_read_only'},
         'required_live_gates':list(LIVE_GATES),'unresolved_live_inputs':sorted(UNRESOLVED),
@@ -289,13 +373,27 @@ def candidate(value):
             'sender idempotency window is in memory; restarts rely on the adapter needs_review rule',
             'single replica main Pod and SQLite on one RWO volume: no HA'],
         'manifest_sha256':digest(encoded(resources)),'resources':resources}
+    if recovery is not None:
+        result['recovery']={'enabled':True,'egress_proxy':configs['recovery-approval.json']['prepare']['egress_proxy'],
+                            'publication':'not_wired'}
+        result['external_prerequisites']=result['external_prerequisites']+[
+            'recovery reader identity (secret): deployments get, replicasets list, pods list, leases get in ai-ops-lab; Argo applications get lab-target; no writes',
+            'read-only GitHub token (secret) for joungGo/c03-execution-lab Contents: Read',
+            'IRSA: role-arn annotation on the main service account, role allowing only ecr:DescribeImages on repository urlshortener',
+            'CI relay running against the same store with this normal-CI binding (receipts within 15 minutes of each run)',
+            'Slack app Interactivity Request URL /slack/interactivity on the existing Slack listener']
+        result['residual_risks']=result['residual_risks']+[
+            'the egress proxy relays TLS to GitHub/STS/ECR: a compromised relay could reach those three hosts',
+            'IRSA environment is injected into every main-Pod container, not only the relay']
+    return result
 
 
 def build(value, directory):
     result=candidate(value)
     if not result['resources']:return result
     payloads={'inputs.json':encoded(value),'candidate.json':encoded(result)}
-    if any(len(x)>65536 for x in payloads.values()):raise ValueError('wf10_package_too_large')
+    # Candidate packages may carry the optional recovery section (~70KB); still bounded.
+    if any(len(x)>PACKAGE_LIMIT for x in payloads.values()):raise ValueError('wf10_package_too_large')
     root=Path(directory);root.mkdir(mode=0o700,exist_ok=False)
     for name,content in payloads.items():
         fd=os.open(root/name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
@@ -306,8 +404,8 @@ def build(value, directory):
 def verify(directory):
     root=Path(directory)
     if root.is_symlink() or {x.name for x in root.iterdir()} != {'inputs.json','candidate.json'}:raise ValueError('wf10_package_rejected')
-    expected=candidate(_json_object(read_regular(root/'inputs.json')))
-    if not expected['resources'] or encoded(expected)!=read_regular(root/'candidate.json'):raise ValueError('wf10_candidate_changed')
+    expected=candidate(_json_object(read_regular(root/'inputs.json',PACKAGE_LIMIT)))
+    if not expected['resources'] or encoded(expected)!=read_regular(root/'candidate.json',PACKAGE_LIMIT):raise ValueError('wf10_candidate_changed')
     return {'status':'candidate_verified_not_approved','execution_allowed':False,'live_verified':False}
 
 
