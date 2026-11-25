@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `aaa8528`(README·WF11 준비 절차 PR71), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf11-lab-alert-20261125`(WF11 lab 경보 규칙). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-25 KST. 기준 AI main `1b6ca45`(WF11 lab 경보 PR72), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf11-recovery-irsa-20261125`(WF11 설치 준비: IRSA). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -577,3 +577,23 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 - 합성 경보는 8분 비상 절차로만 쓴다.
 
 시험 9개를 추가했고, 결함 변형 13/13을 검출했다. promtool 3.5.0 check·test 5종 통과(사용자 승인 후 실행, sha256 검증). [조각 문서](wf11-lab-alert-local-20261125.md).
+
+[PR #72](https://github.com/joungGo/url-shortener-ai-ops/pull/72) → main `1b6ca45`. PR CI 2회 7종 성공, tree `c956549` 일치. **다음: WF11 인프라 재설치(Claude Terraform 위임)** — 설치 가이드·최신 정리 기록 재확인, 계정·state·plan 대조부터.
+
+### WF11 설치 준비(인프라 없이) · 2026-11-25
+
+사전 점검에서 확인한 것:
+
+- 새 계정 `764428911194`의 로그인 세션이 만료됐다.
+- `c03-execution-lab` 읽기 토큰이 없다.
+- WF10은 실환경에 설치된 적이 없다.
+
+배치 결정: WF10만 `ai-ops/ai-ops`에 설치한다. Slack 주소는 `slack-ops.bidservice.store`를 재사용하고, 발신원은 `eks-seoul`/`am-urlshortener`, 경보 채널은 기존 Webhook을 쓴다.
+
+준비 항목:
+
+1. 플랫폼 [PR #164](https://github.com/f-lab-edu/F-Lab-DevOps/pull/164): Alertmanager를 `/v1/events`로 전환한다. CI는 통과했고 승인 리뷰를 기다린다.
+2. AI Terraform IRSA 역할 `wf11-recovery.tf`: 기본 비활성, 이 PR이다.
+3. 신원 manifest 도구: 다음 작업이다.
+
+[문서](wf11-install-prep-20261125.md)

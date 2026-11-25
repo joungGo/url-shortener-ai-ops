@@ -134,7 +134,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
    - 이 신원에는 쓰기 권한을 주지 않는다.
 3. **GitHub 읽기 토큰:** 격리 저장소 `joungGo/c03-execution-lab`의 Contents: Read만 준다(Git 데이터 API: ref·commit·tree·blob).
 4. **IRSA**
-   - relay ServiceAccount에 역할(`aws_role_name`)을 연결한다.
+   - relay ServiceAccount에 역할(`aws_role_name`)을 연결한다. AI Terraform root에 `enable_wf11_recovery_irsa=true`를 주면 역할 `urlshortener-practice-recovery-ecr-read`가 만들어진다(2026-11-25, [설치 준비](wf11-install-prep-20261125.md)). 이 역할은 `ai-ops/ai-ops` ServiceAccount만 신뢰한다. output의 ARN을 SA annotation에, 이름을 `aws_role_name`에 넣는다.
    - 정책은 `ecr:DescribeImages` 하나로 한정한다(`arn:aws:ecr:ap-northeast-2:764428911194:repository/urlshortener`).
    - EKS가 주입하는 `AWS_ROLE_ARN`·`AWS_WEB_IDENTITY_TOKEN_FILE`만 쓴다. 프로필·환경 키·IMDS는 코드에서 막았다.
 5. **정상 CI 근거**
