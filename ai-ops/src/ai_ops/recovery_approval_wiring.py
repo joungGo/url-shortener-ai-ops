@@ -56,6 +56,8 @@ NOT_OBSERVED = ('현재 상태를 확인하지 못해 승인 대기를 열지 �
 CHANGED = ('현재 상태가 계획 당시 근거와 달라 이 계획으로는 승인 요청을 열 수 없습니다. '
            '필요하면 새 복구 계획을 요청하세요.')
 FULL = '승인 장부가 가득 차 새 승인 대기를 열 수 없습니다. 관리자의 확인이 필요합니다.'
+ALREADY_HEALTHY = ('현재 상태를 확인한 결과 이미 정상(Argo 동기·정상, 이미지 일치, Pod Ready 지속, readyz·업무 요청 성공)으로 '
+                   '확인되어 승인 대기를 열지 않았습니다. 변경은 없습니다. 다시 문제가 생기면 새 조사와 복구 계획을 요청하세요.')
 OPENED = ('승인 대기를 열었습니다(응답 마감 {until}). 승인·거절 버튼이 있는 메시지를 이 스레드에 곧 보냅니다. '
           '버튼은 계획 요청자이자 지정된 승인자만 사용할 수 있고, 승인 뒤에도 현재 상태를 다시 확인하기 전에는 '
           '아무것도 변경하지 않습니다.')
@@ -223,6 +225,8 @@ class RecoveryApprovalService:
             code = str(error) if type(error) in (ValueError, OSError, TimeoutError) else ''
             if code in OBSERVATION_CODES or isinstance(error, TimeoutError):
                 return NOT_OBSERVED
+            if code == 'current_state_already_healthy':
+                return ALREADY_HEALTHY
             if code == 'new_recovery_plan_required':
                 return CHANGED
             if code == 'approval_ledger_full':

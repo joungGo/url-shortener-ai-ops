@@ -11,8 +11,13 @@ User decisions (2026-11-21):
   ``ImagePullBackOff``, Pod/ReplicaSet image equal to the Deployment image, latest
   generation observed and no ready replica. Event timestamps are not used (kubelet
   pull back-off reaches 5 minutes);
-* ``healthy`` is **never** reported. Anything that is not a proven image failure
-  is ``unknown``, so no "already recovered" decision is made automatically;
+* ``healthy`` (user decisions 2026-11-25, replacing "never healthy") only when all
+  five plan checks pass in one bounded read: Argo ``Synced``+``Healthy``; the single
+  owned Pod's running image digest equals the Deployment's desired digest; the
+  rollout is complete and the Pod ``Ready`` for at least ``STABLE_SECONDS``;
+  ``/readyz`` and ``/items`` (read through the API server Pod proxy, fixed GET
+  routes, no new network path) match the app response contracts. Anything else
+  that is not a proven image failure stays ``unknown``;
 * the revision is the Argo ``spec.source.targetRevision`` only when it equals
   ``status.sync.revision`` (same value WF07 binds as ``base_sha``).
 
@@ -24,21 +29,35 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
+import json
 import re
 from typing import Literal
 
 from pydantic import Field, StrictStr, model_validator
 
-from ai_ops.c_recovery import TARGET, ImageFailureBinding
+from ai_ops.c_recovery import IMAGE_REPOSITORY, TARGET, ImageFailureBinding
+from ai_ops.c_verification_collect import valid_body
 from ai_ops.contracts import StrictModel, sha256_json
 from ai_ops.recovery_approvals import CurrentRecoveryState
 from ai_ops.recovery_commands import ENDPOINT
-from ai_ops.restart_k8s import NAME, PODS, ApiClient
+from ai_ops.restart_k8s import NAME, PODS, ApiClient, ApiError, parse_time
 
 NAMESPACE, DEPLOYMENT, CONTAINER = 'ai-ops-lab', 'lab-api', 'api'
 REPLICASETS = f'/apis/apps/v1/namespaces/{NAMESPACE}/replicasets'
 PULL_FAILURES = ('ErrImagePull', 'ImagePullBackOff')
 EVIDENCE_IDS = sorted(['live-deployment', 'live-pod', 'live-replicaset'])
+# Same names as the image-rollback plan's verification list (WF05 registry).
+HEALTH_CHECKS = ['argo_synced_healthy', 'pod_image_matches_desired_digest', 'pod_ready',
+                 'readyz_success', 'items_flow_success']
+STABLE_SECONDS = 60  # Ready must have held this long (a flapping Pod is not "recovered")
+HTTP_PORT = 8000
+HTTP_PATHS = ('/readyz', '/items')
+PROXY = re.escape(PODS) + '/' + NAME + re.escape(f':{HTTP_PORT}/proxy/') + '(readyz|items)'
+DESIRED = re.compile(re.escape(IMAGE_REPOSITORY) + r'@(sha256:[a-f0-9]{64})')
+
+
+def _reject_constant(value):
+    raise ValueError('non_finite_json')
 
 
 def argo_path(namespace, application):
@@ -62,7 +81,7 @@ class ObserveConfig(StrictModel):
 
     def routes(self):
         return (('GET', re.escape(ENDPOINT)), ('GET', re.escape(REPLICASETS)), ('GET', re.escape(PODS)),
-                ('GET', re.escape(argo_path(self.argo_namespace, self.argo_application))))
+                ('GET', re.escape(argo_path(self.argo_namespace, self.argo_application))), ('GET', PROXY))
 
 
 def _owned(item, kind, uid):
@@ -79,9 +98,62 @@ def _image_of(template):
     return image if isinstance(image, str) and image else None
 
 
-def derive_state(plan, deployment, replica_sets, pods, application, *, observed_at, proof_hash):
-    """Pure: verified API objects -> CurrentRecoveryState (``image_failure`` or ``unknown``).
+def health_target(deployment, replica_sets, pods):
+    """Name of the one live owned Pod whose container reports ready (HTTP is read only then)."""
+    uid = deployment.get('metadata', {}).get('uid')
+    selector = deployment.get('spec', {}).get('selector', {}).get('matchLabels')
+    if not isinstance(uid, str) or not isinstance(selector, dict) or not selector:
+        return None
+    sets = {rs.get('metadata', {}).get('uid') for rs in replica_sets if _owned(rs, 'Deployment', uid)}
+    live = [p for p in pods if not p.get('metadata', {}).get('deletionTimestamp')
+            and isinstance(p.get('metadata', {}).get('labels'), dict)
+            and all(p['metadata']['labels'].get(k) == v for k, v in selector.items())]
+    if len(live) != 1 or not any(_owned(live[0], 'ReplicaSet', s) for s in sets):
+        return None
+    states = live[0].get('status', {}).get('containerStatuses', [])
+    name = live[0]['metadata'].get('name')
+    if (not isinstance(states, list) or len(states) != 1 or states[0].get('ready') is not True
+            or not isinstance(name, str) or not re.fullmatch(NAME, name)):
+        return None
+    return name
 
+
+def _healthy(meta, spec, status, image, pod, rs, application, http, observed_at):
+    """All five checks or nothing. Missing/odd fields never pass."""
+    app = application.get('status', {})
+    desired = DESIRED.fullmatch(image)
+    if (http is None or any(http.get(path) is not True for path in HTTP_PATHS)
+            or app.get('sync', {}).get('status') != 'Synced' or app.get('health', {}).get('status') != 'Healthy'
+            or desired is None):
+        return False
+    if (spec.get('replicas', 1) != 1 or status.get('observedGeneration') != meta.get('generation')
+            or any(status.get(k) != 1 for k in ('replicas', 'readyReplicas', 'updatedReplicas', 'availableReplicas'))
+            or status.get('unavailableReplicas') not in (None, 0)):
+        return False
+    states = pod.get('status', {}).get('containerStatuses', [])
+    state = states[0] if isinstance(states, list) and len(states) == 1 else {}
+    image_id = state.get('imageID')
+    if (pod.get('status', {}).get('phase') != 'Running' or _image_of(pod) != image
+            or _image_of(rs.get('spec', {}).get('template', {})) != image
+            or state.get('name') != CONTAINER or state.get('ready') is not True or state.get('image') != image
+            or not isinstance(state.get('state'), dict) or 'running' not in state['state']
+            or not isinstance(image_id, str) or not image_id.endswith('@' + desired.group(1))):
+        return False
+    ready = [c for c in pod.get('status', {}).get('conditions', []) if isinstance(c, dict) and c.get('type') == 'Ready']
+    if len(ready) != 1 or ready[0].get('status') != 'True':
+        return False
+    try:
+        since = parse_time(ready[0].get('lastTransitionTime'))
+    except ValueError:
+        return False
+    return observed_at.timestamp() - since.timestamp() >= STABLE_SECONDS
+
+
+def derive_state(plan, deployment, replica_sets, pods, application, *, observed_at, proof_hash, http=None):
+    """Pure: verified API objects -> CurrentRecoveryState (``image_failure``, ``healthy`` or ``unknown``).
+
+    ``http`` maps ``/readyz`` and ``/items`` to whether the response matched the app
+    contract (None/absent = not read or unreadable); without it nothing is healthy.
     Raises when the identity itself cannot be established (no usable Deployment or
     revision): there is then nothing safe to report.
     """
@@ -127,6 +199,11 @@ def derive_state(plan, deployment, replica_sets, pods, application, *, observed_
                                           image_hash=sha256_json(image), observed_at=observed_at,
                                           evidence_ids=EVIDENCE_IDS)
     if failure is None:
+        if (len(live) == 1 and len(candidates) == 1
+                and _healthy(meta, spec, status, image, candidates[0],
+                             set_uids[candidates[0]['metadata']['ownerReferences'][0]['uid']],
+                             application, http, observed_at)):
+            return CurrentRecoveryState(**identity, status='healthy', healthy_checks=list(HEALTH_CHECKS))
         return CurrentRecoveryState(**identity, status='unknown')
     return CurrentRecoveryState(**identity, status='image_failure', failure=failure)
 
@@ -161,12 +238,30 @@ class KubernetesRecoveryObserver:
         pods = self._items(self._get(PODS, deadline, digests))
         application = self._get(argo_path(self.config.argo_namespace, self.config.argo_application),
                                 deadline, digests)
+        http = None
+        pod = health_target(deployment, replica_sets, pods)
+        if pod is not None:
+            http = {path: self._http(pod, path, deadline, digests) for path in HTTP_PATHS}
         now = self._now()
         if now >= deadline:
             raise TimeoutError('observation_deadline')
         observed_at = datetime.fromtimestamp(now, timezone.utc)
         return derive_state(plan, deployment, replica_sets, pods, application, observed_at=observed_at,
-                            proof_hash=hashlib.sha256(''.join(digests).encode()).hexdigest())
+                            proof_hash=hashlib.sha256(''.join(digests).encode()).hexdigest(), http=http)
+
+    def _http(self, pod, path, deadline, digests):
+        """True only for HTTP 200 with a contract-valid body; errors are unknown (None), never a pass."""
+        try:
+            data = self.client.request('GET', f'{PODS}/{pod}:{HTTP_PORT}/proxy{path}', deadline=deadline, raw=True)
+        except ApiError as error:
+            # A proxy error cannot be told apart from an app error: unknown.
+            digests.append(sha256_json([path, 'status', error.status]))
+            return None
+        digests.append(sha256_json([path, hashlib.sha256(data).hexdigest()]))
+        try:
+            return valid_body(path, json.loads(data, parse_constant=_reject_constant))
+        except (ValueError, UnicodeDecodeError, RecursionError):
+            return False
 
 
 def make_observer(config, *, now, connection_factory=None):

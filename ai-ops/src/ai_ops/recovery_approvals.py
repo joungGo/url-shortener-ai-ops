@@ -168,6 +168,10 @@ class RecoveryApprovalLedger:
 
     def _require_open_observation(self, plan, observation):
         original = plan.evidence.image_failure
+        if (observation.status == 'healthy' and observation.deployment_uid_hash == original.deployment_uid_hash
+                and observation.image_hash == original.image_hash):
+            # Same workload and image, now verified healthy: nothing to approve (no record).
+            raise ValueError('current_state_already_healthy')
         if observation.status != 'image_failure' or (
                 observation.deployment_uid_hash != original.deployment_uid_hash
                 or observation.image_hash != original.image_hash):

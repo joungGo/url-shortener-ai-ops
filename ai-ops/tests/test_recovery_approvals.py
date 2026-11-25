@@ -317,8 +317,13 @@ class RecoveryApprovalsTest(unittest.TestCase):
         with self.assertRaises(ValueError):other.open(candidate.plan_hash,actor=self.actor)
 
     def test_changed_initial_target_requires_new_draft(self):
+        # Healthy now (2026-11-25 decision): never opens. Same workload/image -> the
+        # dedicated "already healthy" refusal; another image -> a new plan is required.
         self.overrides={'revision_hash':'d'*64,'status':'healthy','healthy_checks':self.plan.verification}
+        with self.assertRaisesRegex(ValueError,'current_state_already_healthy'):self.opened()
+        self.overrides={'status':'healthy','healthy_checks':self.plan.verification,'image_hash':'e'*64,'failure':None}
         with self.assertRaisesRegex(ValueError,'new_recovery_plan_required'):self.opened()
+        self.assertEqual(self.ledger.page()[0],[])
 
     def test_source_rejects_even_allowlisted_other_requester(self):
         other=self.policy.model_copy(update={'version':2,'approvers':[self.actor,'UBOB0001']})

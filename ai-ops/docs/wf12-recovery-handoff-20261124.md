@@ -130,6 +130,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
    - `ai-ops-lab`: `deployments` get(`lab-api`), `replicasets` list, `pods` list, `leases` get(`b6-scenario-lock`)
    - `argocd`: `applications` get(`lab-target`)
    - `replicasets` list는 재시작 읽기 신원(PR48)에는 없던 새 권한이다.
+   - `pods/proxy` get(`ai-ops-lab`): 정상 판정의 `/readyz`·`/items` 읽기(2026-11-25, [정상 판정](recovery-healthy-judgment-local-20261125.md)). 없으면 정상 판정이 `unknown`이 된다.
    - 이 신원에는 쓰기 권한을 주지 않는다.
 3. **GitHub 읽기 토큰:** 격리 저장소 `joungGo/c03-execution-lab`의 Contents: Read만 준다(Git 데이터 API: ref·commit·tree·blob).
 4. **IRSA**
@@ -167,7 +168,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
 | 원복(기준선 고정)·드리프트 잠금·원복 관측 | 로컬 계약만(PR51~53), 프로세스 미연결 |
 | 조치 `deployment-restart`(명령 방식)·`execute_command` 승인 | **실행 직전까지 연결**(요청·봉인·승인·재검증·실행 조건 충족 알림). 실제 재시작 실행은 비활성(2026-11-25) |
 | 재시작 실제 실행(Deployment patch·Lease·증거 저장·효과 관찰) | **미연결**(WF11 실환경 실행 결정 대상) |
-| "이미 회복됨" 자동 판정(healthy) | 하지 않음(관측기는 `image_failure`/`unknown`만) |
+| "이미 회복됨" 자동 판정(healthy) | **연결**(5가지 모두 통과 + Ready 60초 지속, 2026-11-25). 열 때 정상이면 전용 회신, 재검증 때 정상이면 `already_recovered` |
 | 재시작 기록 보관 정리 | 연결됨(보관 종료 30일 뒤 삭제). 증거 파일은 실행 연결 때 |
 
 ## 7. 미결정·남은 한계
@@ -176,7 +177,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
    - [proxy 조각 1](recovery-egress-proxy-local-20261124.md)(PR61): proxy 본체를 만들고, GitHub reader와 IRSA client(자격 교환 STS 포함)가 설정된 proxy만 쓰게 했다. 이 과정에서 boto3 내부 STS의 dualstack·endpoint 재지정 결함을 고쳤다.
    - [proxy 조각 2](recovery-egress-renderer-local-20261124.md)(PR62): renderer에 proxy Pod와 NetworkPolicy를 추가했다.
    - 잔여 위험: relay가 침해되면 세 호스트에는 도달할 수 있다.
-2. **정상 판정이 없다.** 자연 회복된 경우에도 재검증은 `needs_review`가 된다.
+2. **정상 판정이 생겼다(2026-11-25).** 다섯 가지 확인을 모두 통과하고 Ready가 60초 이상 지속되면 정상이다. 하나라도 확인할 수 없으면 지금처럼 `needs_review`다. 실환경에서 `pods/proxy` 권한과 앱 응답 계약은 WF11에서 확인한다.
 3. **준비 후 관측 만료 알림은 정리됐다.** PR 준비가 끝난 뒤 관측 유효 시간이 지나면, 이제 전용 문구가 간다(2026-11-25, [작은 항목](recovery-small-fixes-local-20261125.md)). 문구는 "준비된 내용이 있어도 발행·변경하지 않으며, 진행하려면 새 승인·재검증이 필요"라는 뜻이다.
 4. **승인자는 계획 요청자 본인만 가능하다.** 재시작 명령 승인도 같다.
 5. **승인 정책 전환 절차가 생겼다.** relay와 ingress를 멈춘 뒤 `slack_server transition-approval-policy --previous <이전 설정>`을 실행한다. 이전 정책 hash가 일치하고 버전이 올라가야 하며, 진행 중이던 승인은 superseded가 된다(2026-11-25). PR 준비·재시작 명령 두 범위를 함께 다루며, 바뀐 범위만 전환한다.
