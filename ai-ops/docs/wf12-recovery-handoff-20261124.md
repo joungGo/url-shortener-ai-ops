@@ -157,7 +157,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
     - 2항의 읽기 신원에 `ai-ops-lab` `events` list, `horizontalpodautoscalers` list(autoscaling/v2)를 더한다. 쓰기 권한은 여전히 주지 않는다.
     - Prometheus 읽기 토큰·CA와 질의(`prior_ready_query`, `dependency_queries`)를 정한다. 질의가 없으면 게이트가 막는다.
     - 메인 Pod 송신은 기존 수집기 연결 목적지(Prometheus 포함)를 이미 허용한다.
-    - renderer는 아직 `restart` 절과 Prometheus 읽기 Secret을 렌더링하지 않는다(남은 조각).
+    - renderer 입력 `recovery.restart`로 `restart` 절과 relay 전용 Prometheus Secret 마운트를 렌더링한다(2026-11-25, [renderer restart 절](wf10-restart-render-local-20261125.md)). Prometheus 주소는 수집기 연결과 같다.
 
 ## 6. 지원 범위
 
@@ -208,7 +208,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
 1. **7절 1항 결정:** relay 외부 송신 방식을 정한다.
 2. **연결 준비:** 인프라 재설치 요청과 Terraform 실행 주체를 정한 뒤, 5절 체크리스트를 실제 값으로 채운다. 실제 입력은 추측하지 않는다.
 3. **WF11:** 합성 경보 또는 승인된 장애 실습으로 단계 1~6을 실물에서 확인하고, 이 문서를 확정한다.
-4. **그 뒤:** PR 발행 경로(쓰기, 별도 승인 설계), 원복 프로세스 연결, 재시작 실제 실행(쓰기 신원·실행기, WF11 결정), renderer의 `restart` 절.
+4. **그 뒤:** PR 발행 경로(쓰기, 별도 승인 설계), 재시작 실제 실행(쓰기 신원·실행기, WF11 결정), 그 다음 원복 프로세스 연결(원복 승인 흐름 `RollbackScope` 발급자 설계 포함; 상위 실행 경로가 있어야 계기가 생김).
 
 ## 반영 기록
 

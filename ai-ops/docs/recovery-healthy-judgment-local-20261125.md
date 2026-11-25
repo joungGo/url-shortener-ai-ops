@@ -63,3 +63,13 @@
 변형 검사와 전체 시험 결과는 [검증 기록](recovery-healthy-judgment-local-validation-20261125.json)에 있다.
 
 실제 클러스터·배포·Slack·장애 실습은 하지 않았다.
+
+## 최종 반영 결과
+
+[PR #67](https://github.com/joungGo/url-shortener-ai-ops/pull/67)의 head `efad7ffd2d9a794d0c8801961e52d0fdecd25cfa`를 head 고정 일반 squash로 병합해 main `ba2bda030609d81c4260f57bf3a58f5bde44c9a0`에 반영했다. 병합은 사용자 "진행해" 후 진행했다.
+
+- PR CI: [45569981964](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45569981964) 7종 성공(1852개, skip 1)
+- tree `97ea81080b08a64af8d08adb5bec7972b7342ea2` 일치
+- 보호 변경·우회 없음
+- 병합 후 branch 정리
+- main CI: [45571034647](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45571034647) 성공

@@ -1,5 +1,37 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-25 원복 연결 보류·WF10 renderer restart 절·CI 반영 준비 (Claude)
+
+branch `claude/wf10-restart-render-20261125`(기준 main `ba2bda0`).
+
+**원복 프로세스 연결은 보류했다.** 사용자가 추천안을 택했다. 원복을 시작시킬 상위 계기가 없기 때문이다.
+
+- PR 발행·재시작 실행이 모두 비활성이라 WF09 기록이 생기지 않는다.
+- 원복 승인 흐름(`RollbackScope` 발급자)과 Argo 쓰기 포트가 없다.
+
+**renderer에 `recovery.restart` 절을 추가했다.**
+
+- `restart` 설정을 렌더링한다(`execute_command`, executor `local-restart-wf10`).
+- Prometheus 주소는 수집기 연결과 같다. relay에만 별도 Secret을 마운트하고, NetworkPolicy는 바뀌지 않는다.
+- 외부 선행 조건에 `pods/proxy` get(모든 recovery 후보)과 events·HPA list(restart가 있을 때)를 추가했다.
+- PR67 메타데이터를 이관했다(main CI45571034647 성공).
+- [문서](ai-ops/docs/wf10-restart-render-local-20261125.md)
+
+## 2026-11-25 A7 정상(healthy) 판정 CI/main 반영 완료 (Claude)
+
+[PR #67](https://github.com/joungGo/url-shortener-ai-ops/pull/67)의 head `efad7ffd2d9a794d0c8801961e52d0fdecd25cfa`를 사용자 "진행해" 후 head 고정 squash로 병합했다. main은 `ba2bda030609d81c4260f57bf3a58f5bde44c9a0`이다.
+
+- PR CI45569981964 7종 성공(1852개)
+- tree `97ea810` 일치
+- branch 정리
+- main CI45571034647 성공
+
+다음 후보:
+
+- 인프라 불필요: 원복 프로세스 연결, renderer `restart` 절(+ `pods/proxy`·events·HPA RBAC 반영 검토)
+- 정책 결정이 먼저 필요: PR 발행, 승인자 제한 완화
+- WF11 결정 대기: 실제 연결과 실행
+
 ## 2026-11-25 A7 정상(healthy) 판정·CI 반영 준비 (Claude)
 
 branch `claude/a7-healthy-judgment-20261125`(기준 main `e5fcea4`).
