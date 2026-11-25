@@ -11,6 +11,9 @@
 
 * Slice 3: after approval the relay revalidates (read-only) and, with a WF07
   bridge, prepares the exact PR payload locally (never publishes).
+* Restart path (optional ``restart`` section, ``recovery_restart_wiring``): the
+  same command on the restart command candidate opens the separate
+  ``execute_command`` approval; it stops at ``command_ready`` (execution disabled).
 
 Disabled unless ``recovery-approval.json`` exists with ``enabled: true``. The
 current-state observation uses the read-only Kubernetes/Argo observer
@@ -34,6 +37,7 @@ from ai_ops.recovery_observe import ObserveConfig, make_observer
 from ai_ops.recovery_sources import PrepareConfig
 from ai_ops.recovery_outbox import RecoveryOutbox, prune_existing
 from ai_ops.recovery_retention import RecoveryRetention
+from ai_ops.recovery_restart_wiring import RESTART_DISABLED, RestartConfig, RestartWiring, is_restart_candidate
 from ai_ops.recovery_slack_approval import SlackApprovalReceiver
 from ai_ops.slack_adapter import SlackAdapter
 from ai_ops.workflow_config import read_config
@@ -82,6 +86,8 @@ class RecoveryApprovalConfig(StrictModel):
     observe: ObserveConfig | None = None
     # WF07 live sources (slice A config; read_proof/entrypoint wiring is slice B).
     prepare: PrepareConfig | None = None
+    # Restart (command) path up to command_ready; never executes.
+    restart: RestartConfig | None = None
 
     @model_validator(mode='after')
     def scope_matches(self):
@@ -96,6 +102,12 @@ class RecoveryApprovalConfig(StrictModel):
                 raise ValueError('prepare_requires_observe')
             if not set(self.prepare_proposal.approvers) <= set(self.prepare.principals):
                 raise ValueError('prepare_principal_missing')
+        if self.restart is not None:
+            if self.observe is None:
+                raise ValueError('restart_requires_observe')
+            # request-approval runs prepare (one read) and open (one read) in one relay tick.
+            if self.restart.execution_seconds + self.restart.approval.revalidation_seconds > RELAY_BLOCK_SECONDS:
+                raise ValueError('restart_reads_exceed_relay_budget')
         return self
 
     @classmethod
@@ -144,14 +156,17 @@ class RecoveryApprovalService:
     """``pr_bridge`` is a factory ``ledger -> ImageRecoveryPRBridge`` with trusted
     read ports. The process entrypoint passes none (no live GitHub/CI/ECR readers
     exist yet), so WF07 preparation stays unconnected in a real deployment."""
-    def __init__(self, adapter, config, *, observe=None, pr_bridge=None, connection_factory=None):
+    def __init__(self, adapter, config, *, observe=None, pr_bridge=None, connection_factory=None,
+                 restart_read=None):
         self._connection_factory = connection_factory  # tests only: fake Kubernetes API
         if not isinstance(adapter, SlackAdapter):
             raise ValueError('recovery_approval_adapter_required')
         if not isinstance(config, RecoveryApprovalConfig) or config.enabled is not True:
             raise ValueError('recovery_approval_disabled')
         # An approver outside the Slack grants could never press a button.
-        if not set(config.prepare_proposal.approvers) <= {g.user_id for g in adapter.policy.grants}:
+        granted = {g.user_id for g in adapter.policy.grants}
+        if not set(config.prepare_proposal.approvers) <= granted or (
+                config.restart is not None and not set(config.restart.approval.approvers) <= granted):
             raise ValueError('recovery_approvers_not_granted')
         self.adapter = adapter
         self.ledger = RecoveryApprovalLedger(adapter.tasks.queue, config.prepare_proposal,
@@ -166,6 +181,9 @@ class RecoveryApprovalService:
                 raise ValueError('recovery_pr_bridge_rejected')
             self.pr_bridge = bridge
         self._cursor = ''
+        # restart_read: tests only (fake current-state reader); otherwise the read-only port.
+        self.restart = (RestartWiring(adapter, config, read=restart_read, connection_factory=connection_factory)
+                        if config.restart is not None else None)
 
     def _configured_observer(self, config):
         """Read-only observer from the optional config; never reads credentials here."""
@@ -176,8 +194,10 @@ class RecoveryApprovalService:
 
     def receiver(self, signing_secret):
         """Ingress side: signed button presses -> ledger decision record only."""
-        return SlackApprovalReceiver(self.adapter.policy, signing_secret,
-                                     {'prepare_proposal': self.ledger}, now=self.adapter.tasks.queue.now)
+        ledgers = {'prepare_proposal': self.ledger}
+        if self.restart is not None:
+            ledgers['execute_command'] = self.restart.ledger
+        return SlackApprovalReceiver(self.adapter.policy, signing_secret, ledgers, now=self.adapter.tasks.queue.now)
 
     def request(self, row, event_id, plan_hash):
         """Relay side, from the event bridge: reply text only. Messages come from ``sync_once``."""
@@ -191,6 +211,11 @@ class RecoveryApprovalService:
         if ((plan_row['channel_id'], plan_row['thread_ts']) != (row['channel_id'], row['thread_ts'])
                 or entry is None or entry['event_id'] != event_id):
             return UNAVAILABLE
+        if is_restart_candidate(entry):
+            if self.restart is None:
+                return RESTART_DISABLED
+            return self.restart.request(plan_hash, actor, fixed={'not_observed': NOT_OBSERVED, 'full': FULL},
+                                        until=_utc)
         try:
             view = self.ledger.open(plan_hash, actor=actor)
         except (ValueError, OSError, TimeoutError) as error:
@@ -228,6 +253,18 @@ class RecoveryApprovalService:
             if pr is not None:
                 try:
                     if self.outbox.enqueue_pr(request_id, pr)['state'] == 'queued':
+                        report['queued'] += 1
+                except (ValueError, OSError):
+                    report['skipped'] += 1
+        if self.restart is not None:
+            for view in self.restart.page(SYNC_PAGE):
+                report['checked'] += 1
+                request_id = plan_request_id(self.adapter, self.restart.candidate_of(view['plan_hash']))
+                if request_id is None:
+                    report['skipped'] += 1
+                    continue
+                try:
+                    if self.outbox.enqueue(request_id, view)['state'] == 'queued':
                         report['queued'] += 1
                 except (ValueError, OSError):
                     report['skipped'] += 1
@@ -281,6 +318,20 @@ class RecoveryApprovalService:
                 except (ValueError, OSError):
                     return {'action': 'prepare', 'state': 'failed', 'execution_allowed': False}
                 return {'action': 'prepare', 'state': result['state'], 'execution_allowed': False}
+        if self.restart is not None:
+            views, _ = self.restart.ledger.page(limit=SYNC_PAGE, states=('approved',))
+            for view in views:
+                request_id = plan_request_id(self.adapter, self.restart.candidate_of(view['plan_hash']))
+                if request_id is None:
+                    continue
+                actor = self.adapter._row(request_id)['user_id']
+                try:
+                    result = self.restart.ledger.revalidate(view['plan_hash'], actor=actor,
+                                                            generation=view['generation'])
+                except (ValueError, OSError, KeyError, TypeError, IndexError):
+                    return {'action': 'revalidate_command', 'state': 'rejected', 'execution_allowed': False}
+                # command_ready is the end of this path: nothing executes the restart.
+                return {'action': 'revalidate_command', 'state': result['state'], 'execution_allowed': False}
         return {'action': 'none', 'execution_allowed': False}
 
     def deliver_once(self, transport):
@@ -291,7 +342,12 @@ class RecoveryApprovalService:
         ledgers = {'prepare_proposal': self.ledger}
         if self.pr_bridge is not None:
             ledgers['recovery_pr'] = self.pr_bridge  # its own prune drops copied proposals/payloads
-        return RecoveryRetention(now=self.adapter.tasks.queue.now, ledgers=ledgers, outbox=self.outbox)
+        commands = None
+        if self.restart is not None:
+            ledgers['execute_command'] = self.restart.ledger
+            commands = self.restart.coordinator  # restart plans/runs; no evidence files (never executes)
+        return RecoveryRetention(now=self.adapter.tasks.queue.now, ledgers=ledgers, outbox=self.outbox,
+                                 commands=commands)
 
 
 class OrphanOutboxRetention:

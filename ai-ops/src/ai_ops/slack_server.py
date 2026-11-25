@@ -2,7 +2,9 @@
 
 With an enabled ``recovery-approval.json`` the ingress also serves signed
 approval buttons and the relay handles ``request-approval`` and approval notices
-(record/notify only; see ``recovery_approval_wiring``).
+(record/notify only; see ``recovery_approval_wiring``). With its optional
+``restart`` section the same command opens the restart (command) approval, which
+stops at command_ready: execution stays disabled (``recovery_restart_wiring``).
 
 Only check-config and probes are safe without connection approval. Ingress owns
 only the signing secret; relay owns bot + signing credentials. No credentials
@@ -204,47 +206,69 @@ def relay_loop(runtime, stopped, progress, *, monotonic=time.monotonic, recovery
 
 
 def transition_approval_policy(store, config_dir, previous_path):
-    """Explicit operator transition of the prepare-proposal approval policy.
+    """Explicit operator transition of the approval policies (PR preparation and restart command).
 
-    The ledger refuses to start when the configured policy differs from the one it
+    A ledger refuses to start when the configured policy differs from the one it
     recorded (WF06: no silent rule change for approvals already in flight). This is
     the supported way through: relay and ingress must be stopped (their process
-    locks are taken here), the previous recovery-approval.json must reproduce the
-    recorded policy hash exactly, and the new policy version must increase. Every
-    open approval becomes ``superseded``; the restarted relay announces it. Without
-    an existing ledger nothing is created. Output carries hashes and counts only.
+    locks are taken here). For every scope whose ledger exists and whose configured
+    policy changed, the previous recovery-approval.json must reproduce the recorded
+    policy hash exactly and the new policy version must increase; every scope is
+    checked before any is replaced. Open approvals of a replaced scope become
+    ``superseded``; the restarted relay announces them. Without an existing ledger
+    nothing is created. Output carries hashes and counts only.
     """
     from contextlib import ExitStack
     from ai_ops.recovery_approvals import RecoveryApprovalLedger, _body
+    from ai_ops.recovery_commands import RestartApprovalLedger
     from ai_ops.contracts import sha256_json
     new = load_recovery(config_dir)
     previous = RecoveryApprovalConfig.load_optional(previous_path)
     if new is None or previous is None:
         raise ValueError('approval_transition_config_required')
+    restart = lambda config: config.restart.approval if config.restart is not None else None
+    scopes = (('prepare_proposal', RecoveryApprovalLedger, previous.prepare_proposal, new.prepare_proposal),
+              ('execute_command', RestartApprovalLedger, restart(previous), restart(new)))
     queue = JobQueue(store)
+
+    def unused(*args, **kwargs):
+        raise ValueError('approval_transition_reads_nothing')
     with ExitStack() as stack:
         for role in ('ingress', 'relay'):
             try:
                 stack.enter_context(process_lock(store, role))
             except BlockingIOError:
                 raise ValueError('approval_transition_requires_stopped_processes') from None
-        with queue.transaction() as db:
-            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='recovery_approval_meta'").fetchone() is None:
-                return {'status':'nothing_to_transition', 'execution_allowed':False}
-            recorded = db.execute('SELECT policy_hash FROM recovery_approval_meta WHERE singleton=1').fetchone()
-        old_hash = sha256_json(_body(previous.prepare_proposal))
-        if recorded is None or recorded['policy_hash'] != old_hash:
-            raise ValueError('approval_transition_previous_policy_mismatch')
-        def unused(*args, **kwargs):
-            raise ValueError('approval_transition_reads_nothing')
-        ledger = RecoveryApprovalLedger(queue, previous.prepare_proposal, load_plan=unused, observe=unused)
-        with queue.transaction() as db:
-            active = sum(1 for row in db.execute('SELECT document FROM recovery_approvals').fetchall()
-                         if json.loads(row['document'])['state'] in
-                         ('awaiting_approval', 'approved', 'revalidating', 'proposal_ready'))
-        ledger.replace_policy(new.prepare_proposal)
-        return {'status':'transitioned', 'superseded':active, 'previous_policy_hash':old_hash,
-                'policy_hash':ledger.policy_hash, 'execution_allowed':False}
+        planned, report = [], {}
+        for scope, kind, old_policy, new_policy in scopes:
+            table = kind.TABLE_PREFIX
+            with queue.transaction() as db:
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                              (table + '_meta',)).fetchone() is None or new_policy is None:
+                    continue  # never created, or this scope is off (its ledger is not opened)
+                recorded = db.execute(f'SELECT policy_hash FROM {table}_meta WHERE singleton=1').fetchone()
+            if recorded is not None and recorded['policy_hash'] == sha256_json(_body(new_policy)):
+                report[scope] = {'status': 'unchanged', 'policy_hash': recorded['policy_hash']}
+                continue
+            old_hash = sha256_json(_body(old_policy)) if old_policy is not None else None
+            if recorded is None or recorded['policy_hash'] != old_hash:
+                raise ValueError('approval_transition_previous_policy_mismatch')
+            if new_policy.version <= old_policy.version:
+                raise ValueError('approval_policy_version_must_increase')
+            planned.append((scope, kind(queue, old_policy, load_plan=unused, observe=unused), new_policy, old_hash))
+        if not planned:
+            return {'status': 'nothing_to_transition', 'scopes': report, 'execution_allowed': False}
+        superseded = 0
+        for scope, ledger, new_policy, old_hash in planned:
+            with queue.transaction() as db:
+                active = sum(1 for row in db.execute(f'SELECT document FROM {ledger.TABLE_PREFIX}s').fetchall()
+                             if json.loads(row['document'])['state'] in
+                             ('awaiting_approval', 'approved', 'revalidating', 'proposal_ready'))
+            ledger.replace_policy(new_policy)
+            superseded += active
+            report[scope] = {'status': 'transitioned', 'superseded': active,
+                             'previous_policy_hash': old_hash, 'policy_hash': ledger.policy_hash}
+        return {'status': 'transitioned', 'superseded': superseded, 'scopes': report, 'execution_allowed': False}
 
 
 def main(argv=None):
@@ -277,7 +301,9 @@ def main(argv=None):
             raise ValueError('slack_web_disabled')
         settings, policy = load_settings(args.config)
         recovery = load_recovery(args.config)
-        if recovery is not None and not set(recovery.prepare_proposal.approvers) <= {g.user_id for g in policy.grants}:
+        granted = {g.user_id for g in policy.grants}
+        if recovery is not None and (not set(recovery.prepare_proposal.approvers) <= granted or (
+                recovery.restart is not None and not set(recovery.restart.approval.approvers) <= granted)):
             raise ValueError('recovery_approvers_not_granted')
         if args.action == 'check-config':
             print(json.dumps({'status':'valid', 'enabled':web.enabled,
@@ -285,6 +311,7 @@ def main(argv=None):
                 'recovery_approval':recovery is not None,
                 'recovery_observe':recovery is not None and recovery.observe is not None,
                 'recovery_prepare_configured':recovery is not None and recovery.prepare is not None,
+                'recovery_restart_configured':recovery is not None and recovery.restart is not None,
                 'execution_allowed':False, 'connected':False}))
             return 0
         os.umask(0o077)
