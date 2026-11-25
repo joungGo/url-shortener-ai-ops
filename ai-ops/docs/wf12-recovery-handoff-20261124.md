@@ -153,7 +153,11 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
    - 송신 proxy Pod와 NetworkPolicy
 10. **`check-config`:** 세 플래그를 확인한다.
 11. **네트워크 송신:** 고정 목적지 송신 proxy를 쓴다(7절 1항, PR61·62). `prepare.egress_proxy`를 proxy Service로 지정한다. 메인 Pod의 송신은 proxy로만 나가고, proxy는 GitHub·STS·ECR :443으로만 나간다.
-12. **재시작 경로(선택, `restart` 절):**
+12. **lab 경보(WF11, 2026-11-25):** recovery 절이 있으면 renderer가 `LabDeploymentUnavailable` PrometheusRule을 함께 렌더링한다([lab 경보 규칙](wf11-lab-alert-local-20261125.md)). 연결 시 확인할 것은 세 가지다.
+    - Alertmanager가 `/v1/events`(ai-events, WF03 후보)로 라우팅하는지
+    - 규칙이 Prometheus에 로드됐는지
+    - kube-state-metrics가 `ai-ops-lab`을 수집하는지
+13. **재시작 경로(선택, `restart` 절):**
     - 2항의 읽기 신원에 `ai-ops-lab` `events` list, `horizontalpodautoscalers` list(autoscaling/v2)를 더한다. 쓰기 권한은 여전히 주지 않는다.
     - Prometheus 읽기 토큰·CA와 질의(`prior_ready_query`, `dependency_queries`)를 정한다. 질의가 없으면 게이트가 막는다.
     - 메인 Pod 송신은 기존 수집기 연결 목적지(Prometheus 포함)를 이미 허용한다.

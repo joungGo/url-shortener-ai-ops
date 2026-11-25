@@ -16,7 +16,12 @@
 
 이미지를 가져오지 못하는 장애(S1)에서는 lab-api Pod가 없다. Recreate 전략이라 기존 Pod가 먼저 내려가기 때문이다. 그래서 요청 부하가 경보 발화에 영향을 주지 못한다.
 
-S1의 경보는 상태 기반 규칙에서 나와야 한다. 예를 들면 Pod 준비 실패, 대기 사유, target down 같은 규칙이다. **실제 규칙 이름과 평가 시간은 재설치 뒤 Prometheus 규칙 목록에서 확인하고 기준표에 적는다.** 맞는 규칙이 없으면 S1을 시작하지 않는다. 규칙을 추가하는 일은 별도 변경·승인 대상이다.
+S1의 경보는 상태 기반 규칙에서 나와야 한다. 이를 위해 2026-11-25에 다음을 정하고 구현했다(사용자 결정, llm-council 2차 결론).
+
+- renderer가 recovery 절이 있을 때 **`LabDeploymentUnavailable`** 규칙을 만든다([lab 경보 규칙](wf11-lab-alert-local-20261125.md)).
+- 조건은 원하는 replica가 1 이상인데 사용 가능한 replica가 0인 상태가 2분 지속되는 것이다.
+- 라벨은 `ai_ops=enabled`와 lab 대상 5개다. `release=kube-prometheus-stack`으로 Prometheus가 규칙을 선택한다.
+- 사건은 `/v1/events` 경로로 등록된다. 이 경로는 경보 이름을 허용 목록으로 거르지 않는다. 따라서 재설치 때 Alertmanager 라우팅을 WF03 후보(ai-events, `/v1/events`)로 바꿔야 한다. 예전 `/v1/alerts` 경로는 이 이름을 거부한다.
 
 정상 요청이 필요한 곳은 S0 기준선과 S1 9번(회복 확인) 두 곳이다. 둘 다 사람이 `/readyz`·`/items`를 몇 번 호출하는 정도면 충분하다. 2026-11-18 정상 요청 검증과 같은 범위다. 그래서 새 부하 생성 스크립트는 만들지 않았다.
 
@@ -67,6 +72,21 @@ S1의 경보는 상태 기반 규칙에서 나와야 한다. 예를 들면 Pod �
      python -m ai_ops.recovery_status --store /data/incidents
    ```
 
+### 1-1. 경보 경로 사전 확인 (장애 주입 전, 읽기만)
+
+1. Prometheus `/api/v1/rules`에 `LabDeploymentUnavailable`이 로드돼 있는지 확인한다. 없으면 S1을 시작하지 않고 원인을 기록한다(release 라벨, CRD, 적용 순서).
+2. `kube_deployment_spec_replicas{namespace="ai-ops-lab",deployment="lab-api"}`가 1을 반환하는지 확인한다. kube-state-metrics가 이 namespace를 수집하는지 보는 것이다.
+3. Alertmanager 설정에 `ai-events`(`/v1/events`) 수신기가 있는지 확인한다.
+
+### 1-2. 경보 미발화 시 비상 절차 (B, 사전 승인된 대체 경로)
+
+장애 주입(sync) 뒤 **약 8분 안에** 경보가 공지·등록되지 않으면 아래 절차로 바꾼다. 8분은 scrape, `for 2m`, 그룹 대기, 여유 시간을 더한 값이다.
+
+- Alertmanager API로 **같은 이름(`LabDeploymentUnavailable`)과 같은 라벨 계약**의 합성 경보를 1건 넣는다. `endsAt`을 충분히 뒤로 명시해 조사 도중 해제되지 않게 한다.
+- 기존 이름(`HighErrorRate` 등)은 쓰지 않는다. 조사 근거가 오염되기 때문이다.
+- 결과는 **"합성 경보 · 탐지 미검증 · S1 부분 성공"**으로 기록한다. 실제 탐지에 성공한 것으로 보고하지 않는다.
+- 회복 확인은 합성 경보의 해제가 아니라 실제 Pod·응답 상태로 한다.
+
 ## 2. S1 주입 (사람, 승인 필요)
 
 1. 격리 저장소에 브랜치를 만들고, `values.yaml`의 digest만 B에서 M으로 바꾼 커밋 1개로 PR을 연다. 형식은 위 고정 JSON 그대로 둔다.
@@ -74,7 +94,7 @@ S1의 경보는 상태 기반 규칙에서 나와야 한다. 예를 들면 Pod �
 3. 사람이 Argo `lab-target`을 병합된 revision으로 한 번 sync한다. 자동 sync는 켜지 않는다.
 4. 아래를 기록한다.
    - Pod가 `ImagePullBackOff`/`ErrImagePull`이고 `readyReplicas=0`인지
-   - 경보 발화 시각
+   - 경보 발화 시각(`LabDeploymentUnavailable`, pending에서 firing으로 바뀌는 데 약 2분)
    - Slack 공지 시각
 
 ## 3. S1 진행 (Slack, 기준표 3~7번)
@@ -127,3 +147,11 @@ S1과 같은 주입을 한 번 더 하거나, 순서를 바꿔 진행한다. 둘
 - 시간 상한을 넘었다.
 
 같은 단계를 자동으로 다시 시도하지 않는다.
+
+## 반영 기록
+
+- [PR #71](https://github.com/joungGo/url-shortener-ai-ops/pull/71)의 head `95e159cc5fb0238062e91fa90b14b17a7b8b5581`를 PR70 다음에 squash 병합해 main `aaa85287c4d99805bb83da175fbe195abca9e5eb`에 반영했다. 사용자 "진행해" 후 병합했다.
+- README와 이 문서만 바꿨다.
+- PR CI45579685052 7종이 성공했다.
+- PR이 PR70 이전 main에서 갈라졌으므로 tree 대신 변경 내용을 비교했다. `c2cc32e..aaa8528`의 diff가 PR 커밋 diff와 정확히 같다.
+- 병합 후 branch를 정리했다. [main CI45580525860](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45580525860)이 성공했다.

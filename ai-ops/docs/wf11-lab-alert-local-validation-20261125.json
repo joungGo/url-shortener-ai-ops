@@ -1,0 +1,94 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "WF11 lab alert rule LabDeploymentUnavailable rendered by WF10 (recovery section)",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "aaa85287c4d99805bb83da175fbe195abca9e5eb",
+  "decision": {
+    "date": "2026-11-25",
+    "by": "user 진행해 on llm-council 2nd verdict",
+    "summary": "state-based lab alert primary; synthetic alert only as pre-documented fallback; rule outside the lab chart; label contract first"
+  },
+  "corrections_during_implementation": [
+    "rule placed in the WF10 renderer, not the lab chart: lab AppProject whitelists apps/Deployment only and the rollback executor requires the lab tree to differ only in values.yaml",
+    "receiver ALERT_NAMES unchanged: WF10 uses the /v1/events EventInbox path which accepts any alertname except Watchdog; the 5-name allowlist applies only to legacy /v1/alerts; WF10 connection plan already switches Alertmanager to ai-events (/v1/events)"
+  ],
+  "label_contract": {
+    "resource": "monitoring.coreos.com/v1 PrometheusRule <name>-lab-alerts in the AI namespace",
+    "resource_labels": {
+      "release": "kube-prometheus-stack",
+      "app.kubernetes.io/part-of": "wf10"
+    },
+    "alert": "LabDeploymentUnavailable",
+    "for": "2m",
+    "interval": "30s",
+    "alert_labels": [
+      "severity=warning",
+      "ai_ops=enabled",
+      "cluster_id",
+      "namespace",
+      "workload",
+      "service",
+      "environment (from the single binding)"
+    ],
+    "expr": "max by (namespace, deployment) spec_replicas > 0 and on (namespace, deployment) max by (namespace, deployment) status_replicas_available == 0",
+    "annotations": "one static summary, no templates"
+  },
+  "change_plan": {
+    "apply_first": "PrometheusRule",
+    "rollback_steps": 12,
+    "post_check_added": "lab_alert_rule_loaded_in_prometheus"
+  },
+  "new_tests": 9,
+  "updated_tests": [
+    "test_wf10_recovery_render: resource list, rollback 12, order first, post-check"
+  ],
+  "mutation_checks": {
+    "count": 13,
+    "detected": 13,
+    "note": "first pass 3 survived (tests derived release/for from module constants; renderer call of the shape check untested); fixed with literals and a renderer-path test"
+  },
+  "promtool": {
+    "status": "passed",
+    "approval": "user chose option 2 (Claude downloads and runs) on 2026-11-25 after the classifier denial",
+    "binary": {
+      "release": "prometheus 3.5.0 darwin-arm64",
+      "tarball_sha256_verified": "c17bc2c992f0b5515eebe2b4ccd626214f8e309a0fe6ec40ed13c42ec13d05fb",
+      "location": "session scratchpad only, not vendored"
+    },
+    "check_rules": "SUCCESS: 1 rules found",
+    "test_rules": "SUCCESS (5 scenarios)",
+    "result": {
+      "check": 0,
+      "test": 0
+    },
+    "negative_checks": {
+      "for_1m": "failed as expected",
+      "spec_guard_removed": "failed as expected",
+      "service_label_removed": "failed as expected",
+      "available_side_aggregation_removed": "passed (equivalent: `and` keeps left-hand labels, left side is already aggregated; the right-hand max by is defensive only)"
+    }
+  },
+  "full_suite": {
+    "count": 1875,
+    "seconds": 333.344,
+    "passed": true,
+    "skipped": 1,
+    "env": "AWS_PROFILE unset, AWS config/credentials files /nonexistent",
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/wf11-lab-alert-full.log",
+      "sha256": "a4b61bd256cb44fe7501548c92d481c6f81cd5f70fa1a283bbb5fa7f45a4dab7"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/wf10_deployment.py": "2fc42211fe5d0a3082e53f88f0da85a9dc08754f07458c9b7217590deb7ab96e",
+    "ai-ops/src/ai_ops/wf10_change_plan.py": "db0cd1e348e8040146c445081228e81b05cf5d08b8e4f4d0206f18d9e525d3da",
+    "ai-ops/tests/test_wf11_lab_alert.py": "a3fdb0ea2e0f7f8d793154ca47d2357e3afc60d289afb2a262828a895a7d740a",
+    "ai-ops/tests/test_wf10_recovery_render.py": "18c14b082f1ab43a983729f46980535824c1d17e1fdcbc4d258506c859bc595a",
+    "ai-ops/scripts/check_lab_alert_promtool.py": "a3a06f8dd4dcc45bb3fa89f2a991c1a3e0ad55cff422f979224023751d9f9ae8"
+  },
+  "no_external_actions": "no cluster, deploy, Slack, GitHub write besides this PR"
+}

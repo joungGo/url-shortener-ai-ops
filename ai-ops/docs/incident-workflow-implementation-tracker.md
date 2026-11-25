@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `60faf1f`(WF11 기준표 초안 PR69), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/recovery-status-20261125`(장부 조회 명령). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-25 KST. 기준 AI main `aaa8528`(README·WF11 준비 절차 PR71), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf11-lab-alert-20261125`(WF11 lab 경보 규칙). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -544,3 +544,36 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 - 출력은 hash·상태·시각·건수뿐이다. Slack ID·본문·승인자 hash·URL·경로는 내보내지 않는다.
 - 신규 시험 8개, 결함 변형 15/15 검출.
 - [조각 문서](recovery-status-local-20261125.md)
+
+### 조회 명령·README·WF11 준비 절차 반영 · 2026-11-25
+
+- [PR #70](https://github.com/joungGo/url-shortener-ai-ops/pull/70)(조회 명령) → main `c2cc32e`. PR CI45578594470 7종 성공, tree `246e253` 일치.
+- [PR #71](https://github.com/joungGo/url-shortener-ai-ops/pull/71)(README 흐름 요약·1인 운영 명시, [WF11 준비 절차 초안](wf11-preparation-procedure-draft-20261125.md)) → main `aaa8528`. PR CI45579685052 성공, diff 동일.
+- 조사 결과에 따라 계획을 두 가지 바꿨다.
+  - 부하 스크립트는 만들지 않았다. 이미지 실패 중에는 Pod가 없어 경보에 영향이 없다.
+  - C04·B6 실습 도구는 재사용하지 않는다.
+- **인프라 없이 남은 작업은 없다.** 다음 단계는 WF11 기준표 9절의 사용자 결정 8개다(9번은 해결).
+
+### WF11 결정과 lab 경보 규칙 · 2026-11-25
+
+**사용자 결정**
+
+- 인프라를 재설치하고, Terraform은 Claude가 실행한다(나머지 준비 후).
+- 리허설은 생략한다.
+- 상한은 3시간이다.
+- 주입 PR은 Claude가 쓰고, 병합과 sync는 "진행해" 후에 한다.
+- S1 다음 S2a 순서로 한다.
+- 재생 자료는 개인 경로에 둔다.
+- PR 자동 발행은 하지 않는다.
+
+**발견한 공백.** lab에는 경보 규칙이 없다. 앱 지표 경보는 Pod가 0개인 장애를 볼 수 없다.
+
+**해결.** llm-council 2차 결론에 따라 renderer에 `LabDeploymentUnavailable` PrometheusRule을 추가했다.
+
+- 조건: kube-state-metrics 기준 원하는 replica가 1 이상이고 사용 가능한 replica가 0인 상태가 2분 지속
+- 라벨: `release`, `ai_ops`, 대상 5개
+- 위치: lab chart 밖. 변경 계획의 첫 단계로 적용한다.
+- 수신기 허용 목록은 바꾸지 않았다. `/v1/events` 경로는 경보 이름을 거르지 않는다.
+- 합성 경보는 8분 비상 절차로만 쓴다.
+
+시험 9개를 추가했고, 결함 변형 13/13을 검출했다. promtool 3.5.0 check·test 5종 통과(사용자 승인 후 실행, sha256 검증). [조각 문서](wf11-lab-alert-local-20261125.md).
