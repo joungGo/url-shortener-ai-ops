@@ -1,25 +1,69 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "WF10 renderer optional recovery.restart section + reader prerequisites for PR65/PR67",
   "author": "Claude Code (Opus 5.5)",
   "base": "ba2bda030609d81c4260f57bf3a58f5bde44c9a0",
-  "context": {"date": "2026-11-25", "decision": "user chose the recommendation: defer rollback process wiring (no upstream trigger: PR publication and restart execution disabled, no RollbackScope issuer) and render the restart section first"},
+  "context": {
+    "date": "2026-11-25",
+    "decision": "user chose the recommendation: defer rollback process wiring (no upstream trigger: PR publication and restart execution disabled, no RollbackScope issuer) and render the restart section first"
+  },
   "changes": [
     "recovery.restart input (approval, execution_seconds, prometheus_secret, prior_ready_query, dependency_queries), exact fields",
     "restart section rendered: execute_command v1, same approvers, executor local-restart-wf10, Prometheus = collector endpoint, /run/recovery-prometheus credentials",
     "relay-only Prometheus secret mount; secret included in name and credential-separation checks",
     "result.recovery.restart = execution_disabled; prerequisites: pods/proxy get (all recovery candidates), events list + HPA list and Prometheus read token (restart)"
   ],
-  "unchanged": ["candidate without recovery (byte-identical, existing test)", "recovery output without restart except the reader prerequisite text", "all NetworkPolicies"],
+  "unchanged": [
+    "candidate without recovery (byte-identical, existing test)",
+    "recovery output without restart except the reader prerequisite text",
+    "all NetworkPolicies"
+  ],
   "new_tests": 6,
-  "mutation_checks": {"count": 11, "detected": 11, "runner": "full inherited environment, baseline must pass first"},
-  "full_suite": {"count": 1858, "seconds": 340.238, "passed": true, "skipped": 1,
+  "mutation_checks": {
+    "count": 11,
+    "detected": 11,
+    "runner": "full inherited environment, baseline must pass first"
+  },
+  "full_suite": {
+    "count": 1858,
+    "seconds": 340.238,
+    "passed": true,
+    "skipped": 1,
     "env": "AWS_PROFILE unset, AWS config/credentials files /nonexistent",
-    "log": {"path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/wf10-restart-render-full.log", "sha256": "f797f92f8456f1a272659bd8ce4597e6c7a2c14bd3fbf009d564206a26c94a0e"}},
-  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/wf10-restart-render-full.log",
+      "sha256": "f797f92f8456f1a272659bd8ce4597e6c7a2c14bd3fbf009d564206a26c94a0e"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
   "source_hashes": {
     "ai-ops/src/ai_ops/wf10_deployment.py": "75223a79f7533f08446a9ad10ddbfa5f36fd30fb294d30d17584d7b90b823ebc",
     "ai-ops/tests/test_wf10_restart_render.py": "daa43f0017d3483d759b991f11545d091d8766c4053e938b004deee65e5eaaca"
   },
-  "no_external_actions": "no cluster, deploy, Slack, GitHub write besides this PR"
+  "no_external_actions": "no cluster, deploy, Slack, GitHub write besides this PR",
+  "merge": {
+    "pr": 68,
+    "head": "2a900669dbbd529e8b03d5d69d9623280fd071e2",
+    "main": "9928fc8fea69528993456982bcbc21de0b19b299",
+    "tree": "54f49ff66c3cf7b763dc2e7dc2a559a118151a35",
+    "pr_ci": {
+      "run": 45573120978,
+      "jobs": 7,
+      "tests": 1858,
+      "skipped": 1
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45574073257,
+      "conclusion": "success",
+      "jobs_success": 6,
+      "skipped": [
+        "C03 Main PR Gate"
+      ]
+    }
+  }
 }
