@@ -32,3 +32,13 @@ AssertionError: 0 != 1   (state['runs'])
 - 시험 모듈 20회 반복, 로컬 전체 시험, 경계 검사, diff 검사 결과는 [검증 기록](retention-schedule-race-fix-validation-20261125.json)에 있다.
 
 실제 클러스터·배포·Slack 없음.
+
+## 최종 반영 결과
+
+[PR #66](https://github.com/joungGo/url-shortener-ai-ops/pull/66)의 head `b90cda6f7a2d69bd1eb4f166f015b5dc4549370d`를 head 고정 일반 squash로 병합했다(사용자 "진행해" 후). main은 `e5fcea4548bd70d1c30700adefff8cbcc3123432`다.
+
+- PR CI: [45546158652](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45546158652) 7종 성공(1841개, skip1)
+- tree: `9b725dd399eb3042dff3699658fab455e2fa86bd` 일치
+- 보호 설정 변경·우회: 없음
+- branch: 병합 후 정리했다.
+- main CI: [45546805843](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45546805843) 성공

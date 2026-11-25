@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `eb43554`(A7 재시작 경로 PR65), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/retention-schedule-race-20261125`(경합 시험 수정). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-25 KST. 기준 AI main `e5fcea4`(경합 시험 수정 PR66), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-healthy-judgment-20261125`(정상 판정). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -456,3 +456,22 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### 예약 보관 정리 시험 경합 수정 · 2026-11-25
 
 `test_retention_schedule`의 worker 시험이 정리 완료 직후 실행 기록을 읽어 간헐적으로 실패했다(PR63 main CI 첫 실행). 시험이 실행 기록 완료까지 기다리도록 고쳤다. 제품 코드는 바꾸지 않았다. 1초 지연을 넣어 결정적으로 재현했다(기존 시험 실패, 수정 시험 통과). [문서](retention-schedule-race-fix-20261125.md).
+
+### 경합 시험 수정 최종 반영 · 2026-11-25
+
+[PR #66](https://github.com/joungGo/url-shortener-ai-ops/pull/66) head `b90cda6` → main `e5fcea4548bd70d1c30700adefff8cbcc3123432`.
+
+- PR CI45546158652 7종 성공
+- tree `9b725dd` 일치, 보호 변경·우회 없음
+
+다음 후보: 원복 프로세스 연결, healthy 판정, renderer restart 절.
+
+### A7 정상(healthy) 판정 · 2026-11-25
+
+사용자 결정(모두 추천):
+
+- Ready 60초 지속
+- API 서버 Pod proxy로 `/readyz`·`/items` 확인
+- 열 때 이미 정상이면 전용 회신, 기록 없음
+
+이번 결정은 2026-11-21의 "healthy 미보고" 결정을 대체한다. 관측기는 다섯 가지 확인을 모두 통과할 때만 healthy를 보고한다. 재검증에서 정상이면 `already_recovered`가 된다. 신규 시험 11개. [조각 문서](recovery-healthy-judgment-local-20261125.md). 남은 것: RBAC에 `pods/proxy` get 추가, 실환경 확인(WF11).

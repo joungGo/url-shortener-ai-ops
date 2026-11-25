@@ -1,18 +1,67 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "test-only fix: test_retention_schedule worker test race",
   "author": "Claude Code (Opus 5.5)",
   "base": "eb435540533da3d7583f40288c1ab6f30ac26165",
-  "observed_failure": {"run": 45537162151, "attempt": 1, "test": "test_retention_schedule.RetentionScheduleTest.test_runtime_flag_automatically_purges_and_restart_keeps_due_time", "error": "AssertionError: 0 != 1 (state['runs'])", "rerun_attempt_2": "success"},
+  "observed_failure": {
+    "run": 45537162151,
+    "attempt": 1,
+    "test": "test_retention_schedule.RetentionScheduleTest.test_runtime_flag_automatically_purges_and_restart_keeps_due_time",
+    "error": "AssertionError: 0 != 1 (state['runs'])",
+    "rerun_attempt_2": "success"
+  },
   "cause": "test waited for the job to become purged, but RetentionSchedule.tick records runs/status after the run in a separate transaction",
   "fix": "wait also for runs >= 1 and status != running; product code unchanged",
   "product_change": false,
-  "deterministic_reproduction": {"injection": "temporary time.sleep(1.0) before the final schedule update, restored in finally (verified)", "old_test": "FAILED AssertionError: 0 != 1", "new_test_with_delay": "OK", "new_test_without_delay": "OK"},
-  "module_repeats": {"count": 20, "passed": 20},
-  "full_suite": {"count": 1841, "seconds": 324.679, "passed": true, "skipped": 1,
+  "deterministic_reproduction": {
+    "injection": "temporary time.sleep(1.0) before the final schedule update, restored in finally (verified)",
+    "old_test": "FAILED AssertionError: 0 != 1",
+    "new_test_with_delay": "OK",
+    "new_test_without_delay": "OK"
+  },
+  "module_repeats": {
+    "count": 20,
+    "passed": 20
+  },
+  "full_suite": {
+    "count": 1841,
+    "seconds": 324.679,
+    "passed": true,
+    "skipped": 1,
     "env": "AWS_PROFILE unset, AWS config/credentials files /nonexistent",
-    "log": {"path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/retention-race-full.log", "sha256": "3d2888a0386496f762ecd8d37a18be580679b3d79dbe508915d7327358527776"}},
-  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
-  "source_hashes": {"ai-ops/tests/test_retention_schedule.py": "2b9581956dbf254fe5b58d0b1bacecb364b3d77b983486d59939f2fcd38a6c7d"},
-  "no_external_actions": "no cluster, deploy, Slack, GitHub write besides this PR"
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/retention-race-full.log",
+      "sha256": "3d2888a0386496f762ecd8d37a18be580679b3d79dbe508915d7327358527776"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
+  "source_hashes": {
+    "ai-ops/tests/test_retention_schedule.py": "2b9581956dbf254fe5b58d0b1bacecb364b3d77b983486d59939f2fcd38a6c7d"
+  },
+  "no_external_actions": "no cluster, deploy, Slack, GitHub write besides this PR",
+  "merge": {
+    "pr": 66,
+    "head": "b90cda6f7a2d69bd1eb4f166f015b5dc4549370d",
+    "main": "e5fcea4548bd70d1c30700adefff8cbcc3123432",
+    "tree": "9b725dd399eb3042dff3699658fab455e2fa86bd",
+    "pr_ci": {
+      "run": 45546158652,
+      "jobs": 7,
+      "tests": 1841,
+      "skipped": 1
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45546805843,
+      "conclusion": "success",
+      "jobs_success": 6,
+      "skipped": [
+        "C03 Main PR Gate"
+      ]
+    }
+  }
 }

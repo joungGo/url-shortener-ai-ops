@@ -1,5 +1,41 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-25 A7 정상(healthy) 판정·CI 반영 준비 (Claude)
+
+branch `claude/a7-healthy-judgment-20261125`(기준 main `e5fcea4`).
+
+사용자 결정(모두 추천, 2026-11-21 "healthy 미보고" 대체):
+
+- Ready 60초 지속
+- Pod proxy로 readyz·items 확인
+- 열 때 이미 정상이면 전용 회신, 기록 없음
+
+동작:
+
+- 다섯 가지 확인을 모두 통과해야 healthy다.
+- 재검증에서 정상이면 `already_recovered`다.
+- 기존 시험 1개의 기대값을 바꿨다(revision 변경 + 같은 이미지 정상 → "이미 정상" 거절).
+- RBAC에 `pods/proxy` get이 필요하다.
+- PR66 메타데이터를 이관했다(main CI45546805843 성공).
+- [문서](ai-ops/docs/recovery-healthy-judgment-local-20261125.md)
+
+## 2026-11-25 예약 보관 정리 시험 경합 수정 CI/main 반영 완료 (Claude)
+
+[PR #66](https://github.com/joungGo/url-shortener-ai-ops/pull/66) head `b90cda6f7a2d69bd1eb4f166f015b5dc4549370d` → main `e5fcea4548bd70d1c30700adefff8cbcc3123432`(head 고정 squash, 사용자 "진행해" 후).
+
+- PR CI45546158652 7종 성공(1841개)
+- tree `9b725dd` 일치
+- branch 정리
+- main CI45546805843 성공
+
+다음 후보(인프라 불필요):
+
+- 원복 프로세스 연결
+- healthy 판정
+- renderer `restart` 절
+
+정책 결정이 먼저 필요한 것: PR 발행, 승인자 제한 완화.
+
 ## 2026-11-25 예약 보관 정리 시험 경합 수정·CI 반영 준비 (Claude)
 
 branch `claude/retention-schedule-race-20261125`(기준 main `eb43554`). PR63 main CI 첫 실행을 실패시킨 `test_retention_schedule`의 경합을 고쳤다. 원인은 시험이 정리 완료 직후 `runs`를 읽는데, `runs`는 실행 뒤 따로 기록되는 것이었다. 시험만 수정했다.
