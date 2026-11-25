@@ -92,12 +92,13 @@ class PolicyTransitionTest(wiring.WiringFixture, unittest.TestCase):
     def setUp(self):
         super().setUp()
         import json
-        import tempfile
+        import os
         from pathlib import Path
         self.json = json
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        self.dir = Path(directory.name)
+        # Inside the fixture's registered files root (a short shared root like /tmp is
+        # rejected by the path policy on Linux CI).
+        self.dir = Path(os.environ['AI_OPS_FILES_ROOT']) / 'policy-transition'
+        self.dir.mkdir(mode=0o700)
         self.config_dir = self.dir / 'config'
         self.config_dir.mkdir()
         self.previous = self.dir / 'previous.json'
@@ -181,7 +182,7 @@ class PolicyTransitionTest(wiring.WiringFixture, unittest.TestCase):
         self.write(self.previous, self.a.policy.model_copy(update={'wait_seconds': 1234}))
         self.ask()
         output = io.StringIO()
-        with patch.dict(os.environ, {'AI_OPS_FILES_ROOT': str(self.dir.parent)}), redirect_stdout(output):
+        with redirect_stdout(output):
             code = slack_server.main(['transition-approval-policy', '--config', str(self.config_dir),
                                       '--store', str(self.store), '--previous', str(self.previous)])
         self.assertEqual(code, 1)
@@ -196,7 +197,7 @@ class PolicyTransitionTest(wiring.WiringFixture, unittest.TestCase):
         self.write(self.config_dir / 'recovery-approval.json', self.new_policy())
         self.ask()
         output = io.StringIO()
-        with patch.dict(os.environ, {'AI_OPS_FILES_ROOT': str(self.dir.parent)}), redirect_stdout(output):
+        with redirect_stdout(output):
             code = slack_server.main(['transition-approval-policy', '--config', str(self.config_dir),
                                       '--store', str(self.store), '--previous', str(self.previous)])
         self.assertEqual((code, self.json.loads(output.getvalue())['status']), (0, 'transitioned'))

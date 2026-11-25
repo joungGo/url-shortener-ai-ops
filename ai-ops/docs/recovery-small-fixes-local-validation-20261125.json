@@ -11,7 +11,11 @@
   ],
   "defect_fixed": "tombstones and receipts were kept forever and counted against the 10000/30000 caps, so a long-running ledger would eventually refuse every new approval wait (same for recovery_pr_links)",
   "new_tests": 11,
-  "mutation_checks": {"count": 13, "detected": 13, "runner": "full inherited environment, baseline must pass first"},
+  "mutation_checks": {
+    "count": 13,
+    "detected": 13,
+    "runner": "full inherited environment, baseline must pass first"
+  },
   "full_suite": {
     "count": 1817,
     "seconds": 318.433,
@@ -22,7 +26,10 @@
       "sha256": "11b4af87fde4f5ca6d108c5625e95f0475d5eb8d97adcf035bff884aabf97555"
     }
   },
-  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
   "source_hashes": {
     "ai-ops/src/ai_ops/recovery_approvals.py": "6f00d0d34dab557bddc49d983a519a2bba889b4eeca43ecf2a2784315eb14df9",
     "ai-ops/src/ai_ops/recovery_outbox.py": "2aeaa943120e5202cc97154b58397f636b8286e8548088b2b981ee459df88b63",
@@ -30,5 +37,12 @@
     "ai-ops/src/ai_ops/slack_server.py": "e0bcc7823b4af37d2d869d75ae2b3bd6121df5fe239bb125a90dc20a015dc73f",
     "ai-ops/tests/test_recovery_small_fixes.py": "2637ef2e956040adce13ce40fa0fb9804c317fb0c64fc3e32b43e6ecefdaa1f1"
   },
-  "no_external_actions": "no cluster, deploy, Slack, incident drill, GitHub write besides this PR"
+  "no_external_actions": "no cluster, deploy, Slack, incident drill, GitHub write besides this PR",
+  "first_pr_ci": {
+    "run": 45535553355,
+    "conclusion": "failure",
+    "cause": "test-only: the two CLI tests set AI_OPS_FILES_ROOT to the temp directory's parent, which is /tmp on Linux CI; the path policy rejects roots with fewer than 3 path parts (macOS temp parents passed)",
+    "fix": "use a directory inside the fixture's already-registered files root and do not override the environment; re-run locally with TMPDIR=/tmp",
+    "product_change": false
+  }
 }

@@ -86,6 +86,8 @@ python -m ai_ops.slack_server transition-approval-policy \
 
 **변형 검사.** 결함 변형 13종을 모두 검출했다(기준선 선확인 실행기). 대상은 tombstone 4종, WF07 2종, 알림 2종, 전환 5종이다.
 
+첫 PR CI(45535553355)에서 CLI 시험 2개가 실패했다. 원인은 시험 쪽에 있었다. 시험이 임시 폴더의 상위 폴더를 `AI_OPS_FILES_ROOT`로 지정했는데, Linux에서는 그 경로가 `/tmp`가 되어 경로 정책(구성 요소 3개 이상)이 거절했다. 시험이 fixture가 이미 등록한 전용 루트 안을 쓰도록 고쳤고, 로컬에서 `TMPDIR=/tmp`로도 통과를 확인했다. 제품 코드는 바꾸지 않았다.
+
 전체 결과는 [검증 기록](recovery-small-fixes-local-validation-20261125.json)에 있다.
 
 실제 클러스터·배포·Slack·장애 실습 없음.
