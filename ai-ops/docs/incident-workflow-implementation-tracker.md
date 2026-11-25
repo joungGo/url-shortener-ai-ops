@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `9928fc8`(renderer restart 절 PR68), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf11-acceptance-draft-20261125`(WF11 합격 기준표 초안). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-25 KST. 기준 AI main `60faf1f`(WF11 기준표 초안 PR69), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/recovery-status-20261125`(장부 조회 명령). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -533,3 +533,14 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 - 상한·중단 조건
 - 자격 회수
 - 사용자 결정 항목 9개
+
+PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tree `b827d8d` 일치.
+
+### 장부 읽기 전용 조회 명령 · 2026-11-25
+
+`python -m ai_ops.recovery_status --store …`를 추가했다. WF11 기준표 9절 9번 항목이다.
+
+- SQLite를 `mode=ro`로만 열고, 시간에 따른 상태 전환은 적용하지 않는다.
+- 출력은 hash·상태·시각·건수뿐이다. Slack ID·본문·승인자 hash·URL·경로는 내보내지 않는다.
+- 신규 시험 8개, 결함 변형 15/15 검출.
+- [조각 문서](recovery-status-local-20261125.md)

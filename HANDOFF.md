@@ -1,5 +1,15 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-25 장부 읽기 전용 조회 명령·CI 반영 준비 (Claude)
+
+PR69(WF11 기준표 초안)는 사용자 "진행해" 후 병합해 main `60faf1f4fb9a618c49ab2d6e9e323569ada21a47`에 반영했다. PR CI45576610850과 main CI45577440373이 성공했고 tree `b827d8d`가 일치한다.
+
+새 branch는 `claude/recovery-status-20261125`다. 사용자 결정은 "추천대로 장부 조회 명령부터 모두 진행"이다.
+
+- `ai_ops.recovery_status`를 추가했다. 읽기 전용 `mode=ro`로만 열고, 승인·WF07·재시작·outbox 상태를 hash·상태·시각·건수로만 출력한다.
+- WF11 기준표 9절 9번 항목을 해결했다.
+- 다음 작업: README(1인 운영 명시와 흐름 그림), WF11 준비물(부하 생성 스크립트와 장애 주입 PR 절차).
+
 ## 2026-11-25 정책 council·WF11 합격 기준표 초안·CI 반영 준비 (Claude)
 
 branch `claude/wf11-acceptance-draft-20261125`(기준 main `9928fc8`). 문서만 바꿨다.

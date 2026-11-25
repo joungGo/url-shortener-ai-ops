@@ -114,7 +114,7 @@ readiness 실패를 일으킨 뒤 다음 순서로 진행한다: `plan-recovery 
   - 승인부터 `proposal_ready`까지
   - 병합부터 회복까지
 - Slack 메시지는 내용 요약과 ts만 남긴다(토큰·서명 없음).
-- 장부 상태(승인·WF07·outbox): hash와 상태만 남긴다. 읽기 전용 조회 명령이 아직 없으므로, 사람이 실행할 조회 절차를 WF11 전에 정한다(9절).
+- 장부 상태(승인·WF07·재시작·outbox): relay 컨테이너에서 `python -m ai_ops.recovery_status --store /data/incidents [--plan <hash>]`로 조회한다. 읽기 전용이고 hash·상태·시각·건수만 낸다([조회 명령](recovery-status-local-20261125.md)).
 - PR 번호·head·CI 실행 ID, Argo revision.
 - **재생 자료:** 철거 뒤에도 회귀 시험에 쓸 수 있도록 다음을 비밀을 제외하고 저장한다.
   - 경보 payload
@@ -166,4 +166,13 @@ readiness 실패를 일으킨 뒤 다음 순서로 진행한다: `plan-recovery 
 6. S1과 S2a의 순서(장애 2회 여부)
 7. 재생 자료의 보관 위치와 비식별화 여부
 8. 7절 PR 자동 발행을 할지
-9. 장부 상태 읽기 전용 조회 절차(필요하면 작은 조회 명령을 인프라 없이 먼저 만든다)
+9. ~~장부 상태 읽기 전용 조회 절차~~ → `ai_ops.recovery_status`로 해결(2026-11-25)
+
+## 반영 기록
+
+[PR #69](https://github.com/joungGo/url-shortener-ai-ops/pull/69)의 head `cc2e138e700f299b3c36bfb0ce765dbcb1bdd0c5`를 사용자 "진행해" 후 head 고정 squash로 병합해 main `60faf1f4fb9a618c49ab2d6e9e323569ada21a47`에 반영했다. 문서만 바꾼 PR이다.
+
+- PR CI: [45576610850](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45576610850) 7종 성공
+- tree: `b827d8df3082b55c8a8c1a4c140725e31a09a723` 일치
+- 병합 후 branch를 정리했다.
+- main CI: [45577440373](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45577440373) 성공
