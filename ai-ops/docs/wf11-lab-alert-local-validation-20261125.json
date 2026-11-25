@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "WF11 lab alert rule LabDeploymentUnavailable rendered by WF10 (recovery section)",
   "author": "Claude Code (Opus 5.5)",
   "base": "aaa85287c4d99805bb83da175fbe195abca9e5eb",
@@ -90,5 +90,30 @@
     "ai-ops/tests/test_wf10_recovery_render.py": "18c14b082f1ab43a983729f46980535824c1d17e1fdcbc4d258506c859bc595a",
     "ai-ops/scripts/check_lab_alert_promtool.py": "a3a06f8dd4dcc45bb3fa89f2a991c1a3e0ad55cff422f979224023751d9f9ae8"
   },
-  "no_external_actions": "no cluster, deploy, Slack, GitHub write besides this PR"
+  "no_external_actions": "no cluster, deploy, Slack, GitHub write besides this PR",
+  "merge": {
+    "pr": 72,
+    "head": "548afa42c64fa1fc7b3148a9c7c1e656fada714d",
+    "main": "1b6ca4554e675761068cd24f800a6c41f7fb4d3b",
+    "tree": "c95654988673488e1bb70492a5cefe780504f252",
+    "pr_ci": {
+      "runs": [
+        45617258242,
+        45618748257
+      ],
+      "jobs": 7,
+      "tests": 1875,
+      "skipped": 1
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45619959166,
+      "conclusion": "success",
+      "jobs_success": 6,
+      "skipped": [
+        "C03 Main PR Gate"
+      ]
+    }
+  }
 }

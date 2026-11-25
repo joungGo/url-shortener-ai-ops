@@ -1,5 +1,41 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-25 WF11 설치 준비(인프라 없이): 플랫폼 라우팅 PR·IRSA (Claude)
+
+사용자가 "인프라 없이 끝낼 수 있는 작업 먼저"를 택했다. 사전 점검(읽기 전용) 결과는 다음과 같다.
+
+- 새 계정 `764428911194`의 세션이 만료됐다. 기본 CLI는 옛 계정이다.
+- `c03-execution-lab` 읽기 토큰이 없다.
+- WF10은 실설치 이력이 없다.
+
+배치 결정: WF10만 `ai-ops/ai-ops`에 설치한다. Slack 주소는 `slack-ops.bidservice.store`를 재사용한다. 발신원은 `eks-seoul`/`am-urlshortener`이고, 경보 채널은 기존 Webhook을 쓴다.
+
+진행 상황:
+
+1. **플랫폼 [PR #164](https://github.com/f-lab-edu/F-Lab-DevOps/pull/164)**
+   - `legacy-values.yaml`을 보존하고, prepare.py로 만든 전환 values를 반영했다.
+   - `--event-service`를 추가했다.
+   - 실제 values 일치 시험과 amtool 시험을 추가했다.
+   - 필수 CI는 모두 통과했다. 보호 규칙상 **승인 리뷰 1건이 필요**하다. 우회하지 않는다.
+2. **AI Terraform `wf11-recovery.tf`**
+   - IRSA 역할이며 기본 비활성이다.
+   - `ai-ops:ai-ops` SA만 신뢰하고, 권한은 `ecr:DescribeImages` 하나다.
+   - 정적 계약 시험 4개를 넣었고 validate를 통과했다.
+3. **다음 작업:** 신원 manifest 도구(WF10 SA·복구 읽기 신원).
+
+[문서](ai-ops/docs/wf11-install-prep-20261125.md)
+
+## 2026-11-25 WF11 lab 경보 규칙 CI/main 반영 완료 (Claude)
+
+[PR #72](https://github.com/joungGo/url-shortener-ai-ops/pull/72)를 사용자 "진행해" 후 병합했다(head `548afa4` 고정 squash → main `1b6ca4554e675761068cd24f800a6c41f7fb4d3b`). PR CI는 2회 모두 7종 성공했고 tree `c956549`가 일치한다. main CI45619959166도 성공했다. branch는 정리했다.
+
+**다음: WF11 인프라 재설치.** Claude가 Terraform을 실행한다(새 위임). 순서는 다음과 같다.
+
+1. 설치 가이드와 최신 정리 기록을 다시 읽는다.
+2. 계정, state, plan을 대조한다.
+3. 설치 시작부터 철거 시작까지 3시간 상한을 지킨다.
+4. WF11 기준표와 준비 절차를 따른다.
+
 ## 2026-11-25 WF11 결정·lab 경보 규칙·CI 반영 준비 (Claude)
 
 branch `claude/wf11-lab-alert-20261125`(기준 main `aaa8528`).

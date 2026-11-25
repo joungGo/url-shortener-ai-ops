@@ -97,3 +97,10 @@ WF11 준비 중에 S1을 막는 공백을 찾았다. S1은 존재하지 않는 �
 - [준비 절차](wf11-preparation-procedure-draft-20261125.md) 1-1절: 장애 주입 전에 규칙 로드, kube-state-metrics 수집, ai-events 라우팅을 확인한다.
 - 같은 문서 1-2절: 주입 후 약 8분 안에 경보가 없으면 합성 경보 비상 절차로 바꾸고 "탐지 미검증"으로 기록한다.
 - 규칙은 WF10 리소스와 함께 적용되고, 철거 때 함께 회수된다.
+
+## 최종 반영 결과
+
+- [PR #72](https://github.com/joungGo/url-shortener-ai-ops/pull/72)를 사용자 "진행해" 후 head `548afa42c64fa1fc7b3148a9c7c1e656fada714d`로 고정해 일반 squash 병합했다. main은 `1b6ca4554e675761068cd24f800a6c41f7fb4d3b`이다.
+- PR CI는 45617258242와 45618748257(promtool 기록 반영 후 재실행) 모두 7종 성공했다.
+- tree `c95654988673488e1bb70492a5cefe780504f252`가 PR head와 같다.
+- 병합 후 branch를 정리했다. [main CI45619959166](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45619959166)도 성공했다.
