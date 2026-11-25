@@ -91,3 +91,7 @@ python -m ai_ops.slack_server transition-approval-policy \
 전체 결과는 [검증 기록](recovery-small-fixes-local-validation-20261125.json)에 있다.
 
 실제 클러스터·배포·Slack·장애 실습 없음.
+
+## 최종 반영 결과
+
+[PR #63](https://github.com/joungGo/url-shortener-ai-ops/pull/63) head `36d8c1468805616e37809b354f1d67720bf0e6b3`를 head 고정 일반 squash 병합해 main `8db08787f34a460c251e2fb6ed36fd88c9341be4`에 반영했다(사용자 "진행해" 후). 첫 PR CI는 시험 쪽 경로 문제로 실패했고, 수정 뒤 [PR CI45536393470](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45536393470) 7종이 성공했다(1817개, skip1). tree `3679977dcaf27e3d89c0e4adece6bf1a4518c968` 일치. 보호 변경/우회 없음. 병합 후 branch를 정리했다. [main CI45537162151](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45537162151) 첫 실행은 이 변경과 무관한 기존 시험 `test_retention_schedule`의 경합으로 실패했다(정리 완료를 기다린 뒤 실행 횟수를 읽는데, 횟수는 실행이 끝난 뒤 따로 기록된다). 같은 tree는 PR CI에서 통과했고, 실패한 작업만 다시 실행해 성공했다(attempt 2).

@@ -52,6 +52,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
   - 승인 경로만: `observe`·`prepare` 없이 둔다. 다만 관측이 연결되지 않아 승인 대기가 열리지 않는다.
   - 승인 대기까지: `observe`를 추가한다.
   - PR 준비까지: `prepare`를 추가한다. `prepare`는 `observe`가 있어야 한다.
+  - 재시작 실행 조건 확인까지: `restart`를 추가한다. `restart`도 `observe`가 있어야 하며, 실제 재시작은 실행하지 않는다(2026-11-25, [재시작 연결](recovery-restart-wiring-local-20261125.md)). 아래 예시에는 없다.
 
 아래 예시는 실제 설정 모델(`RecoveryApprovalConfig`)로 검증했다. 값은 자리표시자다.
 
@@ -151,6 +152,11 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
    - 송신 proxy Pod와 NetworkPolicy
 10. **`check-config`:** 세 플래그를 확인한다.
 11. **네트워크 송신:** 고정 목적지 송신 proxy를 쓴다(7절 1항, PR61·62). `prepare.egress_proxy`를 proxy Service로 지정한다. 메인 Pod의 송신은 proxy로만 나가고, proxy는 GitHub·STS·ECR :443으로만 나간다.
+12. **재시작 경로(선택, `restart` 절):**
+    - 2항의 읽기 신원에 `ai-ops-lab` `events` list, `horizontalpodautoscalers` list(autoscaling/v2)를 더한다. 쓰기 권한은 여전히 주지 않는다.
+    - Prometheus 읽기 토큰·CA와 질의(`prior_ready_query`, `dependency_queries`)를 정한다. 질의가 없으면 게이트가 막는다.
+    - 메인 Pod 송신은 기존 수집기 연결 목적지(Prometheus 포함)를 이미 허용한다.
+    - renderer는 아직 `restart` 절과 Prometheus 읽기 Secret을 렌더링하지 않는다(남은 조각).
 
 ## 6. 지원 범위
 
@@ -159,9 +165,10 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
 | 조치 `image-rollback`(PR 방식) 승인·재검증·PR 준비 | 코드 연결 완료, 실환경 미검증 |
 | PR 발행(GitHub 쓰기)·병합·Argo sync | **미연결**(`publish_local`은 fixture 전용) |
 | 원복(기준선 고정)·드리프트 잠금·원복 관측 | 로컬 계약만(PR51~53), 프로세스 미연결 |
-| 조치 `deployment-restart`(명령 방식)·`execute_command` 승인 | 미연결(계획 단계에서도 미지원 후보) |
+| 조치 `deployment-restart`(명령 방식)·`execute_command` 승인 | **실행 직전까지 연결**(요청·봉인·승인·재검증·실행 조건 충족 알림). 실제 재시작 실행은 비활성(2026-11-25) |
+| 재시작 실제 실행(Deployment patch·Lease·증거 저장·효과 관찰) | **미연결**(WF11 실환경 실행 결정 대상) |
 | "이미 회복됨" 자동 판정(healthy) | 하지 않음(관측기는 `image_failure`/`unknown`만) |
-| 재시작 증거·봉인 파일 보관 정리 | 재시작 경로 연결 때 |
+| 재시작 기록 보관 정리 | 연결됨(보관 종료 30일 뒤 삭제). 증거 파일은 실행 연결 때 |
 
 ## 7. 미결정·남은 한계
 
@@ -171,8 +178,8 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
    - 잔여 위험: relay가 침해되면 세 호스트에는 도달할 수 있다.
 2. **정상 판정이 없다.** 자연 회복된 경우에도 재검증은 `needs_review`가 된다.
 3. **준비 후 관측 만료 알림은 정리됐다.** PR 준비가 끝난 뒤 관측 유효 시간이 지나면, 이제 전용 문구가 간다(2026-11-25, [작은 항목](recovery-small-fixes-local-20261125.md)). 문구는 "준비된 내용이 있어도 발행·변경하지 않으며, 진행하려면 새 승인·재검증이 필요"라는 뜻이다.
-4. **승인자는 계획 요청자 본인만 가능하다.**
-5. **승인 정책 전환 절차가 생겼다.** relay와 ingress를 멈춘 뒤 `slack_server transition-approval-policy --previous <이전 설정>`을 실행한다. 이전 정책 hash가 일치하고 버전이 올라가야 하며, 진행 중이던 승인은 superseded가 된다(2026-11-25).
+4. **승인자는 계획 요청자 본인만 가능하다.** 재시작 명령 승인도 같다.
+5. **승인 정책 전환 절차가 생겼다.** relay와 ingress를 멈춘 뒤 `slack_server transition-approval-policy --previous <이전 설정>`을 실행한다. 이전 정책 hash가 일치하고 버전이 올라가야 하며, 진행 중이던 승인은 superseded가 된다(2026-11-25). PR 준비·재시작 명령 두 범위를 함께 다루며, 바뀐 범위만 전환한다.
    - 승인 장부와 WF07 기록의 tombstone은 보관 종료 30일 뒤 삭제한다. 장부가 상한에 차서 막히던 결함을 해소했다.
 6. **동시 접근 시 버튼 처리가 실패할 수 있다.** ingress와 relay가 Slack DB 잠금을 동시에 잡으면 버튼 처리가 503이 된다. Slack은 다시 보내지 않으므로 사용자가 다시 눌러야 한다. 같은 누름은 멱등이다.
 7. **HA를 지원하지 않는다.** replica는 1개이고 SQLite(RWO)를 쓴다.
@@ -200,7 +207,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
 1. **7절 1항 결정:** relay 외부 송신 방식을 정한다.
 2. **연결 준비:** 인프라 재설치 요청과 Terraform 실행 주체를 정한 뒤, 5절 체크리스트를 실제 값으로 채운다. 실제 입력은 추측하지 않는다.
 3. **WF11:** 합성 경보 또는 승인된 장애 실습으로 단계 1~6을 실물에서 확인하고, 이 문서를 확정한다.
-4. **그 뒤:** PR 발행 경로(쓰기, 별도 승인 설계)와 원복·재시작 프로세스 연결.
+4. **그 뒤:** PR 발행 경로(쓰기, 별도 승인 설계), 원복 프로세스 연결, 재시작 실제 실행(쓰기 신원·실행기, WF11 결정), renderer의 `restart` 절.
 
 ## 반영 기록
 

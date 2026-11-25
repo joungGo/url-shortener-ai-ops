@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `0b91169`(relay 송신 proxy 조각 2 renderer PR62), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-small-fixes-20261125`(A7 작은 항목). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-25 KST. 기준 AI main `8db0878`(A7 작은 항목 PR63), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-restart-wiring-20261125`(재시작 경로 실행 직전까지 연결). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -431,3 +431,13 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7 작은 항목: 정책 전환·tombstone 정리·관측 만료 알림 · 2026-11-25
 
 [구현 기록](recovery-small-fixes-local-20261125.md)·[검증 JSON](recovery-small-fixes-local-validation-20261125.json): 사용자 결정(모두 추천). `slack_server transition-approval-policy --previous`(relay·ingress 잠금 확보 필수, 이전 정책 hash 정확 일치, 버전 증가, 진행 중 승인 superseded, 장부 없으면 생성 없음). 승인 장부·WF07 기록 tombstone과 receipt를 보관 종료 30일 뒤 삭제(상한 도달로 새 승인 불가 결함 해소). `observation_expired` 전용 알림 문구. 시험11·변형 13/13. 이 커밋 시점 PR CI/main 대기.
+
+### A7 작은 항목 최종 반영 · 2026-11-25
+
+[PR #63](https://github.com/joungGo/url-shortener-ai-ops/pull/63) head `36d8c14` → main `8db08787f34a460c251e2fb6ed36fd88c9341be4`. PR CI45536393470 7종 성공(첫 실행은 시험 경로 문제로 실패 후 수정), tree `3679977` 일치, 보호 변경/우회 없음. 다음 후보: execute_command·재시작 조정기 연결(인프라 불필요 중 가장 큼).
+
+### A7 재시작(명령) 경로 실행 직전까지 연결 · 2026-11-25
+
+사용자 결정(모두 추천): 실행 직전까지 · `request-approval` 재사용 · 관측기 읽기 신원 확장 · WF05 회신 문구만 수정. 재시작 후보에 `request-approval`을 보내면 WF08 봉인과 명령 승인 대기가 열리고, 버튼과 재검증을 거쳐 `command_ready` 알림까지 간다. 실제 재시작 실행은 비활성이다(읽기 전용 포트, `writer=None`).
+
+함께 바꾼 것: 정책 전환 명령을 두 범위로 확장했다. 재시작 기록이 영구 누적되던 결함을 고쳤다(보관 종료 30일 뒤 삭제). 신규 시험 24개. [조각 문서](recovery-restart-wiring-local-20261125.md). 남은 것: 실제 실행(WF11), renderer `restart` 절, RBAC 추가(events·HPA list).

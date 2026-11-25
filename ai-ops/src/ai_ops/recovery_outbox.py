@@ -46,6 +46,15 @@ REASON_NOTICES = {
         '재확인 이후 현재 상태 확인이 오래되어 이 승인으로는 더 진행하지 않습니다. '
         '준비된 PR 내용이 있어도 발행·변경은 하지 않으며, 진행하려면 새 승인 요청과 재검증이 필요합니다.'),
 }
+# Command (restart) scope: the PR wording would mislead. Execution is not wired, so
+# command_ready (ledger state proposal_ready) is the end of this path.
+COMMAND_NOTICES = {
+    'proposal_ready': ('재확인을 통과해 재시작 명령의 실행 조건이 충족되었습니다. 실제 재시작 실행은 실환경 실행 결정 '
+                       '전까지 비활성이며, 아무것도 변경하지 않았습니다.'),
+    ('needs_review', 'observation_expired'): (
+        '재확인 이후 현재 상태 확인이 오래되어 이 승인으로는 더 진행하지 않습니다. 재시작은 실행하지 않았으며, '
+        '진행하려면 새 조사·복구 계획과 승인 요청이 필요합니다.'),
+}
 REASON = re.compile(r'[a-z_]{1,64}\Z')
 HEX = re.compile(r'[a-f0-9]{64}\Z')
 
@@ -109,7 +118,10 @@ class RecoveryOutbox:
         if state not in NOTICES:
             return None
         reason = view.get('reason')
-        text = f'{head} {REASON_NOTICES.get((state, reason), NOTICES[state])}'
+        notice = REASON_NOTICES.get((state, reason), NOTICES[state])
+        if scope == 'execute_command':
+            notice = COMMAND_NOTICES.get((state, reason), COMMAND_NOTICES.get(state, notice))
+        text = f'{head} {notice}'
         if isinstance(reason, str) and REASON.fullmatch(reason):
             text += f' (사유 코드: {reason})'
         payload = {'channel': channel, 'thread_ts': thread, 'text': text, **FLAGS}

@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "A7 small items: approval policy transition, tombstone cleanup, observation-expired notice",
   "author": "Claude Code (Opus 5.5)",
   "base": "0b91169c7a5f19ad947c02270ef43224d3cc741b",
@@ -44,5 +44,28 @@
     "cause": "test-only: the two CLI tests set AI_OPS_FILES_ROOT to the temp directory's parent, which is /tmp on Linux CI; the path policy rejects roots with fewer than 3 path parts (macOS temp parents passed)",
     "fix": "use a directory inside the fixture's already-registered files root and do not override the environment; re-run locally with TMPDIR=/tmp",
     "product_change": false
+  },
+  "merge": {
+    "pr": 63,
+    "head": "36d8c1468805616e37809b354f1d67720bf0e6b3",
+    "main": "8db08787f34a460c251e2fb6ed36fd88c9341be4",
+    "tree": "3679977dcaf27e3d89c0e4adece6bf1a4518c968",
+    "pr_ci": {
+      "run": 45536393470,
+      "jobs": 7,
+      "tests": 1817,
+      "skipped": 1
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45537162151,
+      "attempt_1": "failure: test_retention_schedule.test_runtime_flag_automatically_purges_and_restart_keeps_due_time (runs 0 != 1; pre-existing PR42 test race: waits for purge, reads runs before the post-run counter update; unrelated to this change, same tree passed PR CI)",
+      "attempt_2": "success (failed job re-run only)",
+      "jobs_success": 6,
+      "skipped": [
+        "C03 Main PR Gate"
+      ]
+    }
   }
 }

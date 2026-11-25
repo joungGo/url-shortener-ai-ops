@@ -460,10 +460,18 @@ class RestartCoordinator:
         return self.show(key,actor=actor)  # Read-only; retained lock needs explicit owner cleanup.
 
     def prune(self):
+        # Same rule as the approval ledgers (TOMBSTONE_SECONDS): the expired run
+        # record is deleted 30 days after retention ended, so the 10000-run cap is
+        # not reached by history alone. The plan row is already gone by then, so
+        # load() refuses it; restart_consumed (the one-execution fence) is kept.
+        from ai_ops.recovery_approvals import TOMBSTONE_SECONDS
         with self.queue.transaction() as db:
             for row in db.execute('SELECT plan_hash,document FROM restart_runs').fetchall():
                 r=json.loads(row['document'])
-                if self.queue.now()>=r['retained_until']:
+                if self.queue.now()>=r['retained_until']+TOMBSTONE_SECONDS:
+                    db.execute('DELETE FROM restart_plans WHERE plan_hash=?',(row['plan_hash'],))
+                    db.execute('DELETE FROM restart_runs WHERE plan_hash=?',(row['plan_hash'],))
+                elif self.queue.now()>=r['retained_until']:
                     db.execute('DELETE FROM restart_plans WHERE plan_hash=?',(row['plan_hash'],))
                     r.update(state='expired',reason='source_expired',lease=None,generation=r['generation']+1);self._save(db,r)
 

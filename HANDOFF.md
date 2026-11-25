@@ -1,5 +1,28 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-25 A7 재시작 경로 실행 직전까지 연결·CI 반영 준비 (Claude)
+
+branch `claude/a7-restart-wiring-20261125`(기준 main `8db0878`). 사용자 결정(모두 추천):
+
+- 실행 직전까지 연결한다.
+- `request-approval`을 재사용한다.
+- 관측기 읽기 신원을 확장한다.
+- WF05는 회신 문구만 바꾼다.
+
+재시작 후보에 `request-approval`을 보내면 다음 순서로 간다. WF08 봉인(읽기와 게이트) → 명령 승인 대기 → 버튼 → 재검증 → `command_ready` 알림("실제 재시작 실행은 실환경 실행 결정 전까지 비활성"). 클러스터 쓰기는 0회다.
+
+함께 바꾼 것:
+
+- 정책 전환 명령이 범위별로 동작한다.
+- 재시작 기록 누적 결함을 고쳤다(30일 뒤 삭제).
+- WF12 문서 3·5·6·7·10절을 갱신했다.
+
+PR63 main CI 45537162151의 첫 실행은 `test_retention_schedule`의 경합 시험으로 실패했다. 실패한 작업만 다시 실행해 성공했다(attempt 2). 시험 수정은 별도 조각으로 제안한다. 상세는 [조각 문서](ai-ops/docs/recovery-restart-wiring-local-20261125.md)에 있다.
+
+## 2026-11-25 A7 작은 항목 CI/main 반영 완료 (Claude)
+
+[PR #63](https://github.com/joungGo/url-shortener-ai-ops/pull/63) head `36d8c1468805616e37809b354f1d67720bf0e6b3` → main `8db08787f34a460c251e2fb6ed36fd88c9341be4`(head 고정 squash, 사용자 "진행해" 후). 첫 PR CI(45536393470 이전 실행 45535553355)는 CLI 시험이 Linux `/tmp`를 루트로 잡아 실패 → 시험 수정(제품 변경 없음) 후 PR CI45536393470 7종(1817개) 성공, tree `3679977` 일치, branch 정리. main CI45537162151은 기존 경합 시험으로 첫 실행 실패, 실패 작업 재실행 성공(attempt 2). 다음 후보(인프라 불필요): execute_command·재시작 조정기 연결, 원복 프로세스 연결, healthy 판정; 정책 결정 선행: PR 발행, 승인자 제한 완화; 실제 연결은 인프라 재설치·실행 주체 결정 대기.
+
 ## 2026-11-25 A7 작은 항목·CI 반영 준비 (Claude)
 
 사용자 결정(모두 추천): 정책 전환=운영자 명령+이전 설정, 알림=사유별 전용 문구, tombstone=보관 종료 30일 뒤 삭제. branch `claude/a7-small-fixes-20261125`(기준 main `0b91169`). `slack_server transition-approval-policy --config --store --previous`: relay·ingress 프로세스 잠금 확보(실행 중이면 거절), 이전 정책 hash 정확 일치·버전 증가 필수, 진행 중 승인 superseded(재시작 relay가 알림), 장부 없으면 `nothing_to_transition`, 출력은 hash·건수만. `RecoveryApprovalLedger.prune`·`ImageRecoveryPRBridge.prune`: 보관 종료+30일(`TOMBSTONE_SECONDS`) 지난 tombstone·receipt·WF07 기록 삭제(상한 도달 결함 해소, 계획 만료로 재개·재결정 불가 확인). outbox `REASON_NOTICES`로 `needs_review`/`observation_expired` 전용 문구. 시험11·변형 13/13. WF12 7절 3·5항 갱신. PR62 병합·main CI 결과 메타데이터 이관 포함.
