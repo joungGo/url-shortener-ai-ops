@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `ba2bda0`(정상 판정 PR67), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf10-restart-render-20261125`(renderer restart 절). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-25 KST. 기준 AI main `9928fc8`(renderer restart 절 PR68), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf11-acceptance-draft-20261125`(WF11 합격 기준표 초안). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -499,3 +499,37 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 - 외부 선행 조건 문구 추가: `pods/proxy` get, events·HPA list
 - 신규 시험 6개
 - [조각 문서](wf10-restart-render-local-20261125.md)
+
+### renderer restart 절 최종 반영 · 2026-11-25
+
+[PR #68](https://github.com/joungGo/url-shortener-ai-ops/pull/68) head `2a90066` → main `9928fc8fea69528993456982bcbc21de0b19b299`.
+
+- PR CI45573120978 7종 성공(1858개)
+- tree `54f49ff` 일치
+- 보호 변경·우회 없음
+
+**인프라 없이 남은 큰 항목:** 없음. 남은 작업은 모두 정책 결정이나 WF11 실환경 결정이 먼저 필요하다.
+
+- 정책 결정이 먼저 필요: PR 발행 경로, 승인자 제한 완화, 원복 승인 흐름
+- WF11 결정 대기: 실제 연결과 실행
+
+### 정책 결정 council과 WF11 합격 기준표 초안 · 2026-11-25
+
+정책 결정 3건(PR 발행, 승인자 제한, 원복 승인 흐름)을 llm-council로 검토했다.
+
+결론은 순서를 바꾸는 것이다: 기준표 → 로컬 리허설 → WF11(사람 PR, 사람 원복) → 원복 승인 흐름.
+
+- PR 자동 발행은 선택 과제로 두고, 두 번째 버튼은 넣지 않는다.
+- 승인자 제한은 유지하되, 1인 운영이라는 점을 명시한다.
+
+사용자 "진행해"에 따라 [WF11 합격 기준표 초안](wf11-acceptance-sheet-draft-20261125.md)을 작성했다. 문서만 썼고, 실행 승인은 아니다.
+
+- S0 연결 점검
+- S1 이미지 실패 → 사람 PR 복구(필수)
+- S2 음성 경로(필수)
+- S3 사람 원복(선택)
+- S4 재시작 `command_ready`(선택)
+- 증거·재생 자료
+- 상한·중단 조건
+- 자격 회수
+- 사용자 결정 항목 9개

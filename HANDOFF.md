@@ -1,5 +1,49 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-25 정책 council·WF11 합격 기준표 초안·CI 반영 준비 (Claude)
+
+branch `claude/wf11-acceptance-draft-20261125`(기준 main `9928fc8`). 문서만 바꿨다.
+
+**llm-council 결론.** 정책 결정 3건을 검토한 뒤 작업 순서를 바꿨다.
+
+1. 합격 기준표
+2. 로컬 kind/k3d 리허설
+3. WF11(사람이 PR을 올리고, 사람이 원복)
+4. 원복 승인 흐름
+
+함께 정한 것:
+
+- PR 자동 발행은 선택 과제로 둔다(2~3일, 두 번째 버튼 없음).
+- 승인자 제한은 유지하고, 1인 운영이라는 점을 명시한다.
+
+**[WF11 합격 기준표 초안](ai-ops/docs/wf11-acceptance-sheet-draft-20261125.md) 작성.**
+
+- 시나리오: S0~S4(S1·S2 필수)
+- 단계별 기대 판정과 증거
+- 재생 자료
+- 상한·중단 조건
+- 자격 회수
+- 사용자 결정 항목 9개
+
+이 초안은 실행 승인이 아니다. PR68 메타데이터(main CI45574073257 성공)도 함께 이관했다.
+
+## 2026-11-25 WF10 renderer restart 절 CI/main 반영 완료 (Claude)
+
+[PR #68](https://github.com/joungGo/url-shortener-ai-ops/pull/68) head `2a900669dbbd529e8b03d5d69d9623280fd071e2` → main `9928fc8fea69528993456982bcbc21de0b19b299`(head 고정 squash, 사용자 "진행해" 후).
+
+- PR CI45573120978 7종 성공(1858개)
+- tree `54f49ff` 일치
+- branch 정리
+- main CI45574073257 성공
+
+인프라 없이 남은 큰 항목은 없다. 다음은 사용자 결정이 필요하다.
+
+1. 정책 결정
+   - PR 발행 경로(GitHub 쓰기, 별도 승인)
+   - 승인자=요청자 제한 완화
+   - 원복 승인 흐름(`RollbackScope` 발급자)
+2. 인프라 재설치 결정과 Terraform 실행 주체 → WF12 체크리스트 실제 값 → WF11
+
 ## 2026-11-25 원복 연결 보류·WF10 renderer restart 절·CI 반영 준비 (Claude)
 
 branch `claude/wf10-restart-render-20261125`(기준 main `ba2bda0`).
