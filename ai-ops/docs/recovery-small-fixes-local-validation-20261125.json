@@ -1,0 +1,34 @@
+{
+  "status": "local_verified_pr_ci_pending",
+  "slice": "A7 small items: approval policy transition, tombstone cleanup, observation-expired notice",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "0b91169c7a5f19ad947c02270ef43224d3cc741b",
+  "decision": "user 2026-11-25 (all recommended): operator command + previous config; reason-specific wording; delete tombstones 30 days after retention",
+  "changes": [
+    "slack_server transition-approval-policy --config --store --previous: takes the ingress and relay process locks (refuses while either runs); no ledger -> nothing_to_transition without creating it; previous policy hash must equal the recorded one; version must increase (replace_policy); open approvals become superseded (announced by the restarted relay); output hashes and counts only",
+    "RecoveryApprovalLedger.prune and ImageRecoveryPRBridge.prune delete tombstones/receipts/WF07 records TOMBSTONE_SECONDS (30 days) after retained_until; the plan is unloadable by then, so no reopen or decision is possible",
+    "RecoveryOutbox REASON_NOTICES: needs_review/observation_expired uses dedicated wording; other reasons unchanged"
+  ],
+  "defect_fixed": "tombstones and receipts were kept forever and counted against the 10000/30000 caps, so a long-running ledger would eventually refuse every new approval wait (same for recovery_pr_links)",
+  "new_tests": 11,
+  "mutation_checks": {"count": 13, "detected": 13, "runner": "full inherited environment, baseline must pass first"},
+  "full_suite": {
+    "count": 1817,
+    "seconds": 318.433,
+    "passed": true,
+    "skipped": 1,
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-small-fixes-full-final.log",
+      "sha256": "11b4af87fde4f5ca6d108c5625e95f0475d5eb8d97adcf035bff884aabf97555"
+    }
+  },
+  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_approvals.py": "6f00d0d34dab557bddc49d983a519a2bba889b4eeca43ecf2a2784315eb14df9",
+    "ai-ops/src/ai_ops/recovery_outbox.py": "2aeaa943120e5202cc97154b58397f636b8286e8548088b2b981ee459df88b63",
+    "ai-ops/src/ai_ops/recovery_pr.py": "6dca6f68cb1240e164243ae10402f5d3213ba2d2fb1d109f4440a339e49351f1",
+    "ai-ops/src/ai_ops/slack_server.py": "e0bcc7823b4af37d2d869d75ae2b3bd6121df5fe239bb125a90dc20a015dc73f",
+    "ai-ops/tests/test_recovery_small_fixes.py": "2637ef2e956040adce13ce40fa0fb9804c317fb0c64fc3e32b43e6ecefdaa1f1"
+  },
+  "no_external_actions": "no cluster, deploy, Slack, incident drill, GitHub write besides this PR"
+}

@@ -112,3 +112,7 @@ renderer에는 복구(WF07) 설정이 전혀 없었다. proxy만 추가하면 �
 전체 결과는 [검증 기록](recovery-egress-renderer-local-validation-20261124.json)에 있다.
 
 실제 클러스터·배포·Slack·AWS·GitHub 쓰기 없음. renderer는 적용하지 않는 후보만 만든다(`execution_allowed=false`).
+
+## 최종 반영 결과
+
+[PR #62](https://github.com/joungGo/url-shortener-ai-ops/pull/62) head `d4486a61e0c608d562ef4b8b49c97c3f13eb5b73`를 head 고정 일반 squash 병합해 main `0b91169c7a5f19ad947c02270ef43224d3cc741b`에 반영했다(사용자 "진행해" 후). [PR CI45390608450](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45390608450) 7종 성공(1806개, skip1), tree `d13d57f31d93c1b9ee6cae7fdbef4b17b2ba2c6c` 일치, [main CI45391583323](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45391583323) 성공(PR전용 gate skip은 설계대로). 보호 변경/우회 없음. 병합 후 branch를 정리했다.

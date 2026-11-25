@@ -203,9 +203,55 @@ def relay_loop(runtime, stopped, progress, *, monotonic=time.monotonic, recovery
         stopped.wait(POLL_SECONDS)
 
 
+def transition_approval_policy(store, config_dir, previous_path):
+    """Explicit operator transition of the prepare-proposal approval policy.
+
+    The ledger refuses to start when the configured policy differs from the one it
+    recorded (WF06: no silent rule change for approvals already in flight). This is
+    the supported way through: relay and ingress must be stopped (their process
+    locks are taken here), the previous recovery-approval.json must reproduce the
+    recorded policy hash exactly, and the new policy version must increase. Every
+    open approval becomes ``superseded``; the restarted relay announces it. Without
+    an existing ledger nothing is created. Output carries hashes and counts only.
+    """
+    from contextlib import ExitStack
+    from ai_ops.recovery_approvals import RecoveryApprovalLedger, _body
+    from ai_ops.contracts import sha256_json
+    new = load_recovery(config_dir)
+    previous = RecoveryApprovalConfig.load_optional(previous_path)
+    if new is None or previous is None:
+        raise ValueError('approval_transition_config_required')
+    queue = JobQueue(store)
+    with ExitStack() as stack:
+        for role in ('ingress', 'relay'):
+            try:
+                stack.enter_context(process_lock(store, role))
+            except BlockingIOError:
+                raise ValueError('approval_transition_requires_stopped_processes') from None
+        with queue.transaction() as db:
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='recovery_approval_meta'").fetchone() is None:
+                return {'status':'nothing_to_transition', 'execution_allowed':False}
+            recorded = db.execute('SELECT policy_hash FROM recovery_approval_meta WHERE singleton=1').fetchone()
+        old_hash = sha256_json(_body(previous.prepare_proposal))
+        if recorded is None or recorded['policy_hash'] != old_hash:
+            raise ValueError('approval_transition_previous_policy_mismatch')
+        def unused(*args, **kwargs):
+            raise ValueError('approval_transition_reads_nothing')
+        ledger = RecoveryApprovalLedger(queue, previous.prepare_proposal, load_plan=unused, observe=unused)
+        with queue.transaction() as db:
+            active = sum(1 for row in db.execute('SELECT document FROM recovery_approvals').fetchall()
+                         if json.loads(row['document'])['state'] in
+                         ('awaiting_approval', 'approved', 'revalidating', 'proposal_ready'))
+        ledger.replace_policy(new.prepare_proposal)
+        return {'status':'transitioned', 'superseded':active, 'previous_policy_hash':old_hash,
+                'policy_hash':ledger.policy_hash, 'execution_allowed':False}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Slack TLS ingress / existing worker result relay (explicit opt-in)')
-    parser.add_argument('action', choices=('check-config','ingress','relay','probe-ingress','probe-relay'))
+    parser.add_argument('action', choices=('check-config','ingress','relay','probe-ingress','probe-relay',
+                                           'transition-approval-policy'))
+    parser.add_argument('--previous', type=Path, help='previous recovery-approval.json (policy transition only)')
     parser.add_argument('--config', type=Path, default=Path('/etc/ai-ops'))
     parser.add_argument('--store', type=Path, default=Path('/data/incidents'))
     parser.add_argument('--enable-web', action='store_true')
@@ -217,6 +263,11 @@ def main(argv=None):
         if args.action.startswith('probe-'):
             args = cli_paths(parser, args, {'config':'directory', 'store':'store'})
             check_process(args.store, args.action.removeprefix('probe-'))
+            return 0
+        if args.action == 'transition-approval-policy':
+            args = cli_paths(parser, args, {'config':'directory', 'store':'store', 'previous':'input'})
+            os.umask(0o077)
+            print(json.dumps(transition_approval_policy(args.store, args.config, args.previous)))
             return 0
         if args.action != 'check-config' and not args.enable_web:
             raise ValueError('slack_explicit_enable_required')

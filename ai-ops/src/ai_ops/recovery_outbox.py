@@ -40,6 +40,12 @@ PR_NOTICES = {
     'needs_review': 'PR 준비 결과를 확정할 수 없어 중지했습니다. 자동 재시도나 변경은 하지 않습니다.',
     'cancelled': 'PR 준비가 취소되었습니다. 변경은 없습니다.',
 }
+# (state, reason) wording that replaces the generic notice when it would mislead.
+REASON_NOTICES = {
+    ('needs_review', 'observation_expired'): (
+        '재확인 이후 현재 상태 확인이 오래되어 이 승인으로는 더 진행하지 않습니다. '
+        '준비된 PR 내용이 있어도 발행·변경은 하지 않으며, 진행하려면 새 승인 요청과 재검증이 필요합니다.'),
+}
 REASON = re.compile(r'[a-z_]{1,64}\Z')
 HEX = re.compile(r'[a-f0-9]{64}\Z')
 
@@ -103,7 +109,7 @@ class RecoveryOutbox:
         if state not in NOTICES:
             return None
         reason = view.get('reason')
-        text = f'{head} {NOTICES[state]}'
+        text = f'{head} {REASON_NOTICES.get((state, reason), NOTICES[state])}'
         if isinstance(reason, str) and REASON.fullmatch(reason):
             text += f' (사유 코드: {reason})'
         payload = {'channel': channel, 'thread_ts': thread, 'text': text, **FLAGS}

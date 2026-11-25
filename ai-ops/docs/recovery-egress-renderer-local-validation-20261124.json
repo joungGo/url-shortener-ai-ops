@@ -1,5 +1,5 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "relay egress proxy slice 2: WF10 renderer optional recovery section",
   "author": "Claude Code (Opus 5.5)",
   "base": "65a32a14202973dd9fdfb3853071a8a4dfa6ec38",
@@ -49,5 +49,24 @@
     "ai-ops/tests/test_wf10_recovery_render.py": "12747a18868c36b66006aeb9f9c688b749a4a8e993deea476d1b0589c6de0a06"
   },
   "no_external_actions": "offline renderer only; no cluster, deploy, Slack, AWS, GitHub write besides this PR",
-  "existing_renderer_tests": "51 unchanged and passing"
+  "existing_renderer_tests": "51 unchanged and passing",
+  "merge": {
+    "pr": 62,
+    "head": "d4486a61e0c608d562ef4b8b49c97c3f13eb5b73",
+    "main": "0b91169c7a5f19ad947c02270ef43224d3cc741b",
+    "tree": "d13d57f31d93c1b9ee6cae7fdbef4b17b2ba2c6c",
+    "pr_ci": {
+      "run": 45390608450,
+      "jobs": 7,
+      "tests": 1806,
+      "skipped": 1
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45391583323,
+      "conclusion": "success",
+      "c03_pr_gate": "skipped by design"
+    }
+  }
 }

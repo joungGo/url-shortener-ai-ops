@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-24 KST. 기준 AI main `65a32a1`(relay 송신 proxy 조각 1 PR61), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-egress-proxy-renderer-20261124`(relay 송신 proxy 조각 2 renderer). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-25 KST. 기준 AI main `0b91169`(relay 송신 proxy 조각 2 renderer PR62), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-small-fixes-20261125`(A7 작은 항목). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -423,3 +423,11 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### relay 외부 송신 proxy 조각 2 renderer · 2026-11-24
 
 [구현 기록](recovery-egress-renderer-local-20261124.md)·[검증 JSON](recovery-egress-renderer-local-validation-20261124.json): 사용자 결정(선택적 recovery 입력 전체). WF10 renderer 입력에 선택적 `recovery` 절 → 있을 때만 `recovery-approval.json`·binding ConfigMap, relay 전용 reader/GitHub Secret 마운트, `-egress` proxy Deployment·Service·NetworkPolicy(메인 Pod→proxy 8080만, proxy→공개 IPv4 443만), 후보 요약·선행 조건·잔여 위험; 없으면 main과 바이트 동일(hash 확인). 변경 계획은 proxy를 메인 Pod 앞에 적용·사후 확인 2개 추가. 후보 패키지 파일만 상한 128KiB. 시험8(기존 51 유지)·변형 15/15. WF12 7절 1항 해결로 갱신. 이 커밋 시점 PR CI/main 대기.
+
+### relay 외부 송신 proxy 조각 2 renderer 최종 반영 · 2026-11-24
+
+[PR #62](https://github.com/joungGo/url-shortener-ai-ops/pull/62) head `d4486a6` → main `0b91169c7a5f19ad947c02270ef43224d3cc741b`. PR CI45390608450 7종 성공, tree `d13d57f` 일치, 보호 변경/우회 없음. relay 외부 송신 문제는 코드상 해결(proxy 본체·명시 proxy 사용·renderer). 다음: 인프라 재설치 요청·Terraform 실행 주체 결정 후 WF12 5절 체크리스트 실값(reader RBAC·GitHub 토큰·IRSA·Secret 이름·binding), WF11.
+
+### A7 작은 항목: 정책 전환·tombstone 정리·관측 만료 알림 · 2026-11-25
+
+[구현 기록](recovery-small-fixes-local-20261125.md)·[검증 JSON](recovery-small-fixes-local-validation-20261125.json): 사용자 결정(모두 추천). `slack_server transition-approval-policy --previous`(relay·ingress 잠금 확보 필수, 이전 정책 hash 정확 일치, 버전 증가, 진행 중 승인 superseded, 장부 없으면 생성 없음). 승인 장부·WF07 기록 tombstone과 receipt를 보관 종료 30일 뒤 삭제(상한 도달로 새 승인 불가 결함 해소). `observation_expired` 전용 알림 문구. 시험11·변형 13/13. 이 커밋 시점 PR CI/main 대기.
