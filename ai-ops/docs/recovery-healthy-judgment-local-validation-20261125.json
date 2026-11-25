@@ -1,19 +1,52 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "A7 healthy judgment for the PR recovery observer",
   "author": "Claude Code (Opus 5.5)",
   "base": "e5fcea4548bd70d1c30700adefff8cbcc3123432",
-  "decisions": {"date": "2026-11-25", "by": "user (all recommended)", "replaces": "2026-11-21 'healthy is never reported'",
-    "stability": "Ready held >= 60 s, container running, rollout complete", "http_path": "API server Pod proxy, fixed GET /readyz and /items on :8000", "open_when_healthy": "dedicated reply, no ledger record"},
-  "rules": ["argo Synced+Healthy", "Deployment image is a registered-repo digest; Pod/ReplicaSet images equal; container imageID ends with that digest", "single replica, rollout observed and complete, one live owned Running Pod, container ready+running, Ready condition True >= 60 s", "/readyz contract valid", "/items contract valid (C-04 valid_body)"],
-  "existing_test_changed": {"test": "test_recovery_approvals.test_changed_initial_target_requires_new_draft", "before": "healthy + changed revision -> new_recovery_plan_required", "after": "same workload/image healthy -> current_state_already_healthy; other image healthy -> new_recovery_plan_required (added)", "reason": "plans carry no revision, so open never compared it; both outcomes refuse to open"},
+  "decisions": {
+    "date": "2026-11-25",
+    "by": "user (all recommended)",
+    "replaces": "2026-11-21 'healthy is never reported'",
+    "stability": "Ready held >= 60 s, container running, rollout complete",
+    "http_path": "API server Pod proxy, fixed GET /readyz and /items on :8000",
+    "open_when_healthy": "dedicated reply, no ledger record"
+  },
+  "rules": [
+    "argo Synced+Healthy",
+    "Deployment image is a registered-repo digest; Pod/ReplicaSet images equal; container imageID ends with that digest",
+    "single replica, rollout observed and complete, one live owned Running Pod, container ready+running, Ready condition True >= 60 s",
+    "/readyz contract valid",
+    "/items contract valid (C-04 valid_body)"
+  ],
+  "existing_test_changed": {
+    "test": "test_recovery_approvals.test_changed_initial_target_requires_new_draft",
+    "before": "healthy + changed revision -> new_recovery_plan_required",
+    "after": "same workload/image healthy -> current_state_already_healthy; other image healthy -> new_recovery_plan_required (added)",
+    "reason": "plans carry no revision, so open never compared it; both outcomes refuse to open"
+  },
   "rbac_needed": "ai-ops-lab pods/proxy get on the observer read identity",
   "new_tests": 11,
-  "mutation_checks": {"count": 24, "detected": 24, "note": "first pass: stable_window_zero survived because the test derived its boundary from the module constant; test now pins 60 s literally, then detected. A spec string error stopped the first pass before 6 mutations (no source change applied); they were rerun and detected", "runner": "full inherited environment, baseline must pass first"},
-  "full_suite": {"count": 1852, "seconds": 329.773, "passed": true, "skipped": 1,
+  "mutation_checks": {
+    "count": 24,
+    "detected": 24,
+    "note": "first pass: stable_window_zero survived because the test derived its boundary from the module constant; test now pins 60 s literally, then detected. A spec string error stopped the first pass before 6 mutations (no source change applied); they were rerun and detected",
+    "runner": "full inherited environment, baseline must pass first"
+  },
+  "full_suite": {
+    "count": 1852,
+    "seconds": 329.773,
+    "passed": true,
+    "skipped": 1,
     "env": "AWS_PROFILE unset, AWS config/credentials files /nonexistent",
-    "log": {"path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-healthy-full.log", "sha256": "45f702fbbaf09479f08921ccf7100517c19b53aac7591533ffa014fddd961183"}},
-  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-healthy-full.log",
+      "sha256": "45f702fbbaf09479f08921ccf7100517c19b53aac7591533ffa014fddd961183"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
   "source_hashes": {
     "ai-ops/src/ai_ops/recovery_observe.py": "000ae03b466ca9a93d59eab9c2b21382bd5753d273fb31ebdc64ad16758f1cad",
     "ai-ops/src/ai_ops/recovery_approvals.py": "f8d721e23287b6fcece10640bad7becb91e9cb46aa9f691ca17a86ce336a0fc9",
@@ -21,5 +54,27 @@
     "ai-ops/tests/test_recovery_healthy.py": "4a2b5d1e01e6ad8c6e727c18dd5906de3b36282b9ac1bc6ff3f549caab13bc8a",
     "ai-ops/tests/test_recovery_approvals.py": "311713d26704460ed1b7744b6eaadcf49c15afd7afc54d9e92fdacea3921be46"
   },
-  "no_external_actions": "no cluster, deploy, Slack, incident drill, GitHub write besides this PR"
+  "no_external_actions": "no cluster, deploy, Slack, incident drill, GitHub write besides this PR",
+  "merge": {
+    "pr": 67,
+    "head": "efad7ffd2d9a794d0c8801961e52d0fdecd25cfa",
+    "main": "ba2bda030609d81c4260f57bf3a58f5bde44c9a0",
+    "tree": "97ea81080b08a64af8d08adb5bec7972b7342ea2",
+    "pr_ci": {
+      "run": 45569981964,
+      "jobs": 7,
+      "tests": 1852,
+      "skipped": 1
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45571034647,
+      "conclusion": "success",
+      "jobs_success": 6,
+      "skipped": [
+        "C03 Main PR Gate"
+      ]
+    }
+  }
 }

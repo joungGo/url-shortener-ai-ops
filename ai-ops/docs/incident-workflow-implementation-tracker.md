@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `e5fcea4`(경합 시험 수정 PR66), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-healthy-judgment-20261125`(정상 판정). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-25 KST. 기준 AI main `ba2bda0`(정상 판정 PR67), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf10-restart-render-20261125`(renderer restart 절). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -475,3 +475,27 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 - 열 때 이미 정상이면 전용 회신, 기록 없음
 
 이번 결정은 2026-11-21의 "healthy 미보고" 결정을 대체한다. 관측기는 다섯 가지 확인을 모두 통과할 때만 healthy를 보고한다. 재검증에서 정상이면 `already_recovered`가 된다. 신규 시험 11개. [조각 문서](recovery-healthy-judgment-local-20261125.md). 남은 것: RBAC에 `pods/proxy` get 추가, 실환경 확인(WF11).
+
+### 정상 판정 최종 반영 · 2026-11-25
+
+[PR #67](https://github.com/joungGo/url-shortener-ai-ops/pull/67) head `efad7ff` → main `ba2bda030609d81c4260f57bf3a58f5bde44c9a0`.
+
+- PR CI45569981964 7종 성공(1852개)
+- tree `97ea810` 일치
+- 보호 변경·우회 없음
+
+다음 후보: 원복 프로세스 연결, renderer `restart` 절.
+
+### 원복 연결 보류와 renderer `restart` 절 · 2026-11-25
+
+원복 프로세스 연결은 조사 결과 보류했다(사용자 추천안 선택). 이유는 두 가지다.
+
+- 원복을 시작시킬 상위 계기(PR 발행·재시작 실행 → WF09 `rollback_candidate`)가 없다.
+- 원복 승인 흐름(`RollbackScope` 발급자)이 없다.
+
+대신 renderer `recovery.restart` 절을 추가했다.
+
+- 렌더링 대상: 재시작 설정, relay 전용 Prometheus Secret
+- 외부 선행 조건 문구 추가: `pods/proxy` get, events·HPA list
+- 신규 시험 6개
+- [조각 문서](wf10-restart-render-local-20261125.md)

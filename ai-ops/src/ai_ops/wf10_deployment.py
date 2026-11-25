@@ -46,6 +46,12 @@ RECOVERY_FIELDS = ('approvers', 'approval', 'principals', 'author_id', 'aws_role
                    'normal_binding')
 APPROVAL_FIELDS = ('wait_seconds', 'approval_seconds', 'observation_seconds', 'revalidation_seconds')
 RECOVERY_SECRET_KEYS = ('reader', 'github')
+# Optional recovery.restart (A7 restart path up to command_ready; execution disabled).
+# Absent -> the recovery output is unchanged. Present -> the restart section of
+# recovery-approval.json and a relay-only Prometheus read secret; Prometheus is the
+# collector's existing endpoint, so the main Pod egress rule is unchanged.
+RESTART_FIELDS = ('approval', 'execution_seconds', 'prometheus_secret', 'prior_ready_query', 'dependency_queries')
+RESTART_EXECUTOR = 'local-restart-wf10'
 PACKAGE_LIMIT = 131072
 
 
@@ -171,12 +177,20 @@ def recovery_config(v):
     from ai_ops.normal_ci_contract import NormalCIBinding
     from ai_ops.recovery_approval_wiring import RecoveryApprovalConfig
     r = v['recovery']
-    exact(r, RECOVERY_FIELDS)
+    if type(r) is not dict:
+        raise ValueError('wf10_fields_rejected')
+    restart = r.get('restart')
+    exact({k: x for k, x in r.items() if k != 'restart'}, RECOVERY_FIELDS)
     exact(r['approval'], APPROVAL_FIELDS)
     exact(r['secrets'], RECOVERY_SECRET_KEYS)
-    for x in r['secrets'].values():
+    secrets = list(r['secrets'].values())
+    if restart is not None:
+        exact(restart, RESTART_FIELDS)
+        exact(restart['approval'], APPROVAL_FIELDS)
+        secrets.append(restart['prometheus_secret'])
+    for x in secrets:
         name(x)
-    if len(set(r['secrets'].values()) | set(v['secrets'].values())) != len(RECOVERY_SECRET_KEYS) + len(SECRET_KEYS):
+    if len(set(secrets) | set(v['secrets'].values())) != len(secrets) + len(SECRET_KEYS):
         raise ValueError('wf10_credential_separation_rejected')
     # Approvers must be able to press the buttons: the rendered policy grants one user.
     if type(r['approvers']) is not list or not r['approvers'] or set(r['approvers']) != {v['slack']['user_id']}:
@@ -186,6 +200,20 @@ def recovery_config(v):
     if len(kubernetes) != 1:
         raise ValueError('wf10_recovery_api_rejected')
     proxy = f"http://{v['name']}-egress.{v['namespace']}.svc:{EGRESS_PORT}"
+    section = None
+    if restart is not None:
+        prometheus = [c for c in v['config']['runtime.json']['connections'].values() if c['kind'] == 'prometheus']
+        if len(prometheus) != 1:
+            raise ValueError('wf10_recovery_api_rejected')
+        section = {'approval': {'version': 1, 'scope': 'execute_command', 'approvers': r['approvers'],
+                                **restart['approval']},
+                   'executor_id': RESTART_EXECUTOR, 'execution_seconds': restart['execution_seconds'],
+                   # Same Prometheus endpoint/egress rule as the collector, separate read secret.
+                   'prometheus': {'api_url': prometheus[0]['base_url'],
+                                  'token_file': '/run/recovery-prometheus/token',
+                                  'ca_file': '/run/recovery-prometheus/ca.crt',
+                                  'prior_ready_query': restart['prior_ready_query'],
+                                  'dependency_queries': restart['dependency_queries']}}
     return RecoveryApprovalConfig.model_validate({
         'schema_version': 1, 'enabled': True,
         'prepare_proposal': {'version': 1, 'scope': 'prepare_proposal', 'approvers': r['approvers'], **r['approval']},
@@ -196,7 +224,8 @@ def recovery_config(v):
         'prepare': {'principals': r['principals'], 'author_id': r['author_id'],
                     'drafts_dir': '/data/recovery-drafts', 'github_token_file': '/run/ai-github/token',
                     'normal_binding_file': '/etc/ai-ops/normal-ci-binding.json',
-                    'aws_role_name': r['aws_role_name'], 'egress_proxy': proxy}}).model_dump()
+                    'aws_role_name': r['aws_role_name'], 'egress_proxy': proxy},
+        'restart': section}).model_dump()
 
 
 def candidate(value):
@@ -245,6 +274,9 @@ def candidate(value):
         # Only the relay reads the cluster for recovery and calls GitHub (read token).
         relay_extra=[secret('recovery-reader',recovery['secrets']['reader'],['token','ca.crt'],'/run/recovery-reader'),
                      secret('github',recovery['secrets']['github'],['token'],'/run/ai-github')]
+        if recovery.get('restart') is not None:
+            relay_extra.append(secret('recovery-prometheus',recovery['restart']['prometheus_secret'],
+                                      ['token','ca.crt'],'/run/recovery-prometheus'))
     volumes.append({'name':'kubernetes','projected':{'defaultMode':288,'sources':[
         {'serviceAccountToken':{'path':'token','expirationSeconds':3600}},
         {'configMap':{'name':'kube-root-ca.crt','items':[{'key':'ca.crt','path':'ca.crt'}]}}]}})
@@ -377,11 +409,16 @@ def candidate(value):
         result['recovery']={'enabled':True,'egress_proxy':configs['recovery-approval.json']['prepare']['egress_proxy'],
                             'publication':'not_wired'}
         result['external_prerequisites']=result['external_prerequisites']+[
-            'recovery reader identity (secret): deployments get, replicasets list, pods list, leases get in ai-ops-lab; Argo applications get lab-target; no writes',
+            'recovery reader identity (secret): deployments get, replicasets list, pods list, leases get, pods/proxy get (healthy check: /readyz and /items on :8000) in ai-ops-lab; Argo applications get lab-target; no writes',
             'read-only GitHub token (secret) for joungGo/c03-execution-lab Contents: Read',
             'IRSA: role-arn annotation on the main service account, role allowing only ecr:DescribeImages on repository urlshortener',
             'CI relay running against the same store with this normal-CI binding (receipts within 15 minutes of each run)',
             'Slack app Interactivity Request URL /slack/interactivity on the existing Slack listener']
+        if recovery.get('restart') is not None:
+            result['recovery']['restart']='execution_disabled'
+            result['external_prerequisites']=result['external_prerequisites']+[
+                'restart path: the recovery reader identity also needs events list and horizontalpodautoscalers list (autoscaling/v2) in ai-ops-lab; still no writes',
+                'restart path: read-only Prometheus token (secret) for the collector Prometheus endpoint and the configured prior-ready/dependency queries']
         result['residual_risks']=result['residual_risks']+[
             'the egress proxy relays TLS to GitHub/STS/ECR: a compromised relay could reach those three hosts',
             'IRSA environment is injected into every main-Pod container, not only the relay']
