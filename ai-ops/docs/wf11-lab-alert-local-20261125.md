@@ -1,6 +1,6 @@
 # WF11 lab 경보 규칙 `LabDeploymentUnavailable` · 2026-11-25
 
-상태: **로컬 구현·검증 완료(promtool 실행은 아래 참고), PR CI/main 대기.** 기준 main `aaa85287c4d99805bb83da175fbe195abca9e5eb`(PR71).
+상태: **로컬 구현·검증 완료(promtool 포함), PR CI/main 대기.** 기준 main `aaa85287c4d99805bb83da175fbe195abca9e5eb`(PR71).
 
 ## 배경과 결정
 
@@ -79,7 +79,16 @@ WF11 준비 중에 S1을 막는 공백을 찾았다. S1은 존재하지 않는 �
 - release 라벨과 `for` 변형은 시험이 모듈 상수를 쓰고 있었다. 리터럴로 바꿨다.
 - 렌더 단계 형식 검사를 생략하는 변형은 잡지 못했다. renderer 경로 시험을 추가했다.
 
-**promtool 실행:** 공식 Prometheus 3.5.0 바이너리를 내려받아 실행하려 했으나 자동 권한 분류기가 막았다. 우회하지 않았다. 시나리오 파일은 생성했다. 실행은 사용자 승인이나 사용자 직접 실행을 기다린다([검증 기록](wf11-lab-alert-local-validation-20261125.json)).
+**promtool 실행: 통과.**
+
+- 처음에는 자동 권한 분류기가 바이너리 다운로드·실행을 막았고, 우회하지 않았다. 사용자가 "Claude가 내려받아 실행"을 택한 뒤 진행했다.
+- 공식 Prometheus 3.5.0(darwin-arm64) tarball의 sha256을 검증한 뒤, 세션 임시 폴더에서만 promtool을 실행했다.
+- 결과: `check rules`는 SUCCESS(규칙 1개), `test rules`는 시나리오 5종 모두 SUCCESS였다.
+- 시험이 실제로 결함을 잡는지 보려고 생성된 규칙 사본을 일부러 바꿔 다시 돌렸다.
+  - `for` 1m, 원하는 replica 조건 제거, `service` 라벨 제거: 세 변형 모두 시험이 실패했다(검출).
+  - 사용 가능 쪽 `max by` 제거: 시험이 통과했다. `and`는 결과 라벨을 왼쪽 식에서 가져오는데, 왼쪽 식은 이미 집계돼 있다. 그래서 동작이 같은 변형이고, 오른쪽 집계는 방어용일 뿐이다.
+
+세부 결과는 [검증 기록](wf11-lab-alert-local-validation-20261125.json)에 있다.
 
 실제 클러스터·Slack 없음.
 
