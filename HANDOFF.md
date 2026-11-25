@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-25 A7 작은 항목·CI 반영 준비 (Claude)
+
+사용자 결정(모두 추천): 정책 전환=운영자 명령+이전 설정, 알림=사유별 전용 문구, tombstone=보관 종료 30일 뒤 삭제. branch `claude/a7-small-fixes-20261125`(기준 main `0b91169`). `slack_server transition-approval-policy --config --store --previous`: relay·ingress 프로세스 잠금 확보(실행 중이면 거절), 이전 정책 hash 정확 일치·버전 증가 필수, 진행 중 승인 superseded(재시작 relay가 알림), 장부 없으면 `nothing_to_transition`, 출력은 hash·건수만. `RecoveryApprovalLedger.prune`·`ImageRecoveryPRBridge.prune`: 보관 종료+30일(`TOMBSTONE_SECONDS`) 지난 tombstone·receipt·WF07 기록 삭제(상한 도달 결함 해소, 계획 만료로 재개·재결정 불가 확인). outbox `REASON_NOTICES`로 `needs_review`/`observation_expired` 전용 문구. 시험11·변형 13/13. WF12 7절 3·5항 갱신. PR62 병합·main CI 결과 메타데이터 이관 포함.
+
+## 2026-11-24 relay 외부 송신 proxy 조각 2 renderer CI/main 반영 완료 (Claude)
+
+[PR #62](https://github.com/joungGo/url-shortener-ai-ops/pull/62) head `d4486a61e0c608d562ef4b8b49c97c3f13eb5b73` → main `0b91169c7a5f19ad947c02270ef43224d3cc741b`(head 고정 squash, 사용자 "진행해" 후). PR CI45390608450 7종(1806개) 성공, tree `d13d57f` 일치, 보호 변경/우회 없음, branch 정리. **relay 외부 송신 문제 코드상 해결(PR61·62).** 남은 것: 인프라 재설치 요청·Terraform 실행 주체 결정 → WF12 5절 체크리스트 실값(reader 신원·RBAC, GitHub 읽기 토큰, IRSA 역할·주석, Secret 이름, 정상 CI binding, Slack Interactivity URL) → renderer recovery 입력 확정 → WF11 실환경 검증. 그 뒤 PR 발행·원복·재시작 프로세스 연결.
+
 ## 2026-11-24 relay 외부 송신 proxy 조각 2 renderer·CI 반영 준비 (Claude)
 
 사용자 결정(추천): 선택적 recovery 입력 전체. branch `claude/a7-egress-proxy-renderer-20261124`(기준 main `65a32a1`). WF10 renderer에 선택적 `recovery` 절(approvers=렌더링 grant 사용자, approval 시간, principals, author_id, aws_role_name, secrets{reader,github}, normal_binding) → 있을 때만 `recovery-approval.json`(런타임 모델 검증, observe api_url=기존 collector API·reader `/run/recovery-reader`, prepare drafts `/data/recovery-drafts`·GitHub `/run/ai-github`·egress_proxy `http://<name>-egress.<ns>.svc:8080`)·`normal-ci-binding.json`, relay 전용 Secret 마운트, `-egress` proxy Deployment(비밀·토큰·PVC 없음)·Service·NetworkPolicy, 메인 Pod 송신에 proxy 8080 추가(직접 인터넷 없음), 후보 `recovery` 요약·선행 조건 5·잔여 위험 2. 없으면 main과 manifest/후보 hash 동일. 변경 계획: proxy NP·Service·Deployment를 메인 Pod 앞에, 사후 확인 2개 추가. 후보 패키지만 128KiB 상한. WF12 7절 1항 해결로 갱신. 시험8·변형 15/15. PR61 병합·main CI 결과 메타데이터 이관 포함.

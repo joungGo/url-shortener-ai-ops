@@ -57,6 +57,10 @@ def _body(model):
     return model.model_dump(mode='json')
 
 
+# Tombstones outlive their retention by 30 days, then are deleted (see prune).
+TOMBSTONE_SECONDS = 30 * 24 * 60 * 60
+
+
 class RecoveryApprovalLedger:
     """Shares the private JobQueue DB; never holds a DB transaction during a probe.
 
@@ -331,12 +335,22 @@ class RecoveryApprovalLedger:
         self.policy, self.policy_hash = policy, new_hash
 
     def prune(self):
-        """Drop expired metadata, retain only hashed dedup tombstones; no source copy."""
+        """Drop expired metadata, retain only hashed dedup tombstones; no source copy.
+
+        A tombstone and its decision receipts are deleted ``TOMBSTONE_SECONDS`` after
+        the record's retention ended. By then the plan itself can no longer be loaded
+        (``_plan`` refuses an expired plan), so the same plan can never be reopened or
+        decided again: the dedup role is over, and the 10000/30000 caps stay usable.
+        """
         with self.queue.transaction() as db:
             self._active(db)
+            now = self.queue.now()
             for row in db.execute(f'SELECT plan_hash,document FROM {self.TABLE_PREFIX}s').fetchall():
                 record = self._get(db,row['plan_hash'])
-                if self.queue.now() >= record['retained_until']:
+                if now >= record['retained_until'] + TOMBSTONE_SECONDS:
+                    db.execute(f'DELETE FROM {self.TABLE_PREFIX}s WHERE plan_hash=?', (row['plan_hash'],))
+                    db.execute(f'DELETE FROM {self.TABLE_PREFIX}_receipts WHERE plan_hash=?', (row['plan_hash'],))
+                elif now >= record['retained_until']:
                     record.update(identity=None, approved_by_hash=None, proof_hash=None)
                     self._save(db,record)
 

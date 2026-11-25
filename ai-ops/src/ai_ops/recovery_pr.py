@@ -420,9 +420,14 @@ class ImageRecoveryPRBridge:
                 + detail)
 
     def prune(self):
+        from ai_ops.recovery_approvals import TOMBSTONE_SECONDS
         with self.queue.transaction() as db:
             for row in db.execute('SELECT document FROM recovery_pr_links').fetchall():
                 record=json.loads(row['document'])
+                if self.queue.now()>=record['retained_until']+TOMBSTONE_SECONDS:
+                    # Source plan long gone: prepare/publish can never address it again.
+                    db.execute('DELETE FROM recovery_pr_links WHERE plan_hash=?',(record['plan_hash'],))
+                    continue
                 if self.queue.now()>=record['retained_until']:
                     record.update(state='expired',reason='source_expired',proposal=None,link=None,proof=None,
                                   payload=None,url=None,head_sha=None,event_id=None,job_id=None,locked=None,merged=None,
