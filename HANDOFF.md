@@ -1,5 +1,56 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-25 WF11 결정·lab 경보 규칙·CI 반영 준비 (Claude)
+
+branch `claude/wf11-lab-alert-20261125`(기준 main `aaa8528`).
+
+**WF11 결정(사용자)**
+
+- 인프라를 재설치하고 Terraform은 Claude가 실행한다. 새 위임이며, 준비가 끝난 뒤 시작한다.
+- 리허설은 생략한다.
+- 상한은 3시간이다.
+- 주입·복구 PR은 Claude가 작성한다. 병합과 sync는 "진행해" 후에 한다.
+- S1 다음 S2a를 한다.
+- 재생 자료는 개인 경로에 둔다.
+- PR 자동 발행은 하지 않는다.
+
+**공백과 해결.** lab에는 경보 규칙이 없고, 앱 지표 경보는 Pod가 0개인 장애를 볼 수 없다. llm-council 2차 결론("진행해")에 따라 renderer가 `LabDeploymentUnavailable` PrometheusRule을 렌더링하도록 했다.
+
+- 규칙은 lab chart 밖에 둔다. lab AppProject는 Deployment만 허용하기 때문이다.
+- 변경 계획의 첫 단계로 적용한다.
+- 수신기 허용 목록은 바꾸지 않았다. `/v1/events` 경로는 경보 이름을 거르지 않기 때문이다.
+- 준비 절차에 사전 규칙 로드 확인과 8분 합성 비상 절차를 추가했다.
+
+**검증과 남은 일.** 시험 9개, 결함 변형 13/13. promtool 실행(공식 바이너리 다운로드)은 자동 분류기에 막혀 사용자 확인을 기다린다.
+
+PR70·71 병합 메타데이터를 함께 이관했다. [문서](ai-ops/docs/wf11-lab-alert-local-20261125.md)
+
+## 2026-11-25 조회 명령·README·WF11 준비 절차 CI/main 반영 완료 (Claude)
+
+사용자 "진행해" 후 두 PR을 병합하고 branch를 정리했다.
+
+- **[PR #70](https://github.com/joungGo/url-shortener-ai-ops/pull/70)**(`ai_ops.recovery_status`)
+  - main `c2cc32e44861f58daab48f13599ae02283a6b4a7`
+  - PR CI45578594470 7종 성공, tree `246e253` 일치
+  - main CI45580280550 성공
+  - 처음에는 "모두 진행해"로 병합하려 했으나 자동 분류기가 막았다. 명시적 "진행해"를 받은 뒤 병합했다.
+- **[PR #71](https://github.com/joungGo/url-shortener-ai-ops/pull/71)**(README 흐름 요약과 1인 운영 명시, WF11 준비 절차 초안)
+  - main `aaa85287c4d99805bb83da175fbe195abca9e5eb`
+  - PR CI45579685052 성공
+  - 이전 main 기반 PR이라 tree 대신 diff를 비교했고, 동일했다.
+  - main CI45580525860 성공
+
+**인프라 없이 남은 작업은 없다.** 다음은 WF11 기준표 9절의 사용자 결정이다.
+
+- 인프라 재설치와 Terraform 실행 주체
+- 로컬 리허설 여부
+- 시간·비용 상한
+- 장애 주입 승인
+- 경보 규칙 확인
+- S1/S2 순서
+- 재생 자료 보관
+- PR 자동 발행 여부
+
 ## 2026-11-25 장부 읽기 전용 조회 명령·CI 반영 준비 (Claude)
 
 PR69(WF11 기준표 초안)는 사용자 "진행해" 후 병합해 main `60faf1f4fb9a618c49ab2d6e9e323569ada21a47`에 반영했다. PR CI45576610850과 main CI45577440373이 성공했고 tree `b827d8d`가 일치한다.

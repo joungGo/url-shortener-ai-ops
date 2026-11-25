@@ -50,3 +50,10 @@ WF11에서는 relay 컨테이너 안에서 실행한다. 예: `kubectl exec … 
 **결함 변형 15/15 검출.** 첫 실행에서 "rw 모드로 연결" 변형이 살아남았다. 이 명령은 원래 쓰지 않으므로 겉으로 차이가 드러나지 않았기 때문이다. 연결 URI를 직접 확인하는 시험을 추가한 뒤 검출했다. 전체 결과는 [검증 기록](recovery-status-local-validation-20261125.json)에 있다.
 
 실제 클러스터·Slack 없음.
+
+## 최종 반영 결과
+
+- [PR #70](https://github.com/joungGo/url-shortener-ai-ops/pull/70)의 head `12686ee2a95f430e168ad377b5fedb1d9e6574d2`를 head 고정 일반 squash로 병합해 main `c2cc32e44861f58daab48f13599ae02283a6b4a7`에 반영했다. 사용자의 명시적 "진행해" 후 병합했다. 그 전의 "모두 진행해"로는 자동 분류기가 병합을 막았다.
+- [PR CI45578594470](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45578594470) 7종이 성공했다(1866개, skip 1).
+- tree `246e253a5f5eb0e8812b60fac37c19edc472c0dc`가 일치한다.
+- 병합 후 branch를 정리했다. [main CI45580280550](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45580280550)이 성공했다.

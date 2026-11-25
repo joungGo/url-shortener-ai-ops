@@ -53,6 +53,15 @@ RECOVERY_SECRET_KEYS = ('reader', 'github')
 RESTART_FIELDS = ('approval', 'execution_seconds', 'prometheus_secret', 'prior_ready_query', 'dependency_queries')
 RESTART_EXECUTOR = 'local-restart-wf10'
 PACKAGE_LIMIT = 131072
+# WF11 lab alert (user decision 2026-11-25, llm-council: state-based rule outside
+# the lab chart). The request-metric alerts cannot see an image-pull failure that
+# leaves zero Pods, so a kube-state-metrics rule raises one labelled event for the
+# registered lab target. The /v1/events path accepts any alertname (Watchdog
+# excluded) whose target labels match a binding; `release` is how the
+# kube-prometheus-stack operator selects rules.
+LAB_ALERT = 'LabDeploymentUnavailable'
+LAB_ALERT_FOR = '2m'
+RULE_RELEASE_LABEL = {'release': 'kube-prometheus-stack'}
 
 
 def draft():
@@ -228,6 +237,68 @@ def recovery_config(v):
         'restart': section}).model_dump()
 
 
+def lab_alert_rule(binding):
+    """PrometheusRule spec for the single registered lab target (label contract)."""
+    t = binding['target']
+    for key in ('namespace', 'workload'):
+        if not re.fullmatch(r'[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?', t[key]):
+            raise ValueError('wf10_lab_alert_target_rejected')
+    selector = f'namespace="{t["namespace"]}",deployment="{t["workload"]}"'
+    expr = (f'(max by (namespace, deployment) (kube_deployment_spec_replicas{{{selector}}}) > 0)'
+            f' and on (namespace, deployment) '
+            f'(max by (namespace, deployment) (kube_deployment_status_replicas_available{{{selector}}}) == 0)')
+    labels = {'severity': 'warning', 'ai_ops': 'enabled',
+              **{k: t[k] for k in ('cluster_id', 'namespace', 'workload', 'service', 'environment')}}
+    return {'groups': [{'name': 'wf11-lab.rules', 'interval': '30s', 'rules': [{
+        'alert': LAB_ALERT, 'expr': expr, 'for': LAB_ALERT_FOR, 'labels': labels,
+        # Static text only: no templated values from series labels.
+        'annotations': {'summary': 'lab 배포의 사용 가능한 replica가 0입니다(원하는 replica는 1 이상).'}}]}]}
+
+
+LABEL_NAME = re.compile(r'[a-zA-Z_][a-zA-Z0-9_]{0,127}')
+
+
+def check_lab_rule(resource):
+    """Strict shape check of the one PrometheusRule this renderer emits.
+
+    The vendored Kubernetes subset has no monitoring.coreos.com CRD; this checks the
+    exact fixed form instead (unknown/missing fields rejected). Server-side dry-run
+    in the change plan stays the live gate."""
+    def exact(value, keys):
+        if type(value) is not dict or set(value) != set(keys):
+            raise SchemaError('prometheusrule: fields')
+    def text(value):
+        if type(value) is not str or not value or len(value) > 2048 or any(ord(c) < 32 for c in value):
+            raise SchemaError('prometheusrule: string')
+    exact(resource, ('apiVersion', 'kind', 'metadata', 'spec'))
+    if resource['apiVersion'] != 'monitoring.coreos.com/v1' or resource['kind'] != 'PrometheusRule':
+        raise SchemaError('prometheusrule: kind')
+    exact(resource['metadata'], ('name', 'namespace', 'labels'))
+    exact(resource['spec'], ('groups',))
+    groups = resource['spec']['groups']
+    if type(groups) is not list or len(groups) != 1:
+        raise SchemaError('prometheusrule: groups')
+    exact(groups[0], ('name', 'interval', 'rules'))
+    rules = groups[0]['rules']
+    if type(rules) is not list or len(rules) != 1:
+        raise SchemaError('prometheusrule: rules')
+    exact(rules[0], ('alert', 'expr', 'for', 'labels', 'annotations'))
+    for value in (resource['metadata']['name'], resource['metadata']['namespace'], groups[0]['name'],
+                  groups[0]['interval'], rules[0]['alert'], rules[0]['expr'], rules[0]['for']):
+        text(value)
+    for mapping in (resource['metadata']['labels'], rules[0]['labels'], rules[0]['annotations']):
+        if type(mapping) is not dict or not mapping:
+            raise SchemaError('prometheusrule: map')
+        for key, value in mapping.items():
+            if type(key) is not str or not LABEL_NAME.fullmatch(key.replace('.', '_').replace('/', '_').replace('-', '_')):
+                raise SchemaError('prometheusrule: key')
+            text(value)
+    if not re.fullmatch(r'[0-9]+[smh]', rules[0]['for']) or not re.fullmatch(r'[0-9]+[smh]', groups[0]['interval']):
+        raise SchemaError('prometheusrule: duration')
+    if any('{{' in value for value in (*rules[0]['labels'].values(), *rules[0]['annotations'].values())):
+        raise SchemaError('prometheusrule: template')  # static text only
+
+
 def candidate(value):
     v, missing = inputs(value)
     if missing:
@@ -358,6 +429,10 @@ def candidate(value):
         'egress':[{'to':[peer(net['dns'])],'ports':[{'protocol':p,'port':53} for p in ('TCP','UDP')]},
                   {'to':[{'ipBlock':{'cidr':'0.0.0.0/0','except':NON_PUBLIC}}],'ports':[{'protocol':'TCP','port':443}]}]}},'networking.k8s.io/v1'))
     if recovery is not None:
+        resources.append({'apiVersion':'monitoring.coreos.com/v1','kind':'PrometheusRule',
+            'metadata':{'name':n+'-lab-alerts','namespace':ns,
+                        'labels':{**RULE_RELEASE_LABEL,'app.kubernetes.io/part-of':'wf10'}},
+            'spec':lab_alert_rule(v['config']['bindings.json']['bindings'][0])})
         # Fixed-destination CONNECT proxy: no secrets, no Kubernetes token, no PVC.
         # TLS stays end to end; only GitHub/STS/ECR :443 (ai_ops.recovery_egress_proxy).
         e_probe={'tcpSocket':{'port':EGRESS_PORT}}
@@ -386,7 +461,10 @@ def candidate(value):
     # the API server would reject on shape; server dry-run remains a live gate.
     for resource in resources:
         try:
-            validate_manifest(resource)
+            if resource['kind'] == 'PrometheusRule':
+                check_lab_rule(resource)
+            else:
+                validate_manifest(resource)
         except SchemaError:
             raise ValueError('wf10_schema_rejected') from None
     result={'status':'candidate_rendered_not_approved','execution_allowed':False,'live_verified':False,

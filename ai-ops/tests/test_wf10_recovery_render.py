@@ -57,6 +57,7 @@ class RecoveryRenderTest(unittest.TestCase):
             ('ConfigMap', 'wf10-fixture-config'), ('Deployment', 'wf10-fixture'), ('Service', 'wf10-fixture-events'),
             ('Service', 'wf10-fixture-slack'), ('NetworkPolicy', 'wf10-fixture'), ('Deployment', 'wf10-fixture-sender'),
             ('Service', 'wf10-fixture-sender'), ('NetworkPolicy', 'wf10-fixture-sender'),
+            ('PrometheusRule', 'wf10-fixture-lab-alerts'),
             ('Deployment', 'wf10-fixture-egress'), ('Service', 'wf10-fixture-egress'),
             ('NetworkPolicy', 'wf10-fixture-egress')])
         self.assertEqual(result['recovery'], {'enabled': True, 'publication': 'not_wired',
@@ -139,7 +140,9 @@ class RecoveryRenderTest(unittest.TestCase):
         self.assertEqual(order[-2:], [('Deployment', '-egress'), ('Deployment', '')])
         self.assertLess(order.index(('NetworkPolicy', '-egress')), order.index(('Deployment', '-egress')))
         self.assertIn('main_pod_internet_egress_only_via_proxy', document['post_checks'])
-        self.assertEqual(len(document['rollback']['steps']), 11)
+        self.assertEqual(len(document['rollback']['steps']), 12)  # + lab alert rule (WF11)
+        self.assertEqual(order[0], ('PrometheusRule', '-lab-alerts'))
+        self.assertIn('lab_alert_rule_loaded_in_prometheus', document['post_checks'])
         plain = self.root / 'plain'
         build(base.fixture(), plain)
         self.assertNotIn('main_pod_internet_egress_only_via_proxy', plan(plain)['post_checks'])
