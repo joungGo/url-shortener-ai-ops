@@ -103,3 +103,12 @@ relay advance                             → 승인된 건 재검증(읽기 1�
 **변형 검사:** [검증 기록](recovery-restart-wiring-local-validation-20261125.json)에 있다.
 
 실제 클러스터·배포·Slack·장애 실습 없음.
+
+## 최종 반영 결과
+
+[PR #65](https://github.com/joungGo/url-shortener-ai-ops/pull/65)의 head `63372f4f59facb826fea70efbaa48b06d29cc736`를 head 고정 일반 squash로 병합했다(사용자 "진행해" 후). main은 `eb435540533da3d7583f40288c1ab6f30ac26165`다.
+
+- PR CI: [45541408028](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45541408028) 7종 성공(1841개, skip1)
+- tree: `138cdd9c99a6fc154a83c04b40d5488ab134ddcc` 일치
+- 보호 설정 변경이나 우회는 없다.
+- 병합 후 branch를 정리했다. [main CI45543789806](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45543789806) 성공.

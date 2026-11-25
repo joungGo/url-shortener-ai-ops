@@ -1,5 +1,30 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-25 예약 보관 정리 시험 경합 수정·CI 반영 준비 (Claude)
+
+branch `claude/retention-schedule-race-20261125`(기준 main `eb43554`). PR63 main CI 첫 실행을 실패시킨 `test_retention_schedule`의 경합을 고쳤다. 원인은 시험이 정리 완료 직후 `runs`를 읽는데, `runs`는 실행 뒤 따로 기록되는 것이었다. 시험만 수정했다.
+
+- 1초 지연 주입 재현: 기존 시험 실패, 수정 시험 통과
+- PR65 병합 메타데이터(main CI45543789806 성공 포함) 이관
+- [문서](ai-ops/docs/retention-schedule-race-fix-20261125.md)
+
+## 2026-11-25 A7 재시작 경로 CI/main 반영 완료 (Claude)
+
+[PR #65](https://github.com/joungGo/url-shortener-ai-ops/pull/65) head `63372f4f59facb826fea70efbaa48b06d29cc736` → main `eb435540533da3d7583f40288c1ab6f30ac26165`(head 고정 squash, 사용자 "진행해" 후).
+
+- PR CI45541408028 7종 성공(1841개)
+- tree `138cdd9` 일치, branch 정리 완료
+- main CI45543789806 성공
+
+다음 후보:
+
+- `test_retention_schedule` 경합 시험 수정(작음)
+- 원복 프로세스 연결
+- healthy 판정
+- renderer `restart` 절
+
+정책 결정이 먼저 필요한 것: PR 발행, 승인자 제한 완화. 실제 실행·연결은 WF11 결정을 기다린다.
+
 ## 2026-11-25 A7 재시작 경로 실행 직전까지 연결·CI 반영 준비 (Claude)
 
 branch `claude/a7-restart-wiring-20261125`(기준 main `8db0878`). 사용자 결정(모두 추천):

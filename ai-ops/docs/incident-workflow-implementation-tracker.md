@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `8db0878`(A7 작은 항목 PR63), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-restart-wiring-20261125`(재시작 경로 실행 직전까지 연결). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-25 KST. 기준 AI main `eb43554`(A7 재시작 경로 PR65), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/retention-schedule-race-20261125`(경합 시험 수정). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -441,3 +441,18 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 사용자 결정(모두 추천): 실행 직전까지 · `request-approval` 재사용 · 관측기 읽기 신원 확장 · WF05 회신 문구만 수정. 재시작 후보에 `request-approval`을 보내면 WF08 봉인과 명령 승인 대기가 열리고, 버튼과 재검증을 거쳐 `command_ready` 알림까지 간다. 실제 재시작 실행은 비활성이다(읽기 전용 포트, `writer=None`).
 
 함께 바꾼 것: 정책 전환 명령을 두 범위로 확장했다. 재시작 기록이 영구 누적되던 결함을 고쳤다(보관 종료 30일 뒤 삭제). 신규 시험 24개. [조각 문서](recovery-restart-wiring-local-20261125.md). 남은 것: 실제 실행(WF11), renderer `restart` 절, RBAC 추가(events·HPA list).
+
+### A7 재시작 경로 최종 반영 · 2026-11-25
+
+[PR #65](https://github.com/joungGo/url-shortener-ai-ops/pull/65) head `63372f4` → main `eb435540533da3d7583f40288c1ab6f30ac26165`. PR CI45541408028 7종 성공(1841개). tree `138cdd9` 일치. 보호 변경이나 우회는 없다.
+
+다음 후보:
+
+- 경합 시험 수정(작음)
+- 원복 프로세스 연결
+- healthy 판정
+- renderer restart 절
+
+### 예약 보관 정리 시험 경합 수정 · 2026-11-25
+
+`test_retention_schedule`의 worker 시험이 정리 완료 직후 실행 기록을 읽어 간헐적으로 실패했다(PR63 main CI 첫 실행). 시험이 실행 기록 완료까지 기다리도록 고쳤다. 제품 코드는 바꾸지 않았다. 1초 지연을 넣어 결정적으로 재현했다(기존 시험 실패, 수정 시험 통과). [문서](retention-schedule-race-fix-20261125.md).
