@@ -1,10 +1,21 @@
 {
-  "status": "local_verified_pr_ci_pending",
+  "status": "merged_main_ci_passed",
   "slice": "A7 restart (command) path wired up to command_ready; execution disabled",
   "author": "Claude Code (Opus 5.5)",
   "base": "8db08787f34a460c251e2fb6ed36fd88c9341be4",
-  "decisions": {"date": "2026-11-25", "by": "user (all recommended)", "scope": "up to just before execution", "start": "reuse request-approval", "reads": "extend observer read identity + Prometheus", "plan_reply": "wording only; WF05 contract unchanged"},
-  "execution": {"execute_local_called": false, "port": "read-only KubernetesRestartPort (writer=None, mode=kubernetes)", "cluster_writes": 0},
+  "decisions": {
+    "date": "2026-11-25",
+    "by": "user (all recommended)",
+    "scope": "up to just before execution",
+    "start": "reuse request-approval",
+    "reads": "extend observer read identity + Prometheus",
+    "plan_reply": "wording only; WF05 contract unchanged"
+  },
+  "execution": {
+    "execute_local_called": false,
+    "port": "read-only KubernetesRestartPort (writer=None, mode=kubernetes)",
+    "cluster_writes": 0
+  },
   "changes": [
     "recovery_restart_wiring: RestartConfig/PrometheusConfig, read-only port, RestartWiring.request (prepare + execute_command open, fixed replies incl. failed gate names)",
     "RecoveryApprovalService: routes restart candidates, sync/advance/receiver/retention cover the command ledger",
@@ -16,11 +27,26 @@
   ],
   "defect_fixed": "restart_runs (cap 10000) kept forever after expiry; now deleted TOMBSTONE_SECONDS after retention (restart_consumed kept)",
   "new_tests": 24,
-  "mutation_checks": {"count": 24, "detected": 24, "runner": "full inherited environment, baseline must pass first"},
-  "full_suite": {"count": 1841, "seconds": 324.483, "passed": true, "skipped": 1,
+  "mutation_checks": {
+    "count": 24,
+    "detected": 24,
+    "runner": "full inherited environment, baseline must pass first"
+  },
+  "full_suite": {
+    "count": 1841,
+    "seconds": 324.483,
+    "passed": true,
+    "skipped": 1,
     "env": "AWS_PROFILE unset, AWS config/credentials files /nonexistent",
-    "log": {"path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-restart-wiring-full.log", "sha256": "7bf772057aea03e9676a50c1495c11290ca01e14d2a4e803ce6655d1170adc0e"}},
-  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/a7-restart-wiring-full.log",
+      "sha256": "7bf772057aea03e9676a50c1495c11290ca01e14d2a4e803ce6655d1170adc0e"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
   "source_hashes": {
     "ai-ops/src/ai_ops/recovery_approval_wiring.py": "392b3cbc9f22d3d80e7878d091a8c5596c74f37ca19f8128ce2afd8a616e0659",
     "ai-ops/src/ai_ops/recovery_commands.py": "0767be0e53f6ee3ca7af8052aa1f10cdbcba34801f00d2d1efb08b4c06956729",
@@ -30,6 +56,32 @@
     "ai-ops/src/ai_ops/recovery_restart_wiring.py": "124ba383a6c771291ab1380991b7ad9a2c111f3d08a057dd3bcaa0eefe55248f",
     "ai-ops/tests/test_recovery_restart_wiring.py": "0a2fdffa125a57001928f758ef38b65e7f91952a0358779b4ba2b631c8bc3b69"
   },
-  "remaining": ["live execution (write identity, executor, evidence dir, effects) - WF11", "renderer restart section + Prometheus read Secret", "RBAC: events list, horizontalpodautoscalers list"],
-  "no_external_actions": "no cluster, deploy, Slack, incident drill, GitHub write besides this PR"
+  "remaining": [
+    "live execution (write identity, executor, evidence dir, effects) - WF11",
+    "renderer restart section + Prometheus read Secret",
+    "RBAC: events list, horizontalpodautoscalers list"
+  ],
+  "no_external_actions": "no cluster, deploy, Slack, incident drill, GitHub write besides this PR",
+  "merge": {
+    "pr": 65,
+    "head": "63372f4f59facb826fea70efbaa48b06d29cc736",
+    "main": "eb435540533da3d7583f40288c1ab6f30ac26165",
+    "tree": "138cdd9c99a6fc154a83c04b40d5488ab134ddcc",
+    "pr_ci": {
+      "run": 45541408028,
+      "jobs": 7,
+      "tests": 1841,
+      "skipped": 1
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "main_ci": {
+      "run": 45543789806,
+      "conclusion": "success",
+      "jobs_success": 6,
+      "skipped": [
+        "C03 Main PR Gate"
+      ]
+    }
+  }
 }
