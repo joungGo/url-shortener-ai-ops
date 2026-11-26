@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-26 KST. 기준 AI main `be4da39`(WF10 평문 HTTP Prometheus PR75), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf11-secret-material-20261126`(WF11 비밀 자료 절차). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-26 KST. 기준 AI main `1f7bbd1`(WF10 ConfigMap 복사 PR77), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf11-execution-record-20261126`(WF11 실행 기록). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -638,3 +638,11 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 - **남은 것은 사용자 작업 두 가지**다. 그다음 설치를 시작한다.
   - c03 읽기 토큰 발급
   - `aws login`
+
+**WF11 실제 실행 · 2026-11-26**
+
+- **설치·S0:** 통과. 그 과정에서 WF10 첫 기동 실패를 PR #77로 고쳤다.
+- **S1(범위 B):** 탐지 → 조사 → 계획 → 승인 → 재검증까지 실제로 동작했다. WF07은 정상 CI 근거가 없어 안전하게 중지했다(기대 결과). 복구는 Argo 정상 revision 복귀로 했다.
+- **철거:** 완료. 최종 스냅샷 `…b6f690c5`를 보존했다.
+- **후속 후보:** CI relay 연결, 정상 판정 `pods/proxy` 경로(lab NetworkPolicy), Service IP 입력, 설치 도구의 애드온 대기, S2a와 복구 PR 경로.
+- 상세: [실행 기록](wf11-execution-20261126.md)
