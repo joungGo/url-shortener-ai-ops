@@ -46,6 +46,10 @@ RECOVERY_FIELDS = ('approvers', 'approval', 'principals', 'author_id', 'aws_role
                    'normal_binding')
 APPROVAL_FIELDS = ('wait_seconds', 'approval_seconds', 'observation_seconds', 'revalidation_seconds')
 RECOVERY_SECRET_KEYS = ('reader', 'github')
+# WF11 (user decision 2026-11-26): the cluster Prometheus (kube-prometheus-stack) is the
+# in-cluster plain-HTTP endpoint without authentication (same as 2026-11-18 and B6). The
+# collector may use it only with NO credentials; then no collector secret exists or mounts.
+PLAIN_PROMETHEUS_PORT = 9090
 # Optional recovery.restart (A7 restart path up to command_ready; execution disabled).
 # Absent -> the recovery output is unchanged. Present -> the restart section of
 # recovery-approval.json and a relay-only Prometheus read secret; Prometheus is the
@@ -84,6 +88,19 @@ def name(value):
     return match(value, r'[a-z][a-z0-9-]{0,50}[a-z0-9]|[a-z]')
 
 
+def plain_prometheus(v):
+    """True when the Prometheus connection is plain http (shape is validated later)."""
+    try:
+        return any(c.get('kind') == 'prometheus' and str(c.get('base_url') or '').startswith('http://')
+                   for c in v['config']['runtime.json']['connections'].values())
+    except (AttributeError, KeyError, TypeError):
+        return False
+
+
+def secret_keys(v):
+    return tuple(k for k in SECRET_KEYS if k != 'collector') if plain_prometheus(v) else SECRET_KEYS
+
+
 def inputs(value):
     if type(value) is not dict:
         raise ValueError('wf10_fields_rejected')
@@ -108,10 +125,11 @@ def inputs(value):
     match(s['alert_channel_id'], r'[CG][A-Z0-9]{2,31}')
     if s['alert_channel_id'] == s['investigation_channel_id']:
         raise ValueError('wf10_channel_boundary_rejected')
-    exact(v['secrets'], SECRET_KEYS)
+    keys = secret_keys(v)
+    exact(v['secrets'], keys)
     for x in v['secrets'].values():
         name(x)
-    if len(set(v['secrets'].values())) != len(SECRET_KEYS):
+    if len(set(v['secrets'].values())) != len(keys):
         raise ValueError('wf10_credential_separation_rejected')
     # Slack egress is not an IP input: Slack publishes no fixed addresses (B' sender).
     exact(v['network'], ('dns', 'alertmanager', 'ingress', 'collector_cidrs'))
@@ -147,6 +165,11 @@ def inputs(value):
     if set(runtime.connections) != {b.kubernetes_connection, b.prometheus_connection}:
         raise ValueError('wf10_connections_rejected')
     for conn in runtime.connections.values():
+        if conn.kind == 'prometheus' and conn.base_url and conn.base_url.startswith('http://'):
+            # No credential may travel over plain HTTP.
+            if urlsplit(conn.base_url).port != PLAIN_PROMETHEUS_PORT or conn.token_file is not None or conn.ca_file is not None:
+                raise ValueError('wf10_collector_paths_rejected')
+            continue
         prefix = '/var/run/ai-ops/kubernetes' if conn.kind == 'kubernetes' else '/run/collector'
         if not conn.base_url or (urlsplit(conn.base_url).port or 443) not in (443,6443,8443,9090) or not conn.base_url.startswith('https://') or conn.token_file != prefix+'/token' or conn.ca_file != prefix+'/ca.crt':
             raise ValueError('wf10_collector_paths_rejected')
@@ -199,7 +222,7 @@ def recovery_config(v):
         secrets.append(restart['prometheus_secret'])
     for x in secrets:
         name(x)
-    if len(set(secrets) | set(v['secrets'].values())) != len(secrets) + len(SECRET_KEYS):
+    if len(set(secrets) | set(v['secrets'].values())) != len(secrets) + len(v['secrets']):
         raise ValueError('wf10_credential_separation_rejected')
     # Approvers must be able to press the buttons: the rendered policy grants one user.
     if type(r['approvers']) is not list or not r['approvers'] or set(r['approvers']) != {v['slack']['user_id']}:
@@ -214,6 +237,9 @@ def recovery_config(v):
         prometheus = [c for c in v['config']['runtime.json']['connections'].values() if c['kind'] == 'prometheus']
         if len(prometheus) != 1:
             raise ValueError('wf10_recovery_api_rejected')
+        if not prometheus[0]['base_url'].startswith('https://'):
+            # The restart path sends a read token to Prometheus: TLS only.
+            raise ValueError('wf10_restart_prometheus_tls_required')
         section = {'approval': {'version': 1, 'scope': 'execute_command', 'approvers': r['approvers'],
                                 **restart['approval']},
                    'executor_id': RESTART_EXECUTOR, 'execution_seconds': restart['execution_seconds'],
@@ -339,7 +365,7 @@ def candidate(value):
     client=secret('sender-client',v['secrets']['sender_client'],['token'],'/run/slack-sender-client')
     tls=secret('slack-tls',v['secrets']['slack_tls'],['tls.crt','tls.key'],'/run/ai-slack-tls')
     event=secret('event-identity',v['secrets']['event_identity'],['token','tls.crt','tls.key'],'/etc/ai-ops-webhook')
-    collector=secret('collector',v['secrets']['collector'],['token','ca.crt'],'/run/collector')
+    collector=[secret('collector',v['secrets']['collector'],['token','ca.crt'],'/run/collector')] if 'collector' in v['secrets'] else []
     relay_extra=[]
     if recovery is not None:
         # Only the relay reads the cluster for recovery and calls GitHub (read token).
@@ -352,7 +378,7 @@ def candidate(value):
         {'serviceAccountToken':{'path':'token','expirationSeconds':3600}},
         {'configMap':{'name':'kube-root-ca.crt','items':[{'key':'ca.crt','path':'ca.crt'}]}}]}})
     source=v['source']
-    roles=[('worker','ai_ops.worker_runtime',[],[collector,mount('kubernetes','/var/run/ai-ops/kubernetes',True)]),
+    roles=[('worker','ai_ops.worker_runtime',[],[*collector,mount('kubernetes','/var/run/ai-ops/kubernetes',True)]),
         ('event-receiver','ai_ops.alert_receiver',['--cluster-id',source['cluster_id'],'--event-source-alias',source['alias'],'--event-source-id',source['source_id']],[event]),
         ('slack-ingress','ai_ops.slack_server',['ingress','--enable-web'],[signing,tls]),
         ('slack-relay','ai_ops.slack_server',['relay','--enable-web'],[signing,client,*relay_extra])]
@@ -483,6 +509,11 @@ def candidate(value):
             'sender idempotency window is in memory; restarts rely on the adapter needs_review rule',
             'single replica main Pod and SQLite on one RWO volume: no HA'],
         'manifest_sha256':digest(encoded(resources)),'resources':resources}
+    if plain_prometheus(v):
+        result['external_prerequisites']=result['external_prerequisites']+[
+            'collector_cidrs include the current Prometheus Pod IP (/32, port 9090); re-render if that Pod is rescheduled']
+        result['residual_risks']=result['residual_risks']+[
+            'the collector reads Prometheus over in-cluster plain HTTP without authentication (existing kube-prometheus-stack endpoint); no credential is sent']
     if recovery is not None:
         result['recovery']={'enabled':True,'egress_proxy':configs['recovery-approval.json']['prepare']['egress_proxy'],
                             'publication':'not_wired'}
@@ -499,7 +530,7 @@ def candidate(value):
                 'restart path: read-only Prometheus token (secret) for the collector Prometheus endpoint and the configured prior-ready/dependency queries']
         result['residual_risks']=result['residual_risks']+[
             'the egress proxy relays TLS to GitHub/STS/ECR: a compromised relay could reach those three hosts',
-            'IRSA environment is injected into every main-Pod container, not only the relay']
+            'IRSA environment is injected into every container of every Pod using the service account (main, sender, egress), not only the relay']
     return result
 
 
