@@ -1,5 +1,12 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-26 WF11 후속 1: lab 정책에 API 서버 Pod proxy 허용 (Claude)
+
+- **배경:** WF11 실제 실행에서 정상 판정 경로(API 서버 `pods/proxy` → `lab-api:8000`)가 lab NetworkPolicy에 막혔다. 이대로면 S2a의 `already_recovered`가 나올 수 없다.
+- **변경:** 사용자 결정 A안. `b6_lab`의 `lab-api` 수신에 `api_server_cidrs`(`/32` 입력)에서 오는 TCP 8000을 추가했다. 다른 Pod·포트와 `lab-deny`는 그대로다.
+- **검증:** 시험 5개, 관련 64개 통과, 결함 변형 7/7. 다음 설치 S0에 "API 서버 proxy `/readyz` 200" 확인을 추가한다.
+- 상세: [변경 문서](ai-ops/docs/lab-apiserver-proxy-ingress-20261126.md)
+
 ## 2026-11-26 WF11 실제 실행: 설치·S1(범위 B)·철거 완료 (Claude)
 
 - **설치(14:41~)**

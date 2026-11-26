@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-26 KST. 기준 AI main `1f7bbd1`(WF10 ConfigMap 복사 PR77), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf11-execution-record-20261126`(WF11 실행 기록). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-26 KST. 기준 AI main `35af715`(WF11 실행 기록 PR78), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/lab-apiserver-proxy-ingress-20261126`(정상 판정 경로). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -646,3 +646,9 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 - **철거:** 완료. 최종 스냅샷 `…b6f690c5`를 보존했다.
 - **후속 후보:** CI relay 연결, 정상 판정 `pods/proxy` 경로(lab NetworkPolicy), Service IP 입력, 설치 도구의 애드온 대기, S2a와 복구 PR 경로.
 - 상세: [실행 기록](wf11-execution-20261126.md)
+
+**WF11 후속 1 · 2026-11-26**
+
+- lab `lab-api` NetworkPolicy가 API 서버(`api_server_cidrs`, `/32`)에서 오는 8000번을 허용하도록 바꿨다. 복구 정상 판정의 `pods/proxy` 경로가 이 정책에 막혀 있었다.
+- 이 수정으로 다음 설치에서 S2a를 검증할 수 있다.
+- 상세: [변경 문서](lab-apiserver-proxy-ingress-20261126.md)

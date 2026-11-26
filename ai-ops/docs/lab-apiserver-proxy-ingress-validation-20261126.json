@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-26",
+  "decision": "user option A",
+  "live": false,
+  "change": "b6_lab lab-api NetworkPolicy ingress: api_server_cidrs (/32) -> TCP 8000",
+  "tests_added": {
+    "file": "ai-ops/tests/test_lab_apiserver_proxy.py",
+    "count": 5
+  },
+  "related_tests": 64,
+  "mutation": {
+    "count": 7,
+    "detected": 7
+  },
+  "next_install_s0_check": "kubectl get --raw /api/v1/namespaces/ai-ops-lab/pods/<pod>:8000/proxy/readyz == 200",
+  "full_suite": {
+    "ran": 1897,
+    "result": "OK (skipped=1)",
+    "log_sha256": "1c8e7138b8420becd61c2a6f2214f64e2f55efb60ba71f59642f0a3f73ad373f"
+  },
+  "boundary": "verified",
+  "diff_check": "clean"
+}
