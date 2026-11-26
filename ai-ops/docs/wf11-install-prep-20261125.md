@@ -26,11 +26,22 @@
 
 | # | 항목 | 상태 |
 |---|---|---|
-| 1 | Alertmanager 라우팅을 `/v1/events`(ai-events)로 전환 | 플랫폼 [PR #164](https://github.com/f-lab-edu/F-Lab-DevOps/pull/164). 필수 CI 모두 통과(WF03 amtool 실제 설정 검사 포함). **승인 리뷰 1건 필요(보호 규칙)** |
-| 2 | relay IRSA 역할(`ecr:DescribeImages`) | AI Terraform `wf11-recovery.tf`. 기본 비활성. 이 PR |
-| 3 | 복구 읽기 신원 RBAC(SA·Role·RoleBinding·토큰)과 WF10 SA(IRSA annotation) manifest 도구 | 다음 |
+| 1 | Alertmanager 라우팅을 `/v1/events`(ai-events)로 전환 | **완료.** 플랫폼 [PR #164](https://github.com/f-lab-edu/F-Lab-DevOps/pull/164) → main `f9b1b72`. 아래 1-1 참고 |
+| 2 | relay IRSA 역할(`ecr:DescribeImages`) | **완료.** AI [PR #73](https://github.com/joungGo/url-shortener-ai-ops/pull/73) → main `12622a1`. 기본 비활성 |
+| 3a | WF10 SA(IRSA annotation), 복구 읽기 신원, Slack 진입점 manifest 생성기 `ai_ops.wf11_edge` | 이 PR |
+| 3b | 사건 수신 TLS·토큰, Alertmanager 인증, sender client 비밀 자료 절차 | 다음 |
 | 4 | `c03-execution-lab` GitHub 읽기 토큰 | 사용자 발급 |
 | 5 | `aws login --profile urlshortener-new` | 사용자, 설치 직전 |
+
+### 1-1. 플랫폼 라우팅 전환 결과
+
+- **PR #164 병합.** main 보호 규칙(승인 1건, `enforce_admins` 켜짐) 때문에 사용자가 GitHub 화면에서 "관리자 우회 금지"를 끄고 우회 squash 병합했다. 병합 결과는 main `f9b1b72`, tree는 PR head와 같다.
+- **main CI 실패와 수정.** 병합 뒤 main CI 45626777257의 contracts가 실패했다. main에서만 도는 플랫폼 레거시 `check_alert_routing.py`가 예전 `/v1/alerts` 구조만 가정했기 때문이다. PR 단계에서는 이 작업이 돌지 않아 드러나지 않았고, PR #164 작성 때 놓친 부분이다.
+- **[PR #165](https://github.com/f-lab-edu/F-Lab-DevOps/pull/165)의 두 가지 수정.**
+  - ai-events 상태 분기를 추가했다. legacy는 기존 검사를 통과하고, 실제 values는 정해진 차이만 허용한다.
+  - 레거시 이미지의 openssl 고정값을 `3.5.9-r1`로 바꿔 AI 저장소와 맞췄다. 외부 패키지가 바뀌어 image 작업이 실패하고 있었다.
+- **PR #165 병합.** 사용자가 화면에서 우회 병합했다. main은 `d195fcb`, tree는 PR head와 같고, main CI 45628950483이 성공했다.
+- **보호 설정(사용자 결정).** F-Lab-DevOps main의 `enforce_admins` 해제 상태를 유지한다. 승인 1건과 필수 CI는 그대로다. Claude는 이 설정을 바꾸지 않는다.
 
 ### 2. IRSA 역할 상세
 
@@ -40,5 +51,35 @@
 - **검증.**
   - `terraform fmt -check`, `init -backend=false -lockfile=readonly`(provider는 lockfile 해시로 검증), `validate`를 통과했다.
   - 정적 계약 시험 4개를 추가했다. 기본 비활성, 정확한 SA 신뢰, 단일 action·저장소, 배치 결정 기본값을 확인한다.
+
+### 3a. `ai_ops.wf11_edge` (설치 전 manifest, 비밀 값 없음)
+
+```
+python -m ai_ops.wf11_edge --inputs <WF10 입력 JSON> --role-arn <PR73 output wf11_recovery_role_arn> \
+  --slack-host slack-ops.bidservice.store --output <새 파일>
+```
+
+renderer와 **같은 WF10 입력**에서 만든다. 그래서 이름이 renderer와 어긋날 수 없다. 출력은 아래 리소스를 담은 `List`이며, 운영자가 검토한 뒤 server dry-run을 거쳐 적용한다.
+
+- **WF10 ServiceAccount** `<service_account>`: IRSA annotation `eks.amazonaws.com/role-arn`을 달고, `automountServiceAccountToken: false`로 둔다.
+- **복구 읽기 신원**
+  - ServiceAccount `<name>-recovery-reader`(IRSA 없음)
+  - `kubernetes.io/service-account-token` Secret: 이름은 renderer의 `recovery.secrets.reader`와 같고, token·ca.crt는 Kubernetes가 채운다.
+  - `ai-ops-lab` Role과 RoleBinding: `deployments` get(lab-api), `replicasets`/`pods` list, `pods/proxy` get, `leases` get(b6-scenario-lock)
+  - `argocd` Role과 RoleBinding: `applications` get(lab-target)
+  - 쓰기 동사와 와일드카드는 없다.
+- **Slack 진입점**(2026-11-17과 같은 형태)
+  - cert-manager Certificate: ClusterIssuer `letsencrypt-traefik`, Secret은 renderer의 `secrets.slack_tls`
+  - Traefik IngressRouteTCP: `HostSNI(slack-ops.bidservice.store)`에서 `<name>-slack:9444`로 TLS passthrough
+- **입력 검사.** recovery 절이 없거나, 역할 ARN·호스트·이름 형식이 맞지 않으면 거절한다. 출력 파일이 이미 있으면 덮어쓰지 않는다. 실패하면 고정 코드만 낸다.
+
+**검증.** 시험 4개를 추가했다.
+
+- renderer 출력과 이름이 맞물린다: Deployment의 SA, relay 마운트 Secret, ingress TLS Secret, `-slack` Service와 포트
+- 읽기 전용 규칙이 정확하다.
+- 잘못된 입력은 거절한다.
+- CLI는 한 번만 쓰고, 실패 시 고정 코드를 낸다.
+
+결함 변형은 14/14 검출했다.
 
 실제 클러스터·AWS 호출(읽기 전용 계정 확인 제외)·Slack은 하지 않았다.

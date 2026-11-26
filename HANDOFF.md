@@ -1,5 +1,18 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-26 WF11 설치 준비: 라우팅·IRSA 반영, 설치 전 manifest 생성기 (Claude)
+
+- **플랫폼 PR #164·#165 병합(사용자, GitHub 화면 우회)**
+  - #164: Alertmanager를 ai-events(/v1/events)로 전환했다(main `f9b1b72`).
+  - 병합 뒤 main CI가 실패했다. 원인은 레거시 `check_alert_routing.py`가 예전 구조만 가정한 것이다. #164 작성 때 놓쳤다.
+  - #165로 고쳤다(main `d195fcb`). 내용은 ai-events 분기와 openssl 고정값 동기화다. main CI 45628950483이 성공했다.
+  - `enforce_admins` 해제 상태는 사용자 결정으로 유지한다. Claude는 바꾸지 않는다.
+- **AI PR #73(IRSA) 병합:** "진행해" 후 병합했다(main `12622a1`). main CI도 성공했다.
+- **3a `ai_ops.wf11_edge`(이 branch `claude/wf11-edge-manifests-20261126`)**
+  - WF10과 같은 입력으로 manifest를 만든다: WF10 SA(IRSA), 복구 읽기 신원(SA·토큰 Secret·`ai-ops-lab`/`argocd` 읽기 Role), Slack Certificate·IngressRouteTCP.
+  - 시험 4개, 결함 변형 14/14.
+- **다음:** 3b 비밀 자료 절차. 그 뒤 사용자가 c03 토큰을 발급하고 aws login을 하면 설치를 시작한다.
+
 ## 2026-11-25 WF11 설치 준비(인프라 없이): 플랫폼 라우팅 PR·IRSA (Claude)
 
 사용자가 "인프라 없이 끝낼 수 있는 작업 먼저"를 택했다. 사전 점검(읽기 전용) 결과는 다음과 같다.
