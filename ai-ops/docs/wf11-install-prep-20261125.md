@@ -29,7 +29,8 @@
 | 1 | Alertmanager 라우팅을 `/v1/events`(ai-events)로 전환 | **완료.** 플랫폼 [PR #164](https://github.com/f-lab-edu/F-Lab-DevOps/pull/164) → main `f9b1b72`. 아래 1-1 참고 |
 | 2 | relay IRSA 역할(`ecr:DescribeImages`) | **완료.** AI [PR #73](https://github.com/joungGo/url-shortener-ai-ops/pull/73) → main `12622a1`. 기본 비활성 |
 | 3a | WF10 SA(IRSA annotation), 복구 읽기 신원, Slack 진입점 manifest 생성기 `ai_ops.wf11_edge` | 이 PR |
-| 3b | 사건 수신 TLS·토큰, Alertmanager 인증, sender client 비밀 자료 절차 | 다음 |
+| 3c | WF10 Prometheus 연결을 실제 구성(http, 인증 없음)에 맞추는 renderer 수정 | 다음 PR(사용자 결정 2026-11-26, (a)안) |
+| 3b | 사건 수신 TLS·토큰, Alertmanager 인증, sender client 비밀 자료 절차 | 3c 다음 |
 | 4 | `c03-execution-lab` GitHub 읽기 토큰 | 사용자 발급 |
 | 5 | `aws login --profile urlshortener-new` | 사용자, 설치 직전 |
 
@@ -59,9 +60,14 @@ python -m ai_ops.wf11_edge --inputs <WF10 입력 JSON> --role-arn <PR73 output w
   --slack-host slack-ops.bidservice.store --output <새 파일>
 ```
 
-renderer와 **같은 WF10 입력**에서 만든다. 그래서 이름이 renderer와 어긋날 수 없다. 출력은 아래 리소스를 담은 `List`이며, 운영자가 검토한 뒤 server dry-run을 거쳐 적용한다.
+renderer와 **같은 WF10 입력**에서 만든다. 그래서 이름이 renderer와 어긋날 수 없다. 출력은 아래 리소스 13개를 담은 `List`이며, 운영자가 검토한 뒤 server dry-run을 거쳐 적용한다.
 
 - **WF10 ServiceAccount** `<service_account>`: IRSA annotation `eks.amazonaws.com/role-arn`을 달고, `automountServiceAccountToken: false`로 둔다.
+- **worker 조사 읽기 권한**(2026-11-26 추가): worker는 이 ServiceAccount의 projected token으로 대상을 읽는다. 그래서 기존 B chart `rbac.yaml`과 같은 규칙을 이 계정에 묶는다.
+  - 대상 namespace의 `<name>-investigate-read`: deployments get(workload), services get(service), pods·events get/list, replicasets get/list, pods/log get
+  - Argo namespace의 `<name>-investigate-argo-read`: applications get(binding의 application)
+  - 이름은 binding에서 가져온다. 형식은 `inputs()`의 BindingRegistry 모델이 이미 검사한다.
+  - 처음 작성할 때 이 권한을 빠뜨렸다. 그대로였다면 S1 조사가 403으로 실패했을 것이다. 사용자 승인 후 수정했다.
 - **복구 읽기 신원**
   - ServiceAccount `<name>-recovery-reader`(IRSA 없음)
   - `kubernetes.io/service-account-token` Secret: 이름은 renderer의 `recovery.secrets.reader`와 같고, token·ca.crt는 Kubernetes가 채운다.
@@ -71,15 +77,19 @@ renderer와 **같은 WF10 입력**에서 만든다. 그래서 이름이 renderer
 - **Slack 진입점**(2026-11-17과 같은 형태)
   - cert-manager Certificate: ClusterIssuer `letsencrypt-traefik`, Secret은 renderer의 `secrets.slack_tls`
   - Traefik IngressRouteTCP: `HostSNI(slack-ops.bidservice.store)`에서 `<name>-slack:9444`로 TLS passthrough
+- **IRSA 범위(사용자 결정 2026-11-26, 수용).** EKS webhook은 annotation이 달린 ServiceAccount를 쓰는 **모든 Pod**에 역할을 주입한다. renderer는 메인·Slack 송신·egress Pod에 같은 계정을 쓰므로 세 Pod 모두 역할을 받는다.
+  - 받아들인 이유: 역할 권한이 `urlshortener` 저장소의 `ecr:DescribeImages` 하나뿐이다. 송신·egress Pod의 외부 목적지는 코드 수준에서 고정돼 있다(Slack, GitHub/STS/ECR). 단, NetworkPolicy는 공인 대역 443 전체를 허용한다.
+  - Pod마다 계정을 나누려면 renderer를 바꿔야 한다. WF11 이후 과제로 남긴다.
 - **입력 검사.** recovery 절이 없거나, 역할 ARN·호스트·이름 형식이 맞지 않으면 거절한다. 출력 파일이 이미 있으면 덮어쓰지 않는다. 실패하면 고정 코드만 낸다.
 
-**검증.** 시험 4개를 추가했다.
+**검증.** 시험 5개를 추가했다.
 
 - renderer 출력과 이름이 맞물린다: Deployment의 SA, relay 마운트 Secret, ingress TLS Secret, `-slack` Service와 포트
 - 읽기 전용 규칙이 정확하다.
 - 잘못된 입력은 거절한다.
 - CLI는 한 번만 쓰고, 실패 시 고정 코드를 낸다.
+- worker 조사 읽기 규칙이 chart와 같고, Deployment의 SA에 묶인다(추가).
 
-결함 변형은 14/14 검출했다.
+결함 변형은 처음 14/14, 조사 권한 추가분 12/12를 검출했다. 처음 13개 중 1개가 살아남았는데, 원인은 상위 모델이 이미 검사하는 binding 이름을 다시 검사하던, 실행될 수 없는 코드였다. 이 코드를 지웠다.
 
 실제 클러스터·AWS 호출(읽기 전용 계정 확인 제외)·Slack은 하지 않았다.

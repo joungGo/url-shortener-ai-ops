@@ -72,26 +72,37 @@
     "3_identity_manifests": {
       "status": "3a in this PR",
       "module": "ai_ops.wf11_edge",
-      "tests": 4,
+      "tests": 5,
       "mutation": {
-        "count": 14,
-        "detected": 14
-      },
-      "full_suite": {
-        "ran": 1883,
-        "result": "OK (skipped=1)",
-        "log_sha256": "73dc15e75cb4a859113bbe600e3d542b7ee04e9b2775eea04980f2a59ef8710a"
-      },
-      "files": {
-        "ai-ops/src/ai_ops/wf11_edge.py": "58fac75164fee14a6bb105821940d3836a4e56569d31ca3e07ad0f535de6ef6f",
-        "ai-ops/tests/test_wf11_edge.py": "01809e65a6e7097d80a7e0ab588108f16538c7ce1ae3d721baed6b9d9078c27a"
+        "initial": {
+          "count": 14,
+          "detected": 14
+        },
+        "investigator_rbac": {
+          "count": 12,
+          "detected": 12,
+          "note": "one of 13 survived: unreachable re-check of binding names already validated by BindingRegistry; check removed"
+        }
       },
       "boundary": "verified",
-      "diff_check": "clean"
+      "diff_check": "clean",
+      "resources": 13,
+      "fix_20261126": "worker collector read RBAC (B chart rbac.yaml rules) bound to the WF10 ServiceAccount; omitted in the first draft",
+      "irsa_scope": "accepted (user 2026-11-26): webhook injects the role into all Pods using the SA (main, sender, egress); DescribeImages on one repository only",
+      "full_suite": {
+        "ran": 1884,
+        "result": "OK (skipped=1)",
+        "log_sha256": "a29490c1c0f30db7f5c1fad15ba2e11920bbd3434e03ff5925d7ade93485e9d6"
+      },
+      "files": {
+        "ai-ops/src/ai_ops/wf11_edge.py": "3b18143d5a8f9996f088f19bbfa8f18dbf124536bc9ee0eb31a12e600873a629",
+        "ai-ops/tests/test_wf11_edge.py": "98707afdc22315d027e450d951c1c3ce17726cca452e31e138bdc2782fc13b23"
+      }
     },
     "4_c03_read_token": "user",
     "5_aws_login": "user, right before install",
-    "3b_secret_material": "next"
+    "3b_secret_material": "next",
+    "3c_prometheus_connection": "next PR: renderer accepts the real http Prometheus without credentials (user decision (a))"
   },
   "full_suite": {
     "count": 1879,

@@ -61,7 +61,7 @@ class EdgeTest(unittest.TestCase):
         self.assertNotIn('annotations', reader_sa['metadata'])  # no IRSA on the reader
         self.assertEqual(self.item('Secret')['metadata']['annotations'],
                          {'kubernetes.io/service-account.name': 'wf10-fixture-recovery-reader'})
-        roles = [i for i in self.items if i['kind'] == 'Role']
+        roles = [i for i in self.items if i['kind'] == 'Role' and '-recovery-' in i['metadata']['name']]
         self.assertEqual(sorted(r['metadata']['namespace'] for r in roles), ['ai-ops-lab', 'argocd'])
         for role in roles:
             for rule in role['rules']:
@@ -76,10 +76,37 @@ class EdgeTest(unittest.TestCase):
         argo = next(r for r in roles if r['metadata']['namespace'] == 'argocd')
         self.assertEqual(argo['rules'], [{'apiGroups': ['argoproj.io'], 'resources': ['applications'],
                                           'resourceNames': ['lab-target'], 'verbs': ['get']}])
-        for binding in (i for i in self.items if i['kind'] == 'RoleBinding'):
+        for binding in (i for i in self.items if i['kind'] == 'RoleBinding' and '-recovery-' in i['metadata']['name']):
             self.assertEqual(binding['subjects'], [{'kind': 'ServiceAccount', 'name': 'wf10-fixture-recovery-reader',
                                                     'namespace': self.v['namespace']}])
             self.assertEqual(binding['roleRef']['kind'], 'Role')
+
+    def test_worker_collector_reads_are_bound_to_the_wf10_service_account(self):
+        # The worker reads the target with the Pod ServiceAccount's projected token.
+        pod = self.deployment()['spec']['template']['spec']
+        projected = next(x for x in pod['volumes'] if x['name'] == 'kubernetes')['projected']['sources']
+        self.assertIn({'serviceAccountToken': {'path': 'token', 'expirationSeconds': 3600}}, projected)
+        rbac = {(i['kind'], i['metadata']['namespace'], i['metadata']['name']) for i in self.items
+                if i['kind'] in ('Role', 'RoleBinding')}
+        self.assertEqual(rbac, {(k, ns, name) for k in ('Role', 'RoleBinding') for ns, name in (
+            ('ai-ops-lab', 'wf10-fixture-investigate-read'), ('argocd', 'wf10-fixture-investigate-argo-read'),
+            ('ai-ops-lab', 'wf10-fixture-recovery-read'), ('argocd', 'wf10-fixture-recovery-argo-read'))})
+        # Same rules as the B chart rbac.yaml (literal, from the fixture binding).
+        self.assertEqual(self.item('Role', 'wf10-fixture-investigate-read')['rules'], [
+            {'apiGroups': ['apps'], 'resources': ['deployments'], 'resourceNames': ['lab-api'], 'verbs': ['get']},
+            {'apiGroups': [''], 'resources': ['services'], 'resourceNames': ['lab-api'], 'verbs': ['get']},
+            {'apiGroups': [''], 'resources': ['pods', 'events'], 'verbs': ['get', 'list']},
+            {'apiGroups': ['apps'], 'resources': ['replicasets'], 'verbs': ['get', 'list']},
+            {'apiGroups': [''], 'resources': ['pods/log'], 'verbs': ['get']}])
+        self.assertEqual(self.item('Role', 'wf10-fixture-investigate-argo-read')['rules'], [
+            {'apiGroups': ['argoproj.io'], 'resources': ['applications'], 'resourceNames': ['url-shortener'],
+             'verbs': ['get']}])
+        for name, ns in (('wf10-fixture-investigate-read', 'ai-ops-lab'), ('wf10-fixture-investigate-argo-read', 'argocd')):
+            binding = self.item('RoleBinding', name)
+            self.assertEqual(binding['metadata']['namespace'], ns)
+            self.assertEqual(binding['subjects'], [{'kind': 'ServiceAccount', 'name': pod['serviceAccountName'],
+                                                    'namespace': self.v['namespace']}])
+            self.assertEqual(binding['roleRef'], {'apiGroup': 'rbac.authorization.k8s.io', 'kind': 'Role', 'name': name})
 
     def test_rejects_bad_install_facts_and_missing_recovery(self):
         for kwargs in ({'role_arn': 'arn:aws:iam::764428911194:user/x', 'slack_host': HOST},
@@ -92,10 +119,15 @@ class EdgeTest(unittest.TestCase):
         plain = {k: x for k, x in self.v.items() if k != 'recovery'}
         with self.assertRaisesRegex(ValueError, 'recovery_section_required'):
             manifests(plain, role_arn=ROLE, slack_host=HOST)
-        broken = deepcopy(self.v)
-        broken['recovery']['secrets']['reader'] = 'Bad_Name'
-        with self.assertRaises(ValueError):
-            manifests(broken, role_arn=ROLE, slack_host=HOST)
+        for path, bad in ((('recovery', 'secrets', 'reader'), 'Bad_Name'),
+                          (('config', 'bindings.json', 'bindings', 0, 'argo', 'application'), 'x`) || y')):
+            broken = deepcopy(self.v)
+            node = broken
+            for key in path[:-1]:
+                node = node[key]
+            node[path[-1]] = bad
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                manifests(broken, role_arn=ROLE, slack_host=HOST)
 
     def test_cli_writes_once_and_fails_with_a_fixed_code(self):
         source = self.r.root / 'inputs.json'
@@ -105,7 +137,7 @@ class EdgeTest(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.assertEqual(main(args), 0)
         written = json.loads(out.read_text())
-        self.assertEqual((written['kind'], len(written['items'])), ('List', 9))
+        self.assertEqual((written['kind'], len(written['items'])), ('List', 13))
         before = out.read_bytes()
         stdout = io.StringIO()
         with redirect_stdout(stdout):

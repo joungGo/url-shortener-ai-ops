@@ -4,7 +4,12 @@ Rendered from the SAME WF10 candidate input as ``wf10_deployment.candidate`` so 
 cannot drift, plus two install facts (IRSA role ARN, Slack host). Offline only: no
 kubectl, no cluster, no credentials. Output is reviewed and applied by the operator.
 
-* WF10 ServiceAccount ``<service_account>`` with the IRSA role annotation (PR73 role);
+* WF10 ServiceAccount ``<service_account>`` with the IRSA role annotation (PR73 role),
+  and the worker's collector reads bound to it (same rules as the B chart ``rbac.yaml``:
+  the worker reads the target with this ServiceAccount's projected token). The IRSA
+  webhook injects the role into every Pod using this ServiceAccount, including the Slack
+  sender and egress Pods; accepted for WF11 (user decision 2026-11-26) because the role
+  is ``ecr:DescribeImages`` on one repository and those Pods' egress is fixed;
 * recovery reader identity: ServiceAccount, read-only Roles/RoleBindings in the lab and
   Argo namespaces, and a ``kubernetes.io/service-account-token`` Secret named like the
   renderer's ``recovery.secrets.reader`` (keys token/ca.crt are filled by Kubernetes);
@@ -53,6 +58,31 @@ def reader_rules():
     return lab, argo
 
 
+def investigator_rules(binding):
+    """The worker's collector reads (same as the B chart ``rbac.yaml``), bound to the WF10
+    ServiceAccount whose projected token the worker uses. Read-only, names from the binding."""
+    t, argo = binding['target'], binding['argo']
+    target = [
+        {'apiGroups': ['apps'], 'resources': ['deployments'], 'resourceNames': [t['workload']], 'verbs': ['get']},
+        {'apiGroups': [''], 'resources': ['services'], 'resourceNames': [t['service']], 'verbs': ['get']},
+        # Dynamic Pod names cannot be pinned by RBAC; the collector checks selector/UID.
+        {'apiGroups': [''], 'resources': ['pods', 'events'], 'verbs': ['get', 'list']},
+        {'apiGroups': ['apps'], 'resources': ['replicasets'], 'verbs': ['get', 'list']},
+        {'apiGroups': [''], 'resources': ['pods/log'], 'verbs': ['get']},
+    ]
+    application = [{'apiGroups': ['argoproj.io'], 'resources': ['applications'],
+                    'resourceNames': [argo['application']], 'verbs': ['get']}]
+    return (t['namespace'], target), (argo['namespace'], application)
+
+
+def _role(name, namespace, rules, subject):
+    return [
+        {'apiVersion': 'rbac.authorization.k8s.io/v1', 'kind': 'Role', 'metadata': _meta(name, namespace), 'rules': rules},
+        {'apiVersion': 'rbac.authorization.k8s.io/v1', 'kind': 'RoleBinding', 'metadata': _meta(name, namespace),
+         'subjects': subject, 'roleRef': {'apiGroup': 'rbac.authorization.k8s.io', 'kind': 'Role', 'name': name}},
+    ]
+
+
 def manifests(value, *, role_arn, slack_host):
     v, missing = inputs(value)
     if missing:
@@ -66,12 +96,18 @@ def manifests(value, *, role_arn, slack_host):
     ns, n, sa = v['namespace'], v['name'], v['service_account']
     reader_secret = v['recovery']['secrets']['reader']
     reader_sa = n + '-recovery-reader'
+    [binding] = v['config']['bindings.json']['bindings']
+    (target_ns, target_rules), (argo_ns, argo_rules) = investigator_rules(binding)
+    # Binding names (target/argo) are already validated by the BindingRegistry model in inputs().
     for name in (ns, n, sa, reader_secret, reader_sa, v['secrets']['slack_tls']):
-        if not NAME.fullmatch(name):
+        if not isinstance(name, str) or not NAME.fullmatch(name):
             raise ValueError('wf11_edge_name_rejected')
     lab, argo = reader_rules()
     subject = [{'kind': 'ServiceAccount', 'name': reader_sa, 'namespace': ns}]
-    return [
+    worker = [{'kind': 'ServiceAccount', 'name': sa, 'namespace': ns}]
+    investigate = (_role(n + '-investigate-read', target_ns, target_rules, worker)
+                   + _role(n + '-investigate-argo-read', argo_ns, argo_rules, worker))
+    return investigate + [
         {'apiVersion': 'v1', 'kind': 'ServiceAccount',
          'metadata': _meta(sa, ns, annotations={'eks.amazonaws.com/role-arn': role_arn}),
          'automountServiceAccountToken': False},
