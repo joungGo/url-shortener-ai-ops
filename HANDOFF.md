@@ -1,5 +1,16 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-26 WF11 후속 2b: WF10 renderer에 CI relay 컨테이너 연결 (Claude)
+
+- PR-a(#80) 병합 → main `0349917`.
+- **이 PR:** 선택 입력 `recovery.ci_relay.secret`이 있으면 다음을 렌더링한다.
+  - 메인 Pod `ci-relay` 컨테이너(`--watch --normal-binding`, 같은 store, 토큰은 이 컨테이너만, proxy 환경 변수)
+  - egress `--github-artifacts`
+  - 메인 Pod NetworkPolicy는 그대로다.
+- **검증:** 입력이 없으면 main과 manifest hash가 동일하다. 시험 5개, 결함 변형 11/11.
+- **다음:** 재설치 키트에 정상 CI 설치 단계를 반영한다(AI root `enable_b6_normal_ci`, RBAC·환경 변수, 정상 CI 실행과 사용자 환경 승인, relay 수신 확인).
+- 상세: [변경 문서](ai-ops/docs/wf10-ci-relay-render-local-20261126.md)
+
 ## 2026-11-26 WF11 후속 2a: CI relay 네트워크(고정 목적지 proxy 경유) (Claude)
 
 - **배경:** WF10에 CI relay가 없어 WF07이 정상 CI 근거를 못 받는다(WF11 범위 B의 원인). 사용자 결정은 P1(메인 Pod 컨테이너) + N1(기존 egress proxy 경유).

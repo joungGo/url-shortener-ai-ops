@@ -46,6 +46,12 @@ RECOVERY_FIELDS = ('approvers', 'approval', 'principals', 'author_id', 'aws_role
                    'normal_binding')
 APPROVAL_FIELDS = ('wait_seconds', 'approval_seconds', 'observation_seconds', 'revalidation_seconds')
 RECOVERY_SECRET_KEYS = ('reader', 'github')
+# Optional recovery.ci_relay (WF11 follow-up 2026-11-26, user decision P1+N1): a CI relay container
+# in the main Pod feeds normal-CI receipts into the same store (WF07 evidence). It reads GitHub
+# only through the fixed-destination egress proxy, which then also relays GitHub artifact storage.
+# Absent -> output is byte-identical to before.
+CI_RELAY_FIELDS = ('secret',)
+CI_RELAY_TOKEN = '/run/ci-github/token'
 # WF11 (user decision 2026-11-26): the cluster Prometheus (kube-prometheus-stack) is the
 # in-cluster plain-HTTP endpoint without authentication (same as 2026-11-18 and B6). The
 # collector may use it only with NO credentials; then no collector secret exists or mounts.
@@ -212,7 +218,8 @@ def recovery_config(v):
     if type(r) is not dict:
         raise ValueError('wf10_fields_rejected')
     restart = r.get('restart')
-    exact({k: x for k, x in r.items() if k != 'restart'}, RECOVERY_FIELDS)
+    ci_relay = r.get('ci_relay')
+    exact({k: x for k, x in r.items() if k not in ('restart', 'ci_relay')}, RECOVERY_FIELDS)
     exact(r['approval'], APPROVAL_FIELDS)
     exact(r['secrets'], RECOVERY_SECRET_KEYS)
     secrets = list(r['secrets'].values())
@@ -220,6 +227,9 @@ def recovery_config(v):
         exact(restart, RESTART_FIELDS)
         exact(restart['approval'], APPROVAL_FIELDS)
         secrets.append(restart['prometheus_secret'])
+    if ci_relay is not None:
+        exact(ci_relay, CI_RELAY_FIELDS)
+        secrets.append(ci_relay['secret'])
     for x in secrets:
         name(x)
     if len(set(secrets) | set(v['secrets'].values())) != len(secrets) + len(v['secrets']):
@@ -380,6 +390,8 @@ def candidate(value):
         if recovery.get('restart') is not None:
             relay_extra.append(secret('recovery-prometheus',recovery['restart']['prometheus_secret'],
                                       ['token','ca.crt'],'/run/recovery-prometheus'))
+    ci_relay=(recovery or {}).get('ci_relay')
+    ci_extra=[secret('ci-github',ci_relay['secret'],['token'],CI_RELAY_TOKEN.rsplit('/',1)[0])] if ci_relay is not None else []
     volumes.append({'name':'kubernetes','projected':{'defaultMode':288,'sources':[
         {'serviceAccountToken':{'path':'token','expirationSeconds':3600}},
         {'configMap':{'name':'kube-root-ca.crt','items':[{'key':'ca.crt','path':'ca.crt'}]}}]}})
@@ -388,6 +400,10 @@ def candidate(value):
         ('event-receiver','ai_ops.alert_receiver',['--cluster-id',source['cluster_id'],'--event-source-alias',source['alias'],'--event-source-id',source['source_id']],[event]),
         ('slack-ingress','ai_ops.slack_server',['ingress','--enable-web'],[signing,tls]),
         ('slack-relay','ai_ops.slack_server',['relay','--enable-web'],[signing,client,*relay_extra])]
+    if ci_relay is not None:
+        # Same store as the worker (WF07 reads the normal-CI inbox); only this container holds the Actions token.
+        roles.append(('ci-relay','ai_ops.ci_relay',['--config','/etc/ai-ops','--store','/data/incidents','--watch',
+                      '--normal-binding','/etc/ai-ops/normal-ci-binding.json'],ci_extra))
     for role,module,args,extra in roles:
         volumes.append({'name':role+'-tmp','emptyDir':{'sizeLimit':'64Mi'}})
         container={'name':role,'image':v['image'],'imagePullPolicy':'IfNotPresent',
@@ -396,6 +412,13 @@ def candidate(value):
                  {'name':'AI_OPS_RUNBOOK_ROOT','value':'/opt/ai-ops/runbooks'}],
           'resources':{'requests':{'cpu':'50m','memory':'128Mi'},'limits':{'cpu':'1','memory':'1Gi'}},
           'volumeMounts':common+extra+[mount(role+'-tmp','/tmp')]}
+        if role=='ci-relay':
+            # Fixed-destination proxy only; the relay keeps polling after per-scan errors (no probe CLI).
+            container['env']+=[{'name':'AI_CI_GITHUB_TOKEN_FILE','value':CI_RELAY_TOKEN},
+                               {'name':'AI_CI_EGRESS_PROXY','value':f"http://{n}-egress.{ns}.svc:{EGRESS_PORT}"}]
+            container['resources']={'requests':{'cpu':'25m','memory':'96Mi'},'limits':{'cpu':'250m','memory':'256Mi'}}
+            containers.append(container)
+            continue
         if role=='event-receiver':
             probe={'tcpSocket':{'port':9443}}
         else:
@@ -468,7 +491,7 @@ def candidate(value):
         # TLS stays end to end; only GitHub/STS/ECR :443 (ai_ops.recovery_egress_proxy).
         e_probe={'tcpSocket':{'port':EGRESS_PORT}}
         egress={'name':'egress-proxy','image':v['image'],'imagePullPolicy':'IfNotPresent',
-            'command':['python','-m','ai_ops.recovery_egress_proxy'],'args':[],'securityContext':security,
+            'command':['python','-m','ai_ops.recovery_egress_proxy'],'args':['--github-artifacts'] if ci_relay is not None else [],'securityContext':security,
             'env':[{'name':'PYTHONDONTWRITEBYTECODE','value':'1'},{'name':'HOME','value':'/tmp'}],
             'resources':{'requests':{'cpu':'25m','memory':'32Mi'},'limits':{'cpu':'250m','memory':'128Mi'}},
             'volumeMounts':[mount('egress-tmp','/tmp')],
@@ -536,6 +559,15 @@ def candidate(value):
         result['residual_risks']=result['residual_risks']+[
             'the egress proxy relays TLS to GitHub/STS/ECR: a compromised relay could reach those three hosts',
             'IRSA environment is injected into every container of every Pod using the service account (main, sender, egress), not only the relay']
+        if recovery.get('ci_relay') is not None:
+            result['recovery']['ci_relay']='normal_ci_receipts_via_egress_proxy'
+            result['external_prerequisites']=result['external_prerequisites']+[
+                'CI relay (secret): read-only GitHub token for f-lab-edu/F-Lab-DevOps Actions (runs and artifacts)',
+                'normal CI: AI root enable_b6_normal_ci, normal-CI RBAC and ai-ops-normal-ci environment variables; each run needs the GitHub environment approval in the UI',
+                'run normal CI after the lab Pods are final (the binding pins Pod UIDs); the relay accepts runs completed within 15 minutes']
+            result['residual_risks']=result['residual_risks']+[
+                'the egress proxy also relays GitHub Actions artifact storage (productionresultssa<N>.blob.core.windows.net, results-receiver.actions.githubusercontent.com)',
+                'a crash-looping ci-relay container would make the shared main Pod NotReady (it only fails on invalid config, which also stops the other processes)']
     return result
 
 
