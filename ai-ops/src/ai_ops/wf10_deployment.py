@@ -345,15 +345,14 @@ def candidate(value):
     config_hash = digest(encoded(config_data))
     security = {'allowPrivilegeEscalation':False,'readOnlyRootFilesystem':True,'capabilities':{'drop':['ALL']}}
     def mount(vol, path, ro=False): return {'name':vol,'mountPath':path,'readOnly':ro}
-    common = [mount('config','/etc/ai-ops',True), mount('data','/data')]
-    volumes = [{'name':'config','configMap':{'name':n+'-config'}},
-               {'name':'data','persistentVolumeClaim':{'claimName':v['pvc_name']}}]
-    # Per-role private emptyDir: secret-volume symlinks/modes are not accepted by
-    # existing Slack readers. Copy only fixed keys as uid10001/mode0600 in init.
+    volumes = [{'name':'data','persistentVolumeClaim':{'claimName':v['pvc_name']}}]
+    # Per-role private emptyDir: secret- and ConfigMap-volume files are symlinks
+    # (`key -> ..data/key`) and the runtime readers open them with O_NOFOLLOW
+    # (runbook policy, Slack policy/secrets). Copy only fixed keys as regular
+    # uid10001/mode0600 files in init (first live start, WF11 2026-11-26).
     containers, init = [], []
-    def secret(vol, ref, keys, destination, volumes=volumes, init=init):
-        volumes.extend([{'name':vol+'-source','secret':{'secretName':ref,'defaultMode':288,
-            'items':[{'key':k,'path':k} for k in keys]}}, {'name':vol,'emptyDir':{'medium':'Memory','sizeLimit':'1Mi'}}])
+    def copied(vol, source, keys, destination, volumes=volumes, init=init):
+        volumes.extend([{'name':vol+'-source',**source}, {'name':vol,'emptyDir':{'medium':'Memory','sizeLimit':'1Mi'}}])
         script = 'import os,pathlib; os.umask(0o077); '+ '; '.join(
             f'p=pathlib.Path("/out/{k}"); p.write_bytes(pathlib.Path("/source/{k}").read_bytes()); p.chmod(0o600)' for k in keys)
         # Explicit bounds so LimitRange/ResourceQuota namespaces accept the Pod.
@@ -361,6 +360,13 @@ def candidate(value):
                      'securityContext':security,'resources':INIT_RESOURCES,
                      'volumeMounts':[mount(vol+'-source','/source',True),mount(vol,'/out')]})
         return mount(vol,destination,True)
+    def secret(vol, ref, keys, destination, volumes=volumes, init=init):
+        return copied(vol, {'secret':{'secretName':ref,'defaultMode':288,'items':[{'key':k,'path':k} for k in keys]}},
+                      keys, destination, volumes, init)
+    def config_map(vol, keys, destination, volumes=volumes, init=init):
+        return copied(vol, {'configMap':{'name':n+'-config','defaultMode':288,'items':[{'key':k,'path':k} for k in keys]}},
+                      keys, destination, volumes, init)
+    common = [config_map('config', sorted(config_data), '/etc/ai-ops'), mount('data','/data')]
     signing=secret('signing',v['secrets']['signing'],['token'],'/run/slack-signing')
     client=secret('sender-client',v['secrets']['sender_client'],['token'],'/run/slack-sender-client')
     tls=secret('slack-tls',v['secrets']['slack_tls'],['tls.crt','tls.key'],'/run/ai-slack-tls')
@@ -425,10 +431,9 @@ def candidate(value):
                     if recovery is not None else [])]}},'networking.k8s.io/v1'))
     # Separate stateless sender: bot token + client secret only. No PVC, no
     # Kubernetes token, no signing secret; only the policy file from the ConfigMap.
-    s_volumes=[{'name':'policy','configMap':{'name':n+'-config','items':[{'key':'slack-policy.json','path':'slack-policy.json'}]}},
-               {'name':'sender-tmp','emptyDir':{'sizeLimit':'16Mi'}}]
+    s_volumes=[{'name':'sender-tmp','emptyDir':{'sizeLimit':'16Mi'}}]
     s_init=[]
-    s_mounts=[mount('policy','/etc/ai-ops',True),
+    s_mounts=[config_map('policy',['slack-policy.json'],'/etc/ai-ops',s_volumes,s_init),
               secret('bot',v['secrets']['bot'],['token'],'/run/slack-bot',s_volumes,s_init),
               secret('sender-client',v['secrets']['sender_client'],['token'],'/run/slack-sender-client',s_volumes,s_init),
               mount('sender-tmp','/tmp')]
