@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-26 KST. 기준 AI main `514a37c`(WF11 manifest PR74), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf10-prometheus-http-20261126`(WF10 평문 HTTP Prometheus). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-26 KST. 기준 AI main `be4da39`(WF10 평문 HTTP Prometheus PR75), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf11-secret-material-20261126`(WF11 비밀 자료 절차). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -633,3 +633,8 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
   - collector Secret은 쓰지 않는다.
   - restart 경로는 HTTPS만 허용한다.
 - **3b:** PR #76에 비밀 자료 절차 문서를 올렸다.
+- **3c 병합:** AI PR #75를 병합했다(main `be4da39`).
+- **3b:** 이 PR #76에서 비밀 자료 절차 문서를 추가한다. 이것으로 인프라 없이 할 준비가 끝난다.
+- **남은 것은 사용자 작업 두 가지**다. 그다음 설치를 시작한다.
+  - c03 읽기 토큰 발급
+  - `aws login`
