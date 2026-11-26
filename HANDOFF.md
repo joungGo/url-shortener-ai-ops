@@ -1,5 +1,17 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-26 WF11 설치 준비: 3c 병합, 비밀 자료 절차 (Claude)
+
+- **PR #75 병합:** 사용자 "진행해" 후 head `bd7cd0b`로 고정해 squash 병합했다.
+  - main `be4da39`, tree `4d9c1034`가 PR head와 같다.
+  - branch를 정리했다.
+- **PR #76(이 branch):** `wf11-secret-material-procedure-20261126.md`
+  - WF10 Secret 목록·형식·순서, 값을 출력하지 않는 확인 방법, 보관·정리
+  - 가짜 자료로 연습했다.
+- **인프라 없이 할 준비 완료(병합 시).** 남은 것은 사용자 작업 두 가지이고, 그다음 설치를 시작한다.
+  - c03-execution-lab 읽기 토큰 발급
+  - `aws login --profile urlshortener-new`
+
 ## 2026-11-26 WF11 설치 준비: manifest 병합, Prometheus 평문 HTTP 수용, 비밀 자료 절차 (Claude)
 
 - **3b 조사 중 문제 세 가지를 찾았다.** 고치기 전에 보고했고, 사용자가 "진행해"로 승인했다.

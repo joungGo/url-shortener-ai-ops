@@ -29,8 +29,8 @@
 | 1 | Alertmanager 라우팅을 `/v1/events`(ai-events)로 전환 | **완료.** 플랫폼 [PR #164](https://github.com/f-lab-edu/F-Lab-DevOps/pull/164) → main `f9b1b72`. 아래 1-1 참고 |
 | 2 | relay IRSA 역할(`ecr:DescribeImages`) | **완료.** AI [PR #73](https://github.com/joungGo/url-shortener-ai-ops/pull/73) → main `12622a1`. 기본 비활성 |
 | 3a | WF10 SA(IRSA annotation)·worker 조사 읽기 권한, 복구 읽기 신원, Slack 진입점 manifest 생성기 `ai_ops.wf11_edge` | **완료.** AI [PR #74](https://github.com/joungGo/url-shortener-ai-ops/pull/74) → main `514a37c` |
-| 3c | WF10 Prometheus 연결을 실제 구성(http, 인증 없음)에 맞추는 renderer 수정 | 이 PR([3c 문서](wf10-plain-prometheus-local-20261126.md), 사용자 결정 2026-11-26, (a)안) |
-| 3b | 사건 수신 TLS·토큰, Alertmanager 인증, sender client 비밀 자료 절차 | AI [PR #76](https://github.com/joungGo/url-shortener-ai-ops/pull/76)(문서) |
+| 3c | WF10 Prometheus 연결을 실제 구성(http, 인증 없음)에 맞추는 renderer 수정 | **완료.** AI [PR #75](https://github.com/joungGo/url-shortener-ai-ops/pull/75) → main `be4da39`([3c 문서](wf10-plain-prometheus-local-20261126.md), 사용자 결정 2026-11-26, (a)안) |
+| 3b | 사건 수신 TLS·토큰, Alertmanager 인증, sender client 비밀 자료 절차 | 이 PR #76([비밀 자료 절차](wf11-secret-material-procedure-20261126.md), 문서) |
 | 4 | `c03-execution-lab` GitHub 읽기 토큰 | 사용자 발급 |
 | 5 | `aws login --profile urlshortener-new` | 사용자, 설치 직전 |
 

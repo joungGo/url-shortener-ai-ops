@@ -112,8 +112,17 @@
     },
     "4_c03_read_token": "user",
     "5_aws_login": "user, right before install",
-    "3b_secret_material": "PR #76 (document)",
-    "3c_prometheus_connection": "this PR (#75)"
+    "3b_secret_material": "this PR (#76, document)",
+    "3c_prometheus_connection": {
+      "pr": 75,
+      "head": "bd7cd0b7b9e57b6f0b5f087884e93f4cffdbad53",
+      "main": "be4da3920b1a49a787c3935e52a831d4495ba56e",
+      "tree": "4d9c1034b454546927178bc884a16de17e3e8a69",
+      "main_ci": {
+        "run": 45751392976,
+        "conclusion": "success"
+      }
+    }
   },
   "full_suite": {
     "count": 1879,
