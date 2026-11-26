@@ -1,5 +1,19 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-26 WF11 설치 준비: manifest 병합, Prometheus 평문 HTTP 수용, 비밀 자료 절차 (Claude)
+
+- **3b 조사 중 문제 세 가지를 찾았다.** 고치기 전에 보고했고, 사용자가 "진행해"로 승인했다.
+  1. **`wf11_edge`의 worker 조사 읽기 권한 누락 → 수정.** 기존 chart `rbac.yaml`과 같은 규칙을 WF10 SA에 묶었다.
+  2. **IRSA가 공용 SA의 모든 Pod(메인·송신·egress)에 주입됨 → 수용·기록.**
+  3. **renderer가 Prometheus에 HTTPS를 강제함.** 실제 Prometheus는 평문 HTTP·무인증이라 연결할 수 없었다 → (a)안(이 PR #75).
+- **PR #74 병합:** 사용자 "병합해" 후 head `d18d5a1`로 고정해 squash 병합했다.
+  - main `514a37c`, tree `7d0e24a`가 PR head와 같다.
+  - branch를 정리했다.
+- **PR #75(이 branch):** 평문 HTTP 9090·무자격 Prometheus를 수용한다.
+  - collector Secret은 쓰지 않고, restart 경로는 HTTPS만 허용한다.
+  - 시험 5개, 결함 변형 12/14(나머지 2개는 동치), 전체 1884 OK.
+- **PR #76:** 비밀 자료 절차 문서. 가짜 자료로 연습하다가 LibreSSL에서 `x509 -ext`가 지원되지 않는 것을 찾아 고쳤다.
+
 ## 2026-11-26 WF11 설치 준비: 라우팅·IRSA 반영, 설치 전 manifest 생성기 (Claude)
 
 - **플랫폼 PR #164·#165 병합(사용자, GitHub 화면 우회)**

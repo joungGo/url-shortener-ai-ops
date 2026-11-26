@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-26 KST. 기준 AI main `12622a1`(WF11 IRSA PR73), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf11-edge-manifests-20261126`(WF11 설치 전 manifest). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-26 KST. 기준 AI main `514a37c`(WF11 manifest PR74), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf10-prometheus-http-20261126`(WF10 평문 HTTP Prometheus). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -623,3 +623,13 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 **3b. 비밀 자료 절차**
 
 - 다음에 진행한다.
+
+**WF11 설치 준비 · 2026-11-26 (이어서)**
+
+- **3a 병합:** AI PR #74를 병합했다(main `514a37c`).
+  - worker 조사 읽기 권한 누락을 사용자 승인 후 고쳐서 함께 넣었다.
+  - IRSA가 공용 ServiceAccount의 모든 Pod에 주입되는 점은 수용하고 기록했다.
+- **3c(이 PR #75):** WF10 renderer가 평문 HTTP Prometheus(9090, 자격 없음)를 받는다.
+  - collector Secret은 쓰지 않는다.
+  - restart 경로는 HTTPS만 허용한다.
+- **3b:** PR #76에 비밀 자료 절차 문서를 올렸다.

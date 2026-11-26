@@ -97,12 +97,23 @@
       "files": {
         "ai-ops/src/ai_ops/wf11_edge.py": "3b18143d5a8f9996f088f19bbfa8f18dbf124536bc9ee0eb31a12e600873a629",
         "ai-ops/tests/test_wf11_edge.py": "98707afdc22315d027e450d951c1c3ce17726cca452e31e138bdc2782fc13b23"
+      },
+      "merged": {
+        "pr": 74,
+        "head": "d18d5a1c0f39bb2dcccfb75996f95d1a08af3d1e",
+        "main": "514a37c942754a15bc156e92900396e0df0b0aa5",
+        "tree": "7d0e24a3adc036ce1a1dfee6ca2954646c5696aa",
+        "pr_ci": 45747057648,
+        "main_ci": {
+          "run": 45749026475,
+          "conclusion": "success"
+        }
       }
     },
     "4_c03_read_token": "user",
     "5_aws_login": "user, right before install",
-    "3b_secret_material": "next",
-    "3c_prometheus_connection": "next PR: renderer accepts the real http Prometheus without credentials (user decision (a))"
+    "3b_secret_material": "PR #76 (document)",
+    "3c_prometheus_connection": "this PR (#75)"
   },
   "full_suite": {
     "count": 1879,

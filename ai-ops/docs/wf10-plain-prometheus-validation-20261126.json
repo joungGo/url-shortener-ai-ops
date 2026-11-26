@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-26",
+  "slice": "WF11 install prep 3c: WF10 renderer accepts the cluster Prometheus over plain HTTP without credentials",
+  "decision": "user 2026-11-26, option (a)",
+  "live": false,
+  "tests_added": {
+    "file": "ai-ops/tests/test_wf10_plain_prometheus.py",
+    "count": 5
+  },
+  "mutation": {
+    "count": 14,
+    "detected": 12,
+    "equivalent": [
+      "malformed-config branch of plain_prometheus (BRuntime rejects later)",
+      "kind guard (Connection model allows only https for kubernetes)"
+    ]
+  },
+  "full_suite": {
+    "ran": 1884,
+    "result": "OK (skipped=1)",
+    "log_sha256": "9a9a1501edeb8a3f869eb87b36db8be55e03954acf16be7e70b67b5e4ba55f25"
+  },
+  "files": {
+    "ai-ops/src/ai_ops/wf10_deployment.py": "9760b7d123bd42eb2cfeab781bf1253fa6947ad3f3321feec9dc47fe043fd613",
+    "ai-ops/tests/test_wf10_plain_prometheus.py": "78f77cbb49395a91269493f01b9f7fe607f3cbb1117a333f14f270428c817694"
+  },
+  "boundary": "verified",
+  "diff_check": "clean",
+  "full_suite_rebased": {
+    "base": "514a37c",
+    "ran": 1889,
+    "result": "OK (skipped=1)",
+    "log_sha256": "b79cdb19f9c84f0253d7b8d205b95b44c391208651ad5200e8ba0f78a4c2f4fc"
+  }
+}
