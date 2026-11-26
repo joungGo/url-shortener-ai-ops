@@ -1,5 +1,16 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-26 WF11 후속 2a: CI relay 네트워크(고정 목적지 proxy 경유) (Claude)
+
+- **배경:** WF10에 CI relay가 없어 WF07이 정상 CI 근거를 못 받는다(WF11 범위 B의 원인). 사용자 결정은 P1(메인 Pod 컨테이너) + N1(기존 egress proxy 경유).
+- **변경(이 PR, 기본 동작 불변)**
+  - 토큰 읽기 코드가 지정한 proxy만 쓴다.
+  - relay는 `AI_CI_EGRESS_PROXY`를 전달한다. 토큰 없이 proxy만 있으면 중단한다.
+  - egress proxy는 `--github-artifacts`일 때만 GitHub artifact 저장소(정확한 패턴)를 허용한다.
+- **검증:** 시험 10개, 관련 57개, 결함 변형 12/12.
+- **다음:** PR-b renderer가 relay 컨테이너와 flag를 연결한다.
+- 상세: [변경 문서](ai-ops/docs/ci-relay-proxy-local-20261126.md)
+
 ## 2026-11-26 WF11 후속 1: lab 정책에 API 서버 Pod proxy 허용 (Claude)
 
 - **배경:** WF11 실제 실행에서 정상 판정 경로(API 서버 `pods/proxy` → `lab-api:8000`)가 lab NetworkPolicy에 막혔다. 이대로면 S2a의 `already_recovered`가 나올 수 없다.
