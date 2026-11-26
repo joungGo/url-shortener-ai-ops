@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-26 KST. 기준 AI main `35af715`(WF11 실행 기록 PR78), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/lab-apiserver-proxy-ingress-20261126`(정상 판정 경로). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-26 KST. 기준 AI main `7a11b9d`(lab proxy 허용 PR79), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/ci-relay-proxy-20261126`(CI relay 네트워크). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -652,3 +652,9 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 - lab `lab-api` NetworkPolicy가 API 서버(`api_server_cidrs`, `/32`)에서 오는 8000번을 허용하도록 바꿨다. 복구 정상 판정의 `pods/proxy` 경로가 이 정책에 막혀 있었다.
 - 이 수정으로 다음 설치에서 S2a를 검증할 수 있다.
 - 상세: [변경 문서](lab-apiserver-proxy-ingress-20261126.md)
+
+**WF11 후속 2a · 2026-11-26**
+
+- CI relay 네트워크를 준비했다(P1+N1). 토큰 읽기 코드에 지정 proxy를 넣었고, egress proxy는 flag가 있을 때만 GitHub artifact 저장소를 허용한다.
+- 기본 동작은 바뀌지 않는다. renderer 연결은 PR-b에서 한다.
+- 상세: [변경 문서](ci-relay-proxy-local-20261126.md)

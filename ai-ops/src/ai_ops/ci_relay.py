@@ -128,10 +128,13 @@ def main(argv=None) -> int:
     try:
         settings = load_b_settings(args.config / "bindings.json", args.config / "runtime.json", args.config / "metric-queries.json", **runbook_settings_kwargs(args.config))
         token_file = os.environ.get("AI_CI_GITHUB_TOKEN_FILE")
+        proxy = os.environ.get("AI_CI_EGRESS_PROXY") or None
+        if proxy is not None and not token_file:
+            raise ValueError("ci_relay_proxy_requires_token_reader")
         reader = None
         if token_file:
             from ai_ops.ci_token_reader import TokenGitHubReader
-            reader = TokenGitHubReader(token_file)
+            reader = TokenGitHubReader(token_file, proxy=proxy)
         normal_binding = (NormalCIBinding.model_validate_json(args.normal_binding.read_bytes())
                           if args.normal_binding else None)
         relay = CIRelay(JobQueue(args.store), settings, reader=reader,

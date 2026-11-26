@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-26",
+  "slice": "WF10 CI relay network PR-a (P1+N1): explicit egress proxy for token reader, GitHub artifact storage behind --github-artifacts",
+  "default_behavior_changed": false,
+  "live": false,
+  "observed_redirect_host": "productionresultssa9.blob.core.windows.net (302 from artifacts/{id}/zip, 2026-11-26)",
+  "tests_added": {"file": "ai-ops/tests/test_ci_relay_proxy.py", "count": 10},
+  "related_tests": 57,
+  "mutation": {"count": 12, "detected": 12, "note": "2 survived first (fullmatch->match, server not passing patterns); tests added"},
+  "full_suite": {"ran": 1907, "result": "OK (skipped=1)", "log_sha256": "e14f198ce605e9ce59fa6920aa0408fc82447cab580f5551858e35f065d1f68e"},
+  "boundary": "verified", "diff_check": "clean"
+}
