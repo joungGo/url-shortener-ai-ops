@@ -82,3 +82,23 @@
    - lab 설치 도구의 B worker 전제를 정리한다.
 5. **승인 거절 안내:** 요청자 본인 계획의 스레드 불일치를 구체적으로 안내한다(사용자 보류).
 6. **복구 PR 경로·S2a:** 다음 실행에서 검증한다. 작성자 신원과 보호 규칙 정리가 먼저 필요하다.
+
+## 6. 다음 재설치 준비 (2026-11-26 철거 후)
+
+- **잔여 확인(읽기):** EKS·RDS·NAT·EIP·LB·EC2·EBS·VPC·ECR 0개. 보존한 것은 RDS 수동 스냅샷 11개(최신 `…b6f690c5`), Terraform state 2개, DNS, operator다.
+- **재사용 키트(개인 경로):** `~/.local/share/url-shortener-ai-ops/wf11-reinstall-kit`. 이번에 실제로 쓴 설치·철거 도구를 모았고, 저장소에는 넣지 않는다.
+  - 이번 실행에 고정됐던 값(소스 SHA, 실행 ID, 복원 스냅샷)은 실행마다 `sources.json`·preflight 결과에서 읽도록 바꿨다.
+  - 이번 실행에서 고친 내용을 미리 반영했다.
+    - CoreDNS 등 애드온 ACTIVE 대기
+    - `collector_cidrs`에 Service IP 포함
+    - `slack-ops` DNS UPSERT
+    - 사건 수신 SAN `ai-ops-events.ai-ops.svc`
+    - lab 설치 wrapper
+  - 쓰지 않은 B 방식 도구(CI 서비스, AI worker 등)는 별도 폴더로 분리했다.
+  - `new-run.py YYYYMMDD`가 새 실행 디렉터리를 만든다(소스 내보내기, 경로 치환, 설정 준비, AWS 호출 없음). 임시 날짜로 시험한 뒤 삭제했다.
+  - 순서와 사용자 작업은 키트 `README.md`에 있다.
+- **다음 설치 전 사용자 작업:**
+  - 설치 시작 위임
+  - GitHub 읽기 토큰을 다시 발급해 편집기로 저장
+  - `aws login` 2회(operator, root)
+  - AI 저장소 PUBLIC 확인
