@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `1b6ca45`(WF11 lab 경보 PR72), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/wf11-recovery-irsa-20261125`(WF11 설치 준비: IRSA). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-26 KST. 기준 AI main `12622a1`(WF11 IRSA PR73), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf11-edge-manifests-20261126`(WF11 설치 전 manifest). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -597,3 +597,29 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 3. 신원 manifest 도구: 다음 작업이다.
 
 [문서](wf11-install-prep-20261125.md)
+
+### WF11 설치 준비 진행 · 2026-11-26
+
+**1. 플랫폼 라우팅 전환**
+
+- 플랫폼 PR #164를 병합했다(`f9b1b72`).
+- main CI의 contracts가 실패했다. 레거시 라우팅 검사가 예전 `/v1/alerts` 구조만 가정했기 때문이다.
+- 수정 PR #165를 병합했다(`d195fcb`).
+  - ai-events 분기를 추가했다.
+  - openssl 고정값을 AI 저장소와 맞췄다.
+- main CI는 성공했다.
+- 병합은 두 번 모두 사용자가 화면에서 우회했다. `enforce_admins` 해제 상태는 사용자 결정으로 유지한다.
+
+**2. IRSA**
+
+- AI PR #73을 병합했다(`12622a1`).
+
+**3a. 설치 전 manifest 생성기 `wf11_edge`**
+
+- 내용: WF10 SA, 복구 읽기 신원, Slack 진입점
+- 시험 4개, 결함 변형 14/14 검출
+- 이 PR에 들어 있다.
+
+**3b. 비밀 자료 절차**
+
+- 다음에 진행한다.

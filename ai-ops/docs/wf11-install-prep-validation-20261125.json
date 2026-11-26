@@ -3,19 +3,122 @@
   "slice": "WF11 infra-free install preparation: item 2 relay IRSA role (this PR); item 1 is platform PR f-lab-edu/F-Lab-DevOps#164",
   "author": "Claude Code (Opus 5.5)",
   "base": "1b6ca4554e675761068cd24f800a6c41f7fb4d3b",
-  "decisions": {"date": "2026-11-25", "placement": "WF10 only, namespace/name ai-ops, new empty PVC", "event_receiver": "ai-ops-events.ai-ops.svc:9443/v1/events", "slack_host": "slack-ops.bidservice.store (reuse)", "source": {"alias": "eks-seoul", "id": "am-urlshortener", "cluster_id": "urlshortener"}, "alert_channel": "existing webhook channel"},
-  "preflight_read_only": {"account": "new account 764428911194 (profiles urlshortener-new/urlshortener-terraform), sessions expired; default CLI profile is the old account", "credentials": "install credentials 7 + slack bot/signing present; c03-execution-lab read token absent", "wf10_live_history": "never installed"},
-  "items": {
-    "1_platform_routing": {"pr": "f-lab-edu/F-Lab-DevOps#164", "head": "6f79892f2451117d6dd103d85a9705f6d4fe9038", "checks": "all required pass incl. WF03 notice contracts (pinned amtool live-config test)", "merge": "blocked: 1 approving review required by branch protection"},
-    "2_irsa": {"file": "terraform/ai-ops-registry/wf11-recovery.tf", "default": "disabled", "role": "<project_name>-recovery-ecr-read", "trust": "system:serviceaccount:ai-ops:ai-ops, aud sts.amazonaws.com, cluster OIDC provider looked up only", "policy": "ecr:DescribeImages on repository/urlshortener only", "checks": ["terraform fmt -check", "terraform init -backend=false -lockfile=readonly (provider hash-verified)", "terraform validate: Success"], "contract_tests": 4},
-    "3_identity_manifests": "next",
-    "4_c03_read_token": "user",
-    "5_aws_login": "user, right before install"
+  "decisions": {
+    "date": "2026-11-25",
+    "placement": "WF10 only, namespace/name ai-ops, new empty PVC",
+    "event_receiver": "ai-ops-events.ai-ops.svc:9443/v1/events",
+    "slack_host": "slack-ops.bidservice.store (reuse)",
+    "source": {
+      "alias": "eks-seoul",
+      "id": "am-urlshortener",
+      "cluster_id": "urlshortener"
+    },
+    "alert_channel": "existing webhook channel"
   },
-  "full_suite": {"count": 1879, "seconds": 328.577, "passed": true, "skipped": 1,
+  "preflight_read_only": {
+    "account": "new account 764428911194 (profiles urlshortener-new/urlshortener-terraform), sessions expired; default CLI profile is the old account",
+    "credentials": "install credentials 7 + slack bot/signing present; c03-execution-lab read token absent",
+    "wf10_live_history": "never installed"
+  },
+  "items": {
+    "1_platform_routing": {
+      "pr": "f-lab-edu/F-Lab-DevOps#164",
+      "merged": "f9b1b724abc556fd70e713b56b01c8c38bd1d412",
+      "merge_method": "user, GitHub UI, admin bypass after disabling enforce_admins",
+      "main_ci_after": {
+        "run": 45626777257,
+        "conclusion": "failure",
+        "cause": "legacy ai-ops/scripts/check_alert_routing.py assumed the /v1/alerts layout; main-only job, missed at PR #164"
+      },
+      "fix": {
+        "pr": "f-lab-edu/F-Lab-DevOps#165",
+        "merged": "d195fcb5efafadb72a353a1841bed4b8a5cd2951",
+        "changes": [
+          "ai-events transition branch in check_alert_routing (legacy verify_routing + fixed-difference check)",
+          "legacy image openssl pin 3.5.9-r1 synced with the AI repo (upstream package drift)"
+        ],
+        "pr_ci": 45628353799,
+        "main_ci": {
+          "run": 45628950483,
+          "conclusion": "success"
+        }
+      },
+      "protection": "user decision 2026-11-25: keep enforce_admins disabled on F-Lab-DevOps main; 1 approval and C03 Main PR Gate remain; Claude does not change it"
+    },
+    "2_irsa": {
+      "file": "terraform/ai-ops-registry/wf11-recovery.tf",
+      "default": "disabled",
+      "role": "<project_name>-recovery-ecr-read",
+      "trust": "system:serviceaccount:ai-ops:ai-ops, aud sts.amazonaws.com, cluster OIDC provider looked up only",
+      "policy": "ecr:DescribeImages on repository/urlshortener only",
+      "checks": [
+        "terraform fmt -check",
+        "terraform init -backend=false -lockfile=readonly (provider hash-verified)",
+        "terraform validate: Success"
+      ],
+      "contract_tests": 4,
+      "merged": {
+        "pr": 73,
+        "head": "65ac3a4998c4b0d7b86d882cd578bec63d03826b",
+        "main": "12622a1c205331c7be675f954a550e37fcdcd7ae",
+        "tree": "afcfbd6bd4d18eebd2a1380d1dae09b134146a9d",
+        "pr_ci": 45623433859,
+        "main_ci": {
+          "run": 45625226830,
+          "conclusion": "success"
+        }
+      }
+    },
+    "3_identity_manifests": {
+      "status": "3a in this PR",
+      "module": "ai_ops.wf11_edge",
+      "tests": 5,
+      "mutation": {
+        "initial": {
+          "count": 14,
+          "detected": 14
+        },
+        "investigator_rbac": {
+          "count": 12,
+          "detected": 12,
+          "note": "one of 13 survived: unreachable re-check of binding names already validated by BindingRegistry; check removed"
+        }
+      },
+      "boundary": "verified",
+      "diff_check": "clean",
+      "resources": 13,
+      "fix_20261126": "worker collector read RBAC (B chart rbac.yaml rules) bound to the WF10 ServiceAccount; omitted in the first draft",
+      "irsa_scope": "accepted (user 2026-11-26): webhook injects the role into all Pods using the SA (main, sender, egress); DescribeImages on one repository only",
+      "full_suite": {
+        "ran": 1884,
+        "result": "OK (skipped=1)",
+        "log_sha256": "a29490c1c0f30db7f5c1fad15ba2e11920bbd3434e03ff5925d7ade93485e9d6"
+      },
+      "files": {
+        "ai-ops/src/ai_ops/wf11_edge.py": "3b18143d5a8f9996f088f19bbfa8f18dbf124536bc9ee0eb31a12e600873a629",
+        "ai-ops/tests/test_wf11_edge.py": "98707afdc22315d027e450d951c1c3ce17726cca452e31e138bdc2782fc13b23"
+      }
+    },
+    "4_c03_read_token": "user",
+    "5_aws_login": "user, right before install",
+    "3b_secret_material": "next",
+    "3c_prometheus_connection": "next PR: renderer accepts the real http Prometheus without credentials (user decision (a))"
+  },
+  "full_suite": {
+    "count": 1879,
+    "seconds": 328.577,
+    "passed": true,
+    "skipped": 1,
     "env": "AWS_PROFILE unset, AWS config/credentials files /nonexistent",
-    "log": {"path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/wf11-irsa-full.log", "sha256": "ae0d51e73f1ebdb725e96b23e9971526638c49b92e5812644642ec2fd26aeee1"}},
-  "other_checks": {"repository_boundary": "passed", "diff_check": "passed"},
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/wf11-irsa-full.log",
+      "sha256": "ae0d51e73f1ebdb725e96b23e9971526638c49b92e5812644642ec2fd26aeee1"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
   "source_hashes": {
     "terraform/ai-ops-registry/wf11-recovery.tf": "846864f3350440db57349af239f3a64486a75de447ecf4b5470d22909e4184b2",
     "ai-ops/tests/test_wf11_recovery_irsa_terraform.py": "6d8ebb74258b060b0175e1406bd0595188eba980a5f5cbf25678b86629b7ab16"
