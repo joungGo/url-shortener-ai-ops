@@ -140,8 +140,10 @@ class DeploymentTest(unittest.TestCase):
         self.assertTrue({'bot','sender-client','policy'}<=names)
         for forbidden in ('signing','collector','event-identity','slack-tls','kubernetes','data','config'):
             self.assertNotIn(forbidden,names)
-        policy=next(x for x in p['volumes'] if x['name']=='policy')['configMap']
+        # ConfigMap files are symlinks; only the init copy reads them (2026-11-26).
+        policy=next(x for x in p['volumes'] if x['name']=='policy-source')['configMap']
         self.assertEqual(policy['items'],[{'key':'slack-policy.json','path':'slack-policy.json'}])
+        self.assertIn('emptyDir',next(x for x in p['volumes'] if x['name']=='policy'))
         c=p['containers'][0];self.assertEqual(c['command'],['python','-m','ai_ops.slack_sender'])
         self.assertEqual(c['args'],['--enable-web']);self.assertEqual(c['livenessProbe']['tcpSocket'],{'port':9446})
         for i in p['initContainers']:self.assertEqual(i['resources']['limits']['memory'],'64Mi')
