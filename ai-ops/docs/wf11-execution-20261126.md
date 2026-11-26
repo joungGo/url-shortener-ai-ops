@@ -75,7 +75,7 @@
 ## 5. 발견과 후속 후보 (모두 인프라 없이 가능, 허락 후)
 
 1. **CI relay 연결:** WF10에 CI relay가 없어 WF07이 정상 CI 근거를 얻을 수 없다(이번 범위 B의 원인).
-2. **정상 판정 경로:** API 서버 `pods/proxy` → `lab-api:8000`이 lab NetworkPolicy에 막힌다. 실제 환경에서 복구 효과 정상 판정이 `unknown`이 될 것이다. 이번 회복 확인은 Pod 안에서 직접 요청해 대신했다.
+2. **정상 판정 경로**(후속 PR에서 수정, [변경 문서](lab-apiserver-proxy-ingress-20261126.md)): API 서버 `pods/proxy` → `lab-api:8000`이 lab NetworkPolicy에 막힌다. 실제 환경에서 복구 효과 정상 판정이 `unknown`이 될 것이다. 이번 회복 확인은 Pod 안에서 직접 요청해 대신했다.
 3. **WF10 입력:** `collector_cidrs`에 Service ClusterIP가 필요하다는 점을 도구나 문서로 고정한다.
 4. **설치 도구**
    - CoreDNS 등 EKS 애드온 ACTIVE를 기다린 뒤 LB Controller를 설치한다.
