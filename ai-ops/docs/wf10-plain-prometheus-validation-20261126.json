@@ -25,5 +25,11 @@
     "ai-ops/tests/test_wf10_plain_prometheus.py": "78f77cbb49395a91269493f01b9f7fe607f3cbb1117a333f14f270428c817694"
   },
   "boundary": "verified",
-  "diff_check": "clean"
+  "diff_check": "clean",
+  "full_suite_rebased": {
+    "base": "514a37c",
+    "ran": 1889,
+    "result": "OK (skipped=1)",
+    "log_sha256": "b79cdb19f9c84f0253d7b8d205b95b44c391208651ad5200e8ba0f78a4c2f4fc"
+  }
 }
