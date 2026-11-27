@@ -1,5 +1,16 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-27 WF11 후속 4: WF10 입력 작성 도구 (Claude)
+
+- PR-e(#84) 병합 → main `1f04c06`.
+- **이 PR:** `ai_ops.wf10_inputs collect|build`.
+  - `collect`는 고정 `kubectl get` 5개만 실행해 사실 파일을 만든다(Secret 읽지 않음).
+  - `build`는 사실 파일, 정상 CI binding, 이미지 반입 증명, 봇 ID·알림 채널로 WF10 입력을 조립하고 renderer 검증을 통과해야 새 파일로 저장한다.
+  - `collector_cidrs`(API 서버 + Service IP 2개 + Prometheus Pod)와 평문 Prometheus의 collector Secret 생략을 시험으로 고정했다.
+- **검증:** 지난 설치 입력과 완전히 같은 결과(토글 끔), 시험 8개, 결함 변형 35/35.
+- **다음:** 재설치 키트의 개인 스크립트를 이 도구 호출로 바꾼다.
+- 상세: [변경 문서](ai-ops/docs/wf10-inputs-tool-local-20261127.md)
+
 ## 2026-11-27 WF11 후속 3c: WF07 PR 발행용 단기 토큰 도구 (Claude)
 
 - PR-d(#83) 병합 → main `e56eb8b`.

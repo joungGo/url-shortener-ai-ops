@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-26 KST. 기준 AI main `e56eb8b`(발행 토큰 renderer 입력 PR83), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/recovery-pr-token-20261127`(단기 토큰 도구). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-27 KST. 기준 AI main `1f04c06`(단기 writer 토큰 도구 PR84), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf10-inputs-tool-20261127`(WF10 입력 작성 도구). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -682,3 +682,9 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 
 - 운영자 Mac용 단기 writer 토큰 도구를 추가했다(발급, Secret 저장, 폐기). 이것으로 A2(복구 PR 자동 발행, 병합은 사람) 코드가 갖춰졌다.
 - 실제 확인은 다음 설치의 S1에서 한다. 상세: [변경 문서](recovery-pr-token-local-20261127.md)
+
+
+**WF11 후속 4 · 2026-11-27**
+
+- WF10 입력 작성 도구(`ai_ops.wf10_inputs`)를 저장소로 옮겼다. 읽기 전용 수집과 renderer 검증을 거치는 조립으로 나눴고, `collector_cidrs` 규칙을 시험으로 고정했다.
+- 지난 설치 입력과 같은 결과를 확인했다. 실제 수집은 다음 설치에서 한다. 상세: [변경 문서](wf10-inputs-tool-local-20261127.md)
