@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-26",
+  "slice": "WF10 renderer PR-b: optional recovery.ci_relay -> ci-relay container in the main Pod + egress --github-artifacts",
+  "live": false,
+  "absent_input_byte_identical": {"base": "9eaeca0bdb9c8e5c", "recovery": "3d393230b38efae3", "restart": "54a7c734297414d5", "compared_with": "origin/main 0349917"},
+  "tests_added": {"file": "ai-ops/tests/test_wf10_ci_relay_render.py", "count": 5},
+  "mutation": {"count": 11, "detected": 11, "note": "unknown recovery key survived first; test added"},
+  "full_suite": {"ran": 1912, "result": "OK (skipped=1)", "log_sha256": "68720b9f60478d666222305111abcbb47b26b6e620a98f57537b25f88773f58d"},
+  "boundary": "verified", "diff_check": "clean"
+}

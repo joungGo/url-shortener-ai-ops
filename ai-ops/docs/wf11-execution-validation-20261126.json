@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-26",
+  "timezone": "KST",
+  "scope": "B",
+  "install_started": "14:41",
+  "s1": {
+    "injection": "17:40:56",
+    "alert": "17:43:12",
+    "investigation_ok": "17:56",
+    "plan": "8ed968d3f455097c757200b4037a6bb9136524c2042ebb5a6861fe866ba44503",
+    "approval": "18:04",
+    "revalidation": "proposal_ready",
+    "wf07": "preparation_failed (normal_ci_history_unavailable)",
+    "recovery": "18:10:20 Argo revert to 0cfef83; Ready 60s+, readyz ready, items 200, alert resolved"
+  },
+  "s2a": "not run",
+  "fix_prs": {
+    "77": "1f7bbd17c8b89db8a6554a91b43b2ee1b480d7dd"
+  },
+  "teardown": {
+    "started": "18:17",
+    "completed": "18:50",
+    "production_destroyed": 100,
+    "ai_destroyed": 6,
+    "final_snapshot": "urlshortener-postgres-final-snapshot-urlshortener-postgres-b6f690c5"
+  },
+  "evidence": "personal path only"
+}

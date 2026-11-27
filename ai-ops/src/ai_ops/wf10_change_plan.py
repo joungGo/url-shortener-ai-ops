@@ -22,8 +22,9 @@ APPLY_ORDER = (('ConfigMap', '-config'), ('NetworkPolicy', '-sender'), ('Network
                ('Service', '-sender'), ('Service', '-events'), ('Service', '-slack'),
                ('Deployment', '-sender'), ('Deployment', ''))
 # With the optional recovery section: the egress proxy policy/Service/Pod come
-# before the main Pod that needs them (same ordering rule as the sender).
-APPLY_ORDER_RECOVERY = (('ConfigMap', '-config'), ('NetworkPolicy', '-sender'), ('NetworkPolicy', '-egress'),
+# before the main Pod that needs them (same ordering rule as the sender). The lab
+# alert rule goes first: a missing PrometheusRule CRD fails before any workload.
+APPLY_ORDER_RECOVERY = (('PrometheusRule', '-lab-alerts'), ('ConfigMap', '-config'), ('NetworkPolicy', '-sender'), ('NetworkPolicy', '-egress'),
                         ('NetworkPolicy', ''), ('Service', '-sender'), ('Service', '-egress'),
                         ('Service', '-events'), ('Service', '-slack'), ('Deployment', '-sender'),
                         ('Deployment', '-egress'), ('Deployment', ''))
@@ -99,7 +100,8 @@ def plan(candidate_directory):
                       'source_revision': candidate['source_revision'], 'namespace': namespace, 'name': name},
         'pre_checks': list(PRE_CHECKS), 'apply': apply_steps,
         'post_checks': list(POST_CHECKS) + (['egress_proxy_only_fixed_destinations',
-                                             'main_pod_internet_egress_only_via_proxy'] if egress else []),
+                                             'main_pod_internet_egress_only_via_proxy',
+                                             'lab_alert_rule_loaded_in_prometheus'] if egress else []),
         'required_live_gates': list(LIVE_GATES), 'rollback': rollback, 'rollback_bundle_sha256': rollback_hash,
         'approval_binding': {'binds': ['change_plan_sha256', 'manifest_sha256', 'rollback_bundle_sha256'],
                              'granted': False, 'reuse_of_past_approvals': False},

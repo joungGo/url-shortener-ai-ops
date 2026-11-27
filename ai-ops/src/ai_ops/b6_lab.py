@@ -197,7 +197,10 @@ def build_lab(inputs: LabInputs, *, password: str | None = None) -> dict:
         ("lab-deny", {"podSelector": {}, "policyTypes": ["Ingress", "Egress"], "ingress": [], "egress": []}),
         ("lab-api", {"podSelector": _selector("api"), "policyTypes": ["Ingress", "Egress"],
                      "ingress": [{"from": [{"namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "monitoring"}},
-                                             "podSelector": {"matchLabels": {"app.kubernetes.io/name": "prometheus"}}}], "ports": [{"port": 8000}]}],
+                                             "podSelector": {"matchLabels": {"app.kubernetes.io/name": "prometheus"}}}], "ports": [{"port": 8000}]},
+                                 # 복구 정상 판정(WF11 2026-11-26): API 서버 pods/proxy가 /readyz·/items를 GET한다.
+                                 # 연결 출발지는 API 서버 endpoint(/32 검증된 입력)이고 접근 통제는 읽기 전용 RBAC가 맡는다.
+                                 {"from": [{"ipBlock": {"cidr": cidr}} for cidr in inputs.api_server_cidrs], "ports": [{"port": 8000}]}],
                      "egress": [{"to": [{"podSelector": _selector(component)}], "ports": [{"port": port}]} for component, port in (("postgres", 5432), ("redis", 6379))]}),
         ("lab-database", {"podSelector": {"matchExpressions": [{"key": "app", "operator": "In", "values": ["lab-postgres", "lab-redis"]}]},
                           "policyTypes": ["Ingress"], "ingress": [{"from": [{"podSelector": _selector("api")}], "ports": [{"port": 5432}, {"port": 6379}]}]}),

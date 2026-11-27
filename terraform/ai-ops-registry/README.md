@@ -49,3 +49,14 @@ GitHub `ai-ops-image` environment의 main 제한·검토자와 네 가지 등록
 ## S10 선택 실습 CI
 
 `enable_b6_lab_ci=true`는 기존 4개에 실습 역할·inline policy·EKS group entry 3개를 추가한다. production cluster 생성 뒤 적용하고 AI root를 먼저 정리한다. 같은 state의 후속 apply에서 활성 값을 빠뜨려 삭제 계획이 나오면 중단한다. [인증·복구·재설치 절차](../../ai-ops/docs/B6-ci-experiment.md)를 따른다.
+
+## WF11 복구 IRSA (선택)
+
+`enable_wf11_recovery_irsa=true`를 주면 역할과 inline policy 2개가 추가된다. AI 등록 기반(`enable_ai_ops_registry=true`)과 함께만 켤 수 있다. 역할 이름은 `<project_name>-recovery-ecr-read`다(기본값이면 `urlshortener-practice-recovery-ecr-read`). WF10 relay가 WF07 이미지 부재를 확인할 때 이 역할을 쓴다.
+
+- **신뢰.** 클러스터 OIDC provider는 운영 root가 만들며, 여기서는 조회만 한다. 신뢰 대상은 `system:serviceaccount:<wf10_namespace>:<wf10_service_account>` 하나이고 aud는 `sts.amazonaws.com`이다. 둘 다 기본값은 `ai-ops`다.
+- **권한.** `ecr:DescribeImages` 하나, `repository/urlshortener` 하나다.
+- **연결.**
+  - output `wf11_recovery_role_arn`을 WF10 ServiceAccount의 `eks.amazonaws.com/role-arn` annotation에 넣는다.
+  - output `wf11_recovery_role_name`을 renderer recovery 입력의 `aws_role_name`에 넣는다.
+- **적용 순서.** 운영 클러스터를 만든 뒤 적용한다. 같은 state에서 후속 apply를 할 때 이 값을 빠뜨리면 삭제 계획이 나오므로, 그때는 중단한다.

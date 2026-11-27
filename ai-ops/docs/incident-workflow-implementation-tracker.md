@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-25 KST. 기준 AI main `0b91169`(relay 송신 proxy 조각 2 renderer PR62), 플랫폼 main `bf6bcbc`. 현재 작업 브랜치 `claude/a7-small-fixes-20261125`(A7 작은 항목). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-27 KST. 기준 AI main `1f04c06`(단기 writer 토큰 도구 PR84), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf10-inputs-tool-20261127`(WF10 입력 작성 도구). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -431,3 +431,260 @@ WF10 비활성 준비 최종: 집중21개/전체1565개(209.958초/skip0)·AST2�
 ### A7 작은 항목: 정책 전환·tombstone 정리·관측 만료 알림 · 2026-11-25
 
 [구현 기록](recovery-small-fixes-local-20261125.md)·[검증 JSON](recovery-small-fixes-local-validation-20261125.json): 사용자 결정(모두 추천). `slack_server transition-approval-policy --previous`(relay·ingress 잠금 확보 필수, 이전 정책 hash 정확 일치, 버전 증가, 진행 중 승인 superseded, 장부 없으면 생성 없음). 승인 장부·WF07 기록 tombstone과 receipt를 보관 종료 30일 뒤 삭제(상한 도달로 새 승인 불가 결함 해소). `observation_expired` 전용 알림 문구. 시험11·변형 13/13. 이 커밋 시점 PR CI/main 대기.
+
+### A7 작은 항목 최종 반영 · 2026-11-25
+
+[PR #63](https://github.com/joungGo/url-shortener-ai-ops/pull/63) head `36d8c14` → main `8db08787f34a460c251e2fb6ed36fd88c9341be4`. PR CI45536393470 7종 성공(첫 실행은 시험 경로 문제로 실패 후 수정), tree `3679977` 일치, 보호 변경/우회 없음. 다음 후보: execute_command·재시작 조정기 연결(인프라 불필요 중 가장 큼).
+
+### A7 재시작(명령) 경로 실행 직전까지 연결 · 2026-11-25
+
+사용자 결정(모두 추천): 실행 직전까지 · `request-approval` 재사용 · 관측기 읽기 신원 확장 · WF05 회신 문구만 수정. 재시작 후보에 `request-approval`을 보내면 WF08 봉인과 명령 승인 대기가 열리고, 버튼과 재검증을 거쳐 `command_ready` 알림까지 간다. 실제 재시작 실행은 비활성이다(읽기 전용 포트, `writer=None`).
+
+함께 바꾼 것: 정책 전환 명령을 두 범위로 확장했다. 재시작 기록이 영구 누적되던 결함을 고쳤다(보관 종료 30일 뒤 삭제). 신규 시험 24개. [조각 문서](recovery-restart-wiring-local-20261125.md). 남은 것: 실제 실행(WF11), renderer `restart` 절, RBAC 추가(events·HPA list).
+
+### A7 재시작 경로 최종 반영 · 2026-11-25
+
+[PR #65](https://github.com/joungGo/url-shortener-ai-ops/pull/65) head `63372f4` → main `eb435540533da3d7583f40288c1ab6f30ac26165`. PR CI45541408028 7종 성공(1841개). tree `138cdd9` 일치. 보호 변경이나 우회는 없다.
+
+다음 후보:
+
+- 경합 시험 수정(작음)
+- 원복 프로세스 연결
+- healthy 판정
+- renderer restart 절
+
+### 예약 보관 정리 시험 경합 수정 · 2026-11-25
+
+`test_retention_schedule`의 worker 시험이 정리 완료 직후 실행 기록을 읽어 간헐적으로 실패했다(PR63 main CI 첫 실행). 시험이 실행 기록 완료까지 기다리도록 고쳤다. 제품 코드는 바꾸지 않았다. 1초 지연을 넣어 결정적으로 재현했다(기존 시험 실패, 수정 시험 통과). [문서](retention-schedule-race-fix-20261125.md).
+
+### 경합 시험 수정 최종 반영 · 2026-11-25
+
+[PR #66](https://github.com/joungGo/url-shortener-ai-ops/pull/66) head `b90cda6` → main `e5fcea4548bd70d1c30700adefff8cbcc3123432`.
+
+- PR CI45546158652 7종 성공
+- tree `9b725dd` 일치, 보호 변경·우회 없음
+
+다음 후보: 원복 프로세스 연결, healthy 판정, renderer restart 절.
+
+### A7 정상(healthy) 판정 · 2026-11-25
+
+사용자 결정(모두 추천):
+
+- Ready 60초 지속
+- API 서버 Pod proxy로 `/readyz`·`/items` 확인
+- 열 때 이미 정상이면 전용 회신, 기록 없음
+
+이번 결정은 2026-11-21의 "healthy 미보고" 결정을 대체한다. 관측기는 다섯 가지 확인을 모두 통과할 때만 healthy를 보고한다. 재검증에서 정상이면 `already_recovered`가 된다. 신규 시험 11개. [조각 문서](recovery-healthy-judgment-local-20261125.md). 남은 것: RBAC에 `pods/proxy` get 추가, 실환경 확인(WF11).
+
+### 정상 판정 최종 반영 · 2026-11-25
+
+[PR #67](https://github.com/joungGo/url-shortener-ai-ops/pull/67) head `efad7ff` → main `ba2bda030609d81c4260f57bf3a58f5bde44c9a0`.
+
+- PR CI45569981964 7종 성공(1852개)
+- tree `97ea810` 일치
+- 보호 변경·우회 없음
+
+다음 후보: 원복 프로세스 연결, renderer `restart` 절.
+
+### 원복 연결 보류와 renderer `restart` 절 · 2026-11-25
+
+원복 프로세스 연결은 조사 결과 보류했다(사용자 추천안 선택). 이유는 두 가지다.
+
+- 원복을 시작시킬 상위 계기(PR 발행·재시작 실행 → WF09 `rollback_candidate`)가 없다.
+- 원복 승인 흐름(`RollbackScope` 발급자)이 없다.
+
+대신 renderer `recovery.restart` 절을 추가했다.
+
+- 렌더링 대상: 재시작 설정, relay 전용 Prometheus Secret
+- 외부 선행 조건 문구 추가: `pods/proxy` get, events·HPA list
+- 신규 시험 6개
+- [조각 문서](wf10-restart-render-local-20261125.md)
+
+### renderer restart 절 최종 반영 · 2026-11-25
+
+[PR #68](https://github.com/joungGo/url-shortener-ai-ops/pull/68) head `2a90066` → main `9928fc8fea69528993456982bcbc21de0b19b299`.
+
+- PR CI45573120978 7종 성공(1858개)
+- tree `54f49ff` 일치
+- 보호 변경·우회 없음
+
+**인프라 없이 남은 큰 항목:** 없음. 남은 작업은 모두 정책 결정이나 WF11 실환경 결정이 먼저 필요하다.
+
+- 정책 결정이 먼저 필요: PR 발행 경로, 승인자 제한 완화, 원복 승인 흐름
+- WF11 결정 대기: 실제 연결과 실행
+
+### 정책 결정 council과 WF11 합격 기준표 초안 · 2026-11-25
+
+정책 결정 3건(PR 발행, 승인자 제한, 원복 승인 흐름)을 llm-council로 검토했다.
+
+결론은 순서를 바꾸는 것이다: 기준표 → 로컬 리허설 → WF11(사람 PR, 사람 원복) → 원복 승인 흐름.
+
+- PR 자동 발행은 선택 과제로 두고, 두 번째 버튼은 넣지 않는다.
+- 승인자 제한은 유지하되, 1인 운영이라는 점을 명시한다.
+
+사용자 "진행해"에 따라 [WF11 합격 기준표 초안](wf11-acceptance-sheet-draft-20261125.md)을 작성했다. 문서만 썼고, 실행 승인은 아니다.
+
+- S0 연결 점검
+- S1 이미지 실패 → 사람 PR 복구(필수)
+- S2 음성 경로(필수)
+- S3 사람 원복(선택)
+- S4 재시작 `command_ready`(선택)
+- 증거·재생 자료
+- 상한·중단 조건
+- 자격 회수
+- 사용자 결정 항목 9개
+
+PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tree `b827d8d` 일치.
+
+### 장부 읽기 전용 조회 명령 · 2026-11-25
+
+`python -m ai_ops.recovery_status --store …`를 추가했다. WF11 기준표 9절 9번 항목이다.
+
+- SQLite를 `mode=ro`로만 열고, 시간에 따른 상태 전환은 적용하지 않는다.
+- 출력은 hash·상태·시각·건수뿐이다. Slack ID·본문·승인자 hash·URL·경로는 내보내지 않는다.
+- 신규 시험 8개, 결함 변형 15/15 검출.
+- [조각 문서](recovery-status-local-20261125.md)
+
+### 조회 명령·README·WF11 준비 절차 반영 · 2026-11-25
+
+- [PR #70](https://github.com/joungGo/url-shortener-ai-ops/pull/70)(조회 명령) → main `c2cc32e`. PR CI45578594470 7종 성공, tree `246e253` 일치.
+- [PR #71](https://github.com/joungGo/url-shortener-ai-ops/pull/71)(README 흐름 요약·1인 운영 명시, [WF11 준비 절차 초안](wf11-preparation-procedure-draft-20261125.md)) → main `aaa8528`. PR CI45579685052 성공, diff 동일.
+- 조사 결과에 따라 계획을 두 가지 바꿨다.
+  - 부하 스크립트는 만들지 않았다. 이미지 실패 중에는 Pod가 없어 경보에 영향이 없다.
+  - C04·B6 실습 도구는 재사용하지 않는다.
+- **인프라 없이 남은 작업은 없다.** 다음 단계는 WF11 기준표 9절의 사용자 결정 8개다(9번은 해결).
+
+### WF11 결정과 lab 경보 규칙 · 2026-11-25
+
+**사용자 결정**
+
+- 인프라를 재설치하고, Terraform은 Claude가 실행한다(나머지 준비 후).
+- 리허설은 생략한다.
+- 상한은 3시간이다.
+- 주입 PR은 Claude가 쓰고, 병합과 sync는 "진행해" 후에 한다.
+- S1 다음 S2a 순서로 한다.
+- 재생 자료는 개인 경로에 둔다.
+- PR 자동 발행은 하지 않는다.
+
+**발견한 공백.** lab에는 경보 규칙이 없다. 앱 지표 경보는 Pod가 0개인 장애를 볼 수 없다.
+
+**해결.** llm-council 2차 결론에 따라 renderer에 `LabDeploymentUnavailable` PrometheusRule을 추가했다.
+
+- 조건: kube-state-metrics 기준 원하는 replica가 1 이상이고 사용 가능한 replica가 0인 상태가 2분 지속
+- 라벨: `release`, `ai_ops`, 대상 5개
+- 위치: lab chart 밖. 변경 계획의 첫 단계로 적용한다.
+- 수신기 허용 목록은 바꾸지 않았다. `/v1/events` 경로는 경보 이름을 거르지 않는다.
+- 합성 경보는 8분 비상 절차로만 쓴다.
+
+시험 9개를 추가했고, 결함 변형 13/13을 검출했다. promtool 3.5.0 check·test 5종 통과(사용자 승인 후 실행, sha256 검증). [조각 문서](wf11-lab-alert-local-20261125.md).
+
+[PR #72](https://github.com/joungGo/url-shortener-ai-ops/pull/72) → main `1b6ca45`. PR CI 2회 7종 성공, tree `c956549` 일치. **다음: WF11 인프라 재설치(Claude Terraform 위임)** — 설치 가이드·최신 정리 기록 재확인, 계정·state·plan 대조부터.
+
+### WF11 설치 준비(인프라 없이) · 2026-11-25
+
+사전 점검에서 확인한 것:
+
+- 새 계정 `764428911194`의 로그인 세션이 만료됐다.
+- `c03-execution-lab` 읽기 토큰이 없다.
+- WF10은 실환경에 설치된 적이 없다.
+
+배치 결정: WF10만 `ai-ops/ai-ops`에 설치한다. Slack 주소는 `slack-ops.bidservice.store`를 재사용하고, 발신원은 `eks-seoul`/`am-urlshortener`, 경보 채널은 기존 Webhook을 쓴다.
+
+준비 항목:
+
+1. 플랫폼 [PR #164](https://github.com/f-lab-edu/F-Lab-DevOps/pull/164): Alertmanager를 `/v1/events`로 전환한다. CI는 통과했고 승인 리뷰를 기다린다.
+2. AI Terraform IRSA 역할 `wf11-recovery.tf`: 기본 비활성, 이 PR이다.
+3. 신원 manifest 도구: 다음 작업이다.
+
+[문서](wf11-install-prep-20261125.md)
+
+### WF11 설치 준비 진행 · 2026-11-26
+
+**1. 플랫폼 라우팅 전환**
+
+- 플랫폼 PR #164를 병합했다(`f9b1b72`).
+- main CI의 contracts가 실패했다. 레거시 라우팅 검사가 예전 `/v1/alerts` 구조만 가정했기 때문이다.
+- 수정 PR #165를 병합했다(`d195fcb`).
+  - ai-events 분기를 추가했다.
+  - openssl 고정값을 AI 저장소와 맞췄다.
+- main CI는 성공했다.
+- 병합은 두 번 모두 사용자가 화면에서 우회했다. `enforce_admins` 해제 상태는 사용자 결정으로 유지한다.
+
+**2. IRSA**
+
+- AI PR #73을 병합했다(`12622a1`).
+
+**3a. 설치 전 manifest 생성기 `wf11_edge`**
+
+- 내용: WF10 SA, 복구 읽기 신원, Slack 진입점
+- 시험 4개, 결함 변형 14/14 검출
+- 이 PR에 들어 있다.
+
+**3b. 비밀 자료 절차**
+
+- 다음에 진행한다.
+
+**WF11 설치 준비 · 2026-11-26 (이어서)**
+
+- **3a 병합:** AI PR #74를 병합했다(main `514a37c`).
+  - worker 조사 읽기 권한 누락을 사용자 승인 후 고쳐서 함께 넣었다.
+  - IRSA가 공용 ServiceAccount의 모든 Pod에 주입되는 점은 수용하고 기록했다.
+- **3c(이 PR #75):** WF10 renderer가 평문 HTTP Prometheus(9090, 자격 없음)를 받는다.
+  - collector Secret은 쓰지 않는다.
+  - restart 경로는 HTTPS만 허용한다.
+- **3b:** PR #76에 비밀 자료 절차 문서를 올렸다.
+- **3c 병합:** AI PR #75를 병합했다(main `be4da39`).
+- **3b:** 이 PR #76에서 비밀 자료 절차 문서를 추가한다. 이것으로 인프라 없이 할 준비가 끝난다.
+- **남은 것은 사용자 작업 두 가지**다. 그다음 설치를 시작한다.
+  - c03 읽기 토큰 발급
+  - `aws login`
+
+**WF11 실제 실행 · 2026-11-26**
+
+- **설치·S0:** 통과. 그 과정에서 WF10 첫 기동 실패를 PR #77로 고쳤다.
+- **S1(범위 B):** 탐지 → 조사 → 계획 → 승인 → 재검증까지 실제로 동작했다. WF07은 정상 CI 근거가 없어 안전하게 중지했다(기대 결과). 복구는 Argo 정상 revision 복귀로 했다.
+- **철거:** 완료. 최종 스냅샷 `…b6f690c5`를 보존했다.
+- **후속 후보:** CI relay 연결, 정상 판정 `pods/proxy` 경로(lab NetworkPolicy), Service IP 입력, 설치 도구의 애드온 대기, S2a와 복구 PR 경로.
+- 상세: [실행 기록](wf11-execution-20261126.md)
+
+**WF11 후속 1 · 2026-11-26**
+
+- lab `lab-api` NetworkPolicy가 API 서버(`api_server_cidrs`, `/32`)에서 오는 8000번을 허용하도록 바꿨다. 복구 정상 판정의 `pods/proxy` 경로가 이 정책에 막혀 있었다.
+- 이 수정으로 다음 설치에서 S2a를 검증할 수 있다.
+- 상세: [변경 문서](lab-apiserver-proxy-ingress-20261126.md)
+
+**WF11 후속 2a · 2026-11-26**
+
+- CI relay 네트워크를 준비했다(P1+N1). 토큰 읽기 코드에 지정 proxy를 넣었고, egress proxy는 flag가 있을 때만 GitHub artifact 저장소를 허용한다.
+- 기본 동작은 바뀌지 않는다. renderer 연결은 PR-b에서 한다.
+- 상세: [변경 문서](ci-relay-proxy-local-20261126.md)
+
+**WF11 후속 2b · 2026-11-26**
+
+- WF10 renderer에 선택 입력 `recovery.ci_relay`를 추가했다. 메인 Pod `ci-relay` 컨테이너와 egress `--github-artifacts`를 함께 렌더링한다. 입력이 없으면 출력이 이전과 같다.
+- 이것으로 WF07 정상 CI 근거 공급 경로의 코드가 갖춰졌다. 실제 확인은 다음 설치에서 한다.
+- 상세: [변경 문서](wf10-ci-relay-render-local-20261126.md)
+
+
+**WF11 후속 3a · 2026-11-27**
+
+- WF07 PR 발행 writer(C03 writer 앱)를 추가했다(사용자 결정 A2). relay가 준비 다음 tick에 PR을 열고, 병합과 sync는 사람이 한다.
+- 기본으로는 꺼져 있다. 상세: [변경 문서](recovery-pr-writer-local-20261127.md)
+
+
+**WF11 후속 3b · 2026-11-27**
+
+- WF10 renderer에 선택 입력 `recovery.publish`를 추가했다. relay에만 단기 writer 토큰을 넣고 발행 설정을 연결한다. 입력이 없으면 출력이 이전과 같다.
+- 상세: [변경 문서](wf10-publish-render-local-20261127.md)
+
+
+**WF11 후속 3c · 2026-11-27**
+
+- 운영자 Mac용 단기 writer 토큰 도구를 추가했다(발급, Secret 저장, 폐기). 이것으로 A2(복구 PR 자동 발행, 병합은 사람) 코드가 갖춰졌다.
+- 실제 확인은 다음 설치의 S1에서 한다. 상세: [변경 문서](recovery-pr-token-local-20261127.md)
+
+
+**WF11 후속 4 · 2026-11-27**
+
+- WF10 입력 작성 도구(`ai_ops.wf10_inputs`)를 저장소로 옮겼다. 읽기 전용 수집과 renderer 검증을 거치는 조립으로 나눴고, `collector_cidrs` 규칙을 시험으로 고정했다.
+- 지난 설치 입력과 같은 결과를 확인했다. 실제 수집은 다음 설치에서 한다. 상세: [변경 문서](wf10-inputs-tool-local-20261127.md)

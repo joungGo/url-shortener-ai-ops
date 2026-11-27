@@ -46,7 +46,37 @@ RECOVERY_FIELDS = ('approvers', 'approval', 'principals', 'author_id', 'aws_role
                    'normal_binding')
 APPROVAL_FIELDS = ('wait_seconds', 'approval_seconds', 'observation_seconds', 'revalidation_seconds')
 RECOVERY_SECRET_KEYS = ('reader', 'github')
+# Optional recovery.ci_relay (WF11 follow-up 2026-11-26, user decision P1+N1): a CI relay container
+# in the main Pod feeds normal-CI receipts into the same store (WF07 evidence). It reads GitHub
+# only through the fixed-destination egress proxy, which then also relays GitHub artifact storage.
+# Absent -> output is byte-identical to before.
+CI_RELAY_FIELDS = ('secret',)
+# Optional recovery.publish (WF11 A2, 2026-11-27): the relay opens the WF07 PR with a short-lived
+# C03 writer App installation token (minted/revoked on the operator Mac per scenario). Merge and
+# sync stay human. Absent -> output unchanged.
+PUBLISH_FIELDS = ('secret',)
+PUBLISH_TOKEN = '/run/ai-pr-writer/token'
+CI_RELAY_TOKEN = '/run/ci-github/token'
+# WF11 (user decision 2026-11-26): the cluster Prometheus (kube-prometheus-stack) is the
+# in-cluster plain-HTTP endpoint without authentication (same as 2026-11-18 and B6). The
+# collector may use it only with NO credentials; then no collector secret exists or mounts.
+PLAIN_PROMETHEUS_PORT = 9090
+# Optional recovery.restart (A7 restart path up to command_ready; execution disabled).
+# Absent -> the recovery output is unchanged. Present -> the restart section of
+# recovery-approval.json and a relay-only Prometheus read secret; Prometheus is the
+# collector's existing endpoint, so the main Pod egress rule is unchanged.
+RESTART_FIELDS = ('approval', 'execution_seconds', 'prometheus_secret', 'prior_ready_query', 'dependency_queries')
+RESTART_EXECUTOR = 'local-restart-wf10'
 PACKAGE_LIMIT = 131072
+# WF11 lab alert (user decision 2026-11-25, llm-council: state-based rule outside
+# the lab chart). The request-metric alerts cannot see an image-pull failure that
+# leaves zero Pods, so a kube-state-metrics rule raises one labelled event for the
+# registered lab target. The /v1/events path accepts any alertname (Watchdog
+# excluded) whose target labels match a binding; `release` is how the
+# kube-prometheus-stack operator selects rules.
+LAB_ALERT = 'LabDeploymentUnavailable'
+LAB_ALERT_FOR = '2m'
+RULE_RELEASE_LABEL = {'release': 'kube-prometheus-stack'}
 
 
 def draft():
@@ -67,6 +97,19 @@ def match(value, pattern):
 
 def name(value):
     return match(value, r'[a-z][a-z0-9-]{0,50}[a-z0-9]|[a-z]')
+
+
+def plain_prometheus(v):
+    """True when the Prometheus connection is plain http (shape is validated later)."""
+    try:
+        return any(c.get('kind') == 'prometheus' and str(c.get('base_url') or '').startswith('http://')
+                   for c in v['config']['runtime.json']['connections'].values())
+    except (AttributeError, KeyError, TypeError):
+        return False
+
+
+def secret_keys(v):
+    return tuple(k for k in SECRET_KEYS if k != 'collector') if plain_prometheus(v) else SECRET_KEYS
 
 
 def inputs(value):
@@ -93,10 +136,11 @@ def inputs(value):
     match(s['alert_channel_id'], r'[CG][A-Z0-9]{2,31}')
     if s['alert_channel_id'] == s['investigation_channel_id']:
         raise ValueError('wf10_channel_boundary_rejected')
-    exact(v['secrets'], SECRET_KEYS)
+    keys = secret_keys(v)
+    exact(v['secrets'], keys)
     for x in v['secrets'].values():
         name(x)
-    if len(set(v['secrets'].values())) != len(SECRET_KEYS):
+    if len(set(v['secrets'].values())) != len(keys):
         raise ValueError('wf10_credential_separation_rejected')
     # Slack egress is not an IP input: Slack publishes no fixed addresses (B' sender).
     exact(v['network'], ('dns', 'alertmanager', 'ingress', 'collector_cidrs'))
@@ -132,6 +176,11 @@ def inputs(value):
     if set(runtime.connections) != {b.kubernetes_connection, b.prometheus_connection}:
         raise ValueError('wf10_connections_rejected')
     for conn in runtime.connections.values():
+        if conn.kind == 'prometheus' and conn.base_url and conn.base_url.startswith('http://'):
+            # No credential may travel over plain HTTP.
+            if urlsplit(conn.base_url).port != PLAIN_PROMETHEUS_PORT or conn.token_file is not None or conn.ca_file is not None:
+                raise ValueError('wf10_collector_paths_rejected')
+            continue
         prefix = '/var/run/ai-ops/kubernetes' if conn.kind == 'kubernetes' else '/run/collector'
         if not conn.base_url or (urlsplit(conn.base_url).port or 443) not in (443,6443,8443,9090) or not conn.base_url.startswith('https://') or conn.token_file != prefix+'/token' or conn.ca_file != prefix+'/ca.crt':
             raise ValueError('wf10_collector_paths_rejected')
@@ -171,12 +220,28 @@ def recovery_config(v):
     from ai_ops.normal_ci_contract import NormalCIBinding
     from ai_ops.recovery_approval_wiring import RecoveryApprovalConfig
     r = v['recovery']
-    exact(r, RECOVERY_FIELDS)
+    if type(r) is not dict:
+        raise ValueError('wf10_fields_rejected')
+    restart = r.get('restart')
+    ci_relay = r.get('ci_relay')
+    publish = r.get('publish')
+    exact({k: x for k, x in r.items() if k not in ('restart', 'ci_relay', 'publish')}, RECOVERY_FIELDS)
     exact(r['approval'], APPROVAL_FIELDS)
     exact(r['secrets'], RECOVERY_SECRET_KEYS)
-    for x in r['secrets'].values():
+    secrets = list(r['secrets'].values())
+    if restart is not None:
+        exact(restart, RESTART_FIELDS)
+        exact(restart['approval'], APPROVAL_FIELDS)
+        secrets.append(restart['prometheus_secret'])
+    if ci_relay is not None:
+        exact(ci_relay, CI_RELAY_FIELDS)
+        secrets.append(ci_relay['secret'])
+    if publish is not None:
+        exact(publish, PUBLISH_FIELDS)
+        secrets.append(publish['secret'])
+    for x in secrets:
         name(x)
-    if len(set(r['secrets'].values()) | set(v['secrets'].values())) != len(RECOVERY_SECRET_KEYS) + len(SECRET_KEYS):
+    if len(set(secrets) | set(v['secrets'].values())) != len(secrets) + len(v['secrets']):
         raise ValueError('wf10_credential_separation_rejected')
     # Approvers must be able to press the buttons: the rendered policy grants one user.
     if type(r['approvers']) is not list or not r['approvers'] or set(r['approvers']) != {v['slack']['user_id']}:
@@ -186,6 +251,23 @@ def recovery_config(v):
     if len(kubernetes) != 1:
         raise ValueError('wf10_recovery_api_rejected')
     proxy = f"http://{v['name']}-egress.{v['namespace']}.svc:{EGRESS_PORT}"
+    section = None
+    if restart is not None:
+        prometheus = [c for c in v['config']['runtime.json']['connections'].values() if c['kind'] == 'prometheus']
+        if len(prometheus) != 1:
+            raise ValueError('wf10_recovery_api_rejected')
+        if not prometheus[0]['base_url'].startswith('https://'):
+            # The restart path sends a read token to Prometheus: TLS only.
+            raise ValueError('wf10_restart_prometheus_tls_required')
+        section = {'approval': {'version': 1, 'scope': 'execute_command', 'approvers': r['approvers'],
+                                **restart['approval']},
+                   'executor_id': RESTART_EXECUTOR, 'execution_seconds': restart['execution_seconds'],
+                   # Same Prometheus endpoint/egress rule as the collector, separate read secret.
+                   'prometheus': {'api_url': prometheus[0]['base_url'],
+                                  'token_file': '/run/recovery-prometheus/token',
+                                  'ca_file': '/run/recovery-prometheus/ca.crt',
+                                  'prior_ready_query': restart['prior_ready_query'],
+                                  'dependency_queries': restart['dependency_queries']}}
     return RecoveryApprovalConfig.model_validate({
         'schema_version': 1, 'enabled': True,
         'prepare_proposal': {'version': 1, 'scope': 'prepare_proposal', 'approvers': r['approvers'], **r['approval']},
@@ -196,7 +278,71 @@ def recovery_config(v):
         'prepare': {'principals': r['principals'], 'author_id': r['author_id'],
                     'drafts_dir': '/data/recovery-drafts', 'github_token_file': '/run/ai-github/token',
                     'normal_binding_file': '/etc/ai-ops/normal-ci-binding.json',
-                    'aws_role_name': r['aws_role_name'], 'egress_proxy': proxy}}).model_dump()
+                    'aws_role_name': r['aws_role_name'], 'egress_proxy': proxy,
+                    **({'publish_token_file': PUBLISH_TOKEN} if publish is not None else {})},
+        'restart': section}).model_dump()
+
+
+def lab_alert_rule(binding):
+    """PrometheusRule spec for the single registered lab target (label contract)."""
+    t = binding['target']
+    for key in ('namespace', 'workload'):
+        if not re.fullmatch(r'[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?', t[key]):
+            raise ValueError('wf10_lab_alert_target_rejected')
+    selector = f'namespace="{t["namespace"]}",deployment="{t["workload"]}"'
+    expr = (f'(max by (namespace, deployment) (kube_deployment_spec_replicas{{{selector}}}) > 0)'
+            f' and on (namespace, deployment) '
+            f'(max by (namespace, deployment) (kube_deployment_status_replicas_available{{{selector}}}) == 0)')
+    labels = {'severity': 'warning', 'ai_ops': 'enabled',
+              **{k: t[k] for k in ('cluster_id', 'namespace', 'workload', 'service', 'environment')}}
+    return {'groups': [{'name': 'wf11-lab.rules', 'interval': '30s', 'rules': [{
+        'alert': LAB_ALERT, 'expr': expr, 'for': LAB_ALERT_FOR, 'labels': labels,
+        # Static text only: no templated values from series labels.
+        'annotations': {'summary': 'lab 배포의 사용 가능한 replica가 0입니다(원하는 replica는 1 이상).'}}]}]}
+
+
+LABEL_NAME = re.compile(r'[a-zA-Z_][a-zA-Z0-9_]{0,127}')
+
+
+def check_lab_rule(resource):
+    """Strict shape check of the one PrometheusRule this renderer emits.
+
+    The vendored Kubernetes subset has no monitoring.coreos.com CRD; this checks the
+    exact fixed form instead (unknown/missing fields rejected). Server-side dry-run
+    in the change plan stays the live gate."""
+    def exact(value, keys):
+        if type(value) is not dict or set(value) != set(keys):
+            raise SchemaError('prometheusrule: fields')
+    def text(value):
+        if type(value) is not str or not value or len(value) > 2048 or any(ord(c) < 32 for c in value):
+            raise SchemaError('prometheusrule: string')
+    exact(resource, ('apiVersion', 'kind', 'metadata', 'spec'))
+    if resource['apiVersion'] != 'monitoring.coreos.com/v1' or resource['kind'] != 'PrometheusRule':
+        raise SchemaError('prometheusrule: kind')
+    exact(resource['metadata'], ('name', 'namespace', 'labels'))
+    exact(resource['spec'], ('groups',))
+    groups = resource['spec']['groups']
+    if type(groups) is not list or len(groups) != 1:
+        raise SchemaError('prometheusrule: groups')
+    exact(groups[0], ('name', 'interval', 'rules'))
+    rules = groups[0]['rules']
+    if type(rules) is not list or len(rules) != 1:
+        raise SchemaError('prometheusrule: rules')
+    exact(rules[0], ('alert', 'expr', 'for', 'labels', 'annotations'))
+    for value in (resource['metadata']['name'], resource['metadata']['namespace'], groups[0]['name'],
+                  groups[0]['interval'], rules[0]['alert'], rules[0]['expr'], rules[0]['for']):
+        text(value)
+    for mapping in (resource['metadata']['labels'], rules[0]['labels'], rules[0]['annotations']):
+        if type(mapping) is not dict or not mapping:
+            raise SchemaError('prometheusrule: map')
+        for key, value in mapping.items():
+            if type(key) is not str or not LABEL_NAME.fullmatch(key.replace('.', '_').replace('/', '_').replace('-', '_')):
+                raise SchemaError('prometheusrule: key')
+            text(value)
+    if not re.fullmatch(r'[0-9]+[smh]', rules[0]['for']) or not re.fullmatch(r'[0-9]+[smh]', groups[0]['interval']):
+        raise SchemaError('prometheusrule: duration')
+    if any('{{' in value for value in (*rules[0]['labels'].values(), *rules[0]['annotations'].values())):
+        raise SchemaError('prometheusrule: template')  # static text only
 
 
 def candidate(value):
@@ -219,15 +365,14 @@ def candidate(value):
     config_hash = digest(encoded(config_data))
     security = {'allowPrivilegeEscalation':False,'readOnlyRootFilesystem':True,'capabilities':{'drop':['ALL']}}
     def mount(vol, path, ro=False): return {'name':vol,'mountPath':path,'readOnly':ro}
-    common = [mount('config','/etc/ai-ops',True), mount('data','/data')]
-    volumes = [{'name':'config','configMap':{'name':n+'-config'}},
-               {'name':'data','persistentVolumeClaim':{'claimName':v['pvc_name']}}]
-    # Per-role private emptyDir: secret-volume symlinks/modes are not accepted by
-    # existing Slack readers. Copy only fixed keys as uid10001/mode0600 in init.
+    volumes = [{'name':'data','persistentVolumeClaim':{'claimName':v['pvc_name']}}]
+    # Per-role private emptyDir: secret- and ConfigMap-volume files are symlinks
+    # (`key -> ..data/key`) and the runtime readers open them with O_NOFOLLOW
+    # (runbook policy, Slack policy/secrets). Copy only fixed keys as regular
+    # uid10001/mode0600 files in init (first live start, WF11 2026-11-26).
     containers, init = [], []
-    def secret(vol, ref, keys, destination, volumes=volumes, init=init):
-        volumes.extend([{'name':vol+'-source','secret':{'secretName':ref,'defaultMode':288,
-            'items':[{'key':k,'path':k} for k in keys]}}, {'name':vol,'emptyDir':{'medium':'Memory','sizeLimit':'1Mi'}}])
+    def copied(vol, source, keys, destination, volumes=volumes, init=init):
+        volumes.extend([{'name':vol+'-source',**source}, {'name':vol,'emptyDir':{'medium':'Memory','sizeLimit':'1Mi'}}])
         script = 'import os,pathlib; os.umask(0o077); '+ '; '.join(
             f'p=pathlib.Path("/out/{k}"); p.write_bytes(pathlib.Path("/source/{k}").read_bytes()); p.chmod(0o600)' for k in keys)
         # Explicit bounds so LimitRange/ResourceQuota namespaces accept the Pod.
@@ -235,24 +380,43 @@ def candidate(value):
                      'securityContext':security,'resources':INIT_RESOURCES,
                      'volumeMounts':[mount(vol+'-source','/source',True),mount(vol,'/out')]})
         return mount(vol,destination,True)
+    def secret(vol, ref, keys, destination, volumes=volumes, init=init):
+        return copied(vol, {'secret':{'secretName':ref,'defaultMode':288,'items':[{'key':k,'path':k} for k in keys]}},
+                      keys, destination, volumes, init)
+    def config_map(vol, keys, destination, volumes=volumes, init=init):
+        return copied(vol, {'configMap':{'name':n+'-config','defaultMode':288,'items':[{'key':k,'path':k} for k in keys]}},
+                      keys, destination, volumes, init)
+    common = [config_map('config', sorted(config_data), '/etc/ai-ops'), mount('data','/data')]
     signing=secret('signing',v['secrets']['signing'],['token'],'/run/slack-signing')
     client=secret('sender-client',v['secrets']['sender_client'],['token'],'/run/slack-sender-client')
     tls=secret('slack-tls',v['secrets']['slack_tls'],['tls.crt','tls.key'],'/run/ai-slack-tls')
     event=secret('event-identity',v['secrets']['event_identity'],['token','tls.crt','tls.key'],'/etc/ai-ops-webhook')
-    collector=secret('collector',v['secrets']['collector'],['token','ca.crt'],'/run/collector')
+    collector=[secret('collector',v['secrets']['collector'],['token','ca.crt'],'/run/collector')] if 'collector' in v['secrets'] else []
     relay_extra=[]
     if recovery is not None:
         # Only the relay reads the cluster for recovery and calls GitHub (read token).
         relay_extra=[secret('recovery-reader',recovery['secrets']['reader'],['token','ca.crt'],'/run/recovery-reader'),
                      secret('github',recovery['secrets']['github'],['token'],'/run/ai-github')]
+        if recovery.get('restart') is not None:
+            relay_extra.append(secret('recovery-prometheus',recovery['restart']['prometheus_secret'],
+                                      ['token','ca.crt'],'/run/recovery-prometheus'))
+        if recovery.get('publish') is not None:
+            # Short-lived writer App installation token: only the relay (which publishes) holds it.
+            relay_extra.append(secret('pr-writer',recovery['publish']['secret'],['token'],PUBLISH_TOKEN.rsplit('/',1)[0]))
+    ci_relay=(recovery or {}).get('ci_relay')
+    ci_extra=[secret('ci-github',ci_relay['secret'],['token'],CI_RELAY_TOKEN.rsplit('/',1)[0])] if ci_relay is not None else []
     volumes.append({'name':'kubernetes','projected':{'defaultMode':288,'sources':[
         {'serviceAccountToken':{'path':'token','expirationSeconds':3600}},
         {'configMap':{'name':'kube-root-ca.crt','items':[{'key':'ca.crt','path':'ca.crt'}]}}]}})
     source=v['source']
-    roles=[('worker','ai_ops.worker_runtime',[],[collector,mount('kubernetes','/var/run/ai-ops/kubernetes',True)]),
+    roles=[('worker','ai_ops.worker_runtime',[],[*collector,mount('kubernetes','/var/run/ai-ops/kubernetes',True)]),
         ('event-receiver','ai_ops.alert_receiver',['--cluster-id',source['cluster_id'],'--event-source-alias',source['alias'],'--event-source-id',source['source_id']],[event]),
         ('slack-ingress','ai_ops.slack_server',['ingress','--enable-web'],[signing,tls]),
         ('slack-relay','ai_ops.slack_server',['relay','--enable-web'],[signing,client,*relay_extra])]
+    if ci_relay is not None:
+        # Same store as the worker (WF07 reads the normal-CI inbox); only this container holds the Actions token.
+        roles.append(('ci-relay','ai_ops.ci_relay',['--config','/etc/ai-ops','--store','/data/incidents','--watch',
+                      '--normal-binding','/etc/ai-ops/normal-ci-binding.json'],ci_extra))
     for role,module,args,extra in roles:
         volumes.append({'name':role+'-tmp','emptyDir':{'sizeLimit':'64Mi'}})
         container={'name':role,'image':v['image'],'imagePullPolicy':'IfNotPresent',
@@ -261,6 +425,13 @@ def candidate(value):
                  {'name':'AI_OPS_RUNBOOK_ROOT','value':'/opt/ai-ops/runbooks'}],
           'resources':{'requests':{'cpu':'50m','memory':'128Mi'},'limits':{'cpu':'1','memory':'1Gi'}},
           'volumeMounts':common+extra+[mount(role+'-tmp','/tmp')]}
+        if role=='ci-relay':
+            # Fixed-destination proxy only; the relay keeps polling after per-scan errors (no probe CLI).
+            container['env']+=[{'name':'AI_CI_GITHUB_TOKEN_FILE','value':CI_RELAY_TOKEN},
+                               {'name':'AI_CI_EGRESS_PROXY','value':f"http://{n}-egress.{ns}.svc:{EGRESS_PORT}"}]
+            container['resources']={'requests':{'cpu':'25m','memory':'96Mi'},'limits':{'cpu':'250m','memory':'256Mi'}}
+            containers.append(container)
+            continue
         if role=='event-receiver':
             probe={'tcpSocket':{'port':9443}}
         else:
@@ -296,10 +467,9 @@ def candidate(value):
                     if recovery is not None else [])]}},'networking.k8s.io/v1'))
     # Separate stateless sender: bot token + client secret only. No PVC, no
     # Kubernetes token, no signing secret; only the policy file from the ConfigMap.
-    s_volumes=[{'name':'policy','configMap':{'name':n+'-config','items':[{'key':'slack-policy.json','path':'slack-policy.json'}]}},
-               {'name':'sender-tmp','emptyDir':{'sizeLimit':'16Mi'}}]
+    s_volumes=[{'name':'sender-tmp','emptyDir':{'sizeLimit':'16Mi'}}]
     s_init=[]
-    s_mounts=[mount('policy','/etc/ai-ops',True),
+    s_mounts=[config_map('policy',['slack-policy.json'],'/etc/ai-ops',s_volumes,s_init),
               secret('bot',v['secrets']['bot'],['token'],'/run/slack-bot',s_volumes,s_init),
               secret('sender-client',v['secrets']['sender_client'],['token'],'/run/slack-sender-client',s_volumes,s_init),
               mount('sender-tmp','/tmp')]
@@ -326,11 +496,15 @@ def candidate(value):
         'egress':[{'to':[peer(net['dns'])],'ports':[{'protocol':p,'port':53} for p in ('TCP','UDP')]},
                   {'to':[{'ipBlock':{'cidr':'0.0.0.0/0','except':NON_PUBLIC}}],'ports':[{'protocol':'TCP','port':443}]}]}},'networking.k8s.io/v1'))
     if recovery is not None:
+        resources.append({'apiVersion':'monitoring.coreos.com/v1','kind':'PrometheusRule',
+            'metadata':{'name':n+'-lab-alerts','namespace':ns,
+                        'labels':{**RULE_RELEASE_LABEL,'app.kubernetes.io/part-of':'wf10'}},
+            'spec':lab_alert_rule(v['config']['bindings.json']['bindings'][0])})
         # Fixed-destination CONNECT proxy: no secrets, no Kubernetes token, no PVC.
         # TLS stays end to end; only GitHub/STS/ECR :443 (ai_ops.recovery_egress_proxy).
         e_probe={'tcpSocket':{'port':EGRESS_PORT}}
         egress={'name':'egress-proxy','image':v['image'],'imagePullPolicy':'IfNotPresent',
-            'command':['python','-m','ai_ops.recovery_egress_proxy'],'args':[],'securityContext':security,
+            'command':['python','-m','ai_ops.recovery_egress_proxy'],'args':['--github-artifacts'] if ci_relay is not None else [],'securityContext':security,
             'env':[{'name':'PYTHONDONTWRITEBYTECODE','value':'1'},{'name':'HOME','value':'/tmp'}],
             'resources':{'requests':{'cpu':'25m','memory':'32Mi'},'limits':{'cpu':'250m','memory':'128Mi'}},
             'volumeMounts':[mount('egress-tmp','/tmp')],
@@ -354,7 +528,10 @@ def candidate(value):
     # the API server would reject on shape; server dry-run remains a live gate.
     for resource in resources:
         try:
-            validate_manifest(resource)
+            if resource['kind'] == 'PrometheusRule':
+                check_lab_rule(resource)
+            else:
+                validate_manifest(resource)
         except SchemaError:
             raise ValueError('wf10_schema_rejected') from None
     result={'status':'candidate_rendered_not_approved','execution_allowed':False,'live_verified':False,
@@ -373,18 +550,43 @@ def candidate(value):
             'sender idempotency window is in memory; restarts rely on the adapter needs_review rule',
             'single replica main Pod and SQLite on one RWO volume: no HA'],
         'manifest_sha256':digest(encoded(resources)),'resources':resources}
+    if plain_prometheus(v):
+        result['external_prerequisites']=result['external_prerequisites']+[
+            'collector_cidrs include the current Prometheus Pod IP (/32, port 9090); re-render if that Pod is rescheduled']
+        result['residual_risks']=result['residual_risks']+[
+            'the collector reads Prometheus over in-cluster plain HTTP without authentication (existing kube-prometheus-stack endpoint); no credential is sent']
     if recovery is not None:
         result['recovery']={'enabled':True,'egress_proxy':configs['recovery-approval.json']['prepare']['egress_proxy'],
                             'publication':'not_wired'}
         result['external_prerequisites']=result['external_prerequisites']+[
-            'recovery reader identity (secret): deployments get, replicasets list, pods list, leases get in ai-ops-lab; Argo applications get lab-target; no writes',
+            'recovery reader identity (secret): deployments get, replicasets list, pods list, leases get, pods/proxy get (healthy check: /readyz and /items on :8000) in ai-ops-lab; Argo applications get lab-target; no writes',
             'read-only GitHub token (secret) for joungGo/c03-execution-lab Contents: Read',
             'IRSA: role-arn annotation on the main service account, role allowing only ecr:DescribeImages on repository urlshortener',
             'CI relay running against the same store with this normal-CI binding (receipts within 15 minutes of each run)',
             'Slack app Interactivity Request URL /slack/interactivity on the existing Slack listener']
+        if recovery.get('restart') is not None:
+            result['recovery']['restart']='execution_disabled'
+            result['external_prerequisites']=result['external_prerequisites']+[
+                'restart path: the recovery reader identity also needs events list and horizontalpodautoscalers list (autoscaling/v2) in ai-ops-lab; still no writes',
+                'restart path: read-only Prometheus token (secret) for the collector Prometheus endpoint and the configured prior-ready/dependency queries']
         result['residual_risks']=result['residual_risks']+[
             'the egress proxy relays TLS to GitHub/STS/ECR: a compromised relay could reach those three hosts',
-            'IRSA environment is injected into every main-Pod container, not only the relay']
+            'IRSA environment is injected into every container of every Pod using the service account (main, sender, egress), not only the relay']
+        if recovery.get('publish') is not None:
+            result['recovery']['publish']='c03_writer_app_pr_after_prepare_human_merge'
+            result['external_prerequisites']=result['external_prerequisites']+[
+                'PR publication (secret): short-lived C03 writer App installation token (c03-execution-lab only, contents/pull_requests write), minted on the operator Mac before the scenario and revoked after it']
+            result['residual_risks']=result['residual_risks']+[
+                'while the token is valid a compromised relay can open branches/PRs in c03-execution-lab (merge still needs the protected human review and CI)']
+        if recovery.get('ci_relay') is not None:
+            result['recovery']['ci_relay']='normal_ci_receipts_via_egress_proxy'
+            result['external_prerequisites']=result['external_prerequisites']+[
+                'CI relay (secret): read-only GitHub token for f-lab-edu/F-Lab-DevOps Actions (runs and artifacts)',
+                'normal CI: AI root enable_b6_normal_ci, normal-CI RBAC and ai-ops-normal-ci environment variables; each run needs the GitHub environment approval in the UI',
+                'run normal CI after the lab Pods are final (the binding pins Pod UIDs); the relay accepts runs completed within 15 minutes']
+            result['residual_risks']=result['residual_risks']+[
+                'the egress proxy also relays GitHub Actions artifact storage (productionresultssa<N>.blob.core.windows.net, results-receiver.actions.githubusercontent.com)',
+                'a crash-looping ci-relay container would make the shared main Pod NotReady (it only fails on invalid config, which also stops the other processes)']
     return result
 
 

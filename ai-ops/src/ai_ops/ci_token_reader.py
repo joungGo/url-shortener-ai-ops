@@ -9,6 +9,9 @@ from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_ope
 
 from ai_ops.ci_history import LAB_RUNS_PATH, NORMAL_RUNS_PATH, MAX_API_BYTES, PREFIX, READ_TIMEOUT_SECONDS
 
+# WF10 메인 Pod는 인터넷 직접 송신이 없다. 지정한 고정 목적지 CONNECT proxy만 쓴다(TLS는 끝까지 유지).
+PROXY = re.compile(r"http://[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?:[1-9][0-9]{1,4}\Z")
+
 
 class NoRedirect(HTTPRedirectHandler):
     """인증 헤더가 다른 호스트로 자동 전달되지 않도록 리다이렉트를 직접 처리한다."""
@@ -20,9 +23,13 @@ class NoRedirect(HTTPRedirectHandler):
 class TokenGitHubReader:
     """토큰은 API 요청에만 사용하고 서명된 artifact URL에는 보내지 않는다."""
 
-    def __init__(self, token_file):
+    def __init__(self, token_file, *, proxy=None):
+        if proxy is not None and not PROXY.fullmatch(str(proxy)):
+            raise ValueError("CI egress proxy rejected")
         self.path = Path(token_file)
-        self.opener = build_opener(ProxyHandler({}), NoRedirect())
+        self.proxy = proxy
+        # 환경 변수 proxy는 쓰지 않는다. 지정한 proxy가 있으면 API·서명 다운로드 모두 그 proxy만 거친다.
+        self.opener = build_opener(ProxyHandler({"https": proxy} if proxy else {}), NoRedirect())
 
     def _token(self):
         info = self.path.stat()

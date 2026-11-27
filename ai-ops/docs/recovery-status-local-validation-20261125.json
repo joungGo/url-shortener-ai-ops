@@ -1,0 +1,61 @@
+{
+  "status": "merged_main_ci_passed",
+  "slice": "read-only recovery ledger status command (WF11 sheet section 9 item 9)",
+  "author": "Claude Code (Opus 5.5)",
+  "base": "60faf1f4fb9a618c49ab2d6e9e323569ada21a47",
+  "decision": "user 2026-11-25: proceed with all recommended infra-free items, status command first",
+  "contract": [
+    "sqlite mode=ro only; never creates database/table/row; no time transitions; no process locks",
+    "output: hashes, states, reasons, generations, UTC deadlines, deadlines_passed, policy hashes, WF07 state/PR number/payload hash, restart state/applied/lease_released/failed blocking gate names, outbox counts",
+    "never: Slack IDs, message text/payloads, approver/approval hashes, URLs, paths; fixed failure code"
+  ],
+  "new_tests": 8,
+  "mutation_checks": {
+    "count": 15,
+    "detected": 15,
+    "note": "first pass rw_mode survived (no observable writes); added a connection-URI read-only test, then detected"
+  },
+  "full_suite": {
+    "count": 1866,
+    "seconds": 349.821,
+    "passed": true,
+    "skipped": 1,
+    "env": "AWS_PROFILE unset, AWS config/credentials files /nonexistent",
+    "log": {
+      "path": "/Users/jounghyeon/.local/share/url-shortener-ai-ops/logs-20261120/recovery-status-full.log",
+      "sha256": "071c395e125283ab31831290ce7609a304162b2fe9613ae6cdc71fd7a2dc7337"
+    }
+  },
+  "other_checks": {
+    "repository_boundary": "passed",
+    "diff_check": "passed"
+  },
+  "source_hashes": {
+    "ai-ops/src/ai_ops/recovery_status.py": "6deb88e71534d32ed77b11ab6847063f4fc28a4b65346cbb56d8c9f377bf88a1",
+    "ai-ops/tests/test_recovery_status.py": "03ddad2e212130cc285af21ffec369a468b3e63849f8008f08161f2270db525f"
+  },
+  "no_external_actions": "no cluster, deploy, Slack, GitHub write besides this PR",
+  "merge": {
+    "pr": 70,
+    "head": "12686ee2a95f430e168ad377b5fedb1d9e6574d2",
+    "main": "c2cc32e44861f58daab48f13599ae02283a6b4a7",
+    "tree": "246e253a5f5eb0e8812b60fac37c19edc472c0dc",
+    "pr_ci": {
+      "run": 45578594470,
+      "jobs": 7,
+      "tests": 1866,
+      "skipped": 1
+    },
+    "protection_change_or_bypass": false,
+    "branch_deleted": true,
+    "note": "first merge attempt was blocked by the auto-mode classifier until the user's explicit 진행해",
+    "main_ci": {
+      "run": 45580280550,
+      "conclusion": "success",
+      "jobs_success": 6,
+      "skipped": [
+        "C03 Main PR Gate"
+      ]
+    }
+  }
+}

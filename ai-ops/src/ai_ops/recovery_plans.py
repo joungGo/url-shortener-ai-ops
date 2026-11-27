@@ -212,7 +212,8 @@ def prepare_plan(tasks, store, *, view, job_id, action_id, request_id,
 REASONS = {
     'image_failure_bound':'이미지 가져오기 실패 근거가 연결돼 이미지 복구 계획을 검토할 수 있습니다.',
     'action_not_registered':'등록되지 않은 조치입니다. 수동 대응이 필요합니다.',
-    'action_not_implemented':'명령 방식의 후보이며 실행기는 아직 구현되지 않았습니다.',
+    'action_not_implemented':('명령 방식(재시작) 후보입니다. 재시작 조건은 이 초안이 아니라 승인 요청 시점의 현재 상태로 '
+                              '판정하며, 실제 실행은 아직 비활성입니다.'),
     'target_not_supported':'이 복구 조치는 격리 lab-api만 지원합니다.',
     'result_not_available':'선택한 조사의 완료된 증거가 없습니다. 조사 완료 후 새 요청이 필요합니다.',
     'image_failure_not_proven':'이미지 복구에 필요한 Pod·이벤트·Deployment 결합 근거가 부족합니다.',
@@ -223,8 +224,11 @@ REASONS = {
 
 def plan_text(plan):
     plan = RecoveryPlan.model_validate(plan.model_dump(mode='json'))
+    command = plan.method=='command' and plan.reason=='action_not_implemented'
     label = {'supported':'지원 조치와 근거 일치 (실행 준비 아님)',
              'unsupported':'미지원', 'insufficient_evidence':'근거 부족'}[plan.assessment]
+    if command:
+        label = '명령 후보 (조건은 승인 요청 시 판정, 실행 비활성)'
     text = (f'복구 계획 초안: {label}\n사건: {plan.event_id}\n조사: {plan.job_id}\n'
             f'대상: {plan.target.namespace}/{plan.target.workload}\n'
             f'조치: {plan.action_id} v{plan.action_version} · 방식: {plan.method}\n'
@@ -239,6 +243,11 @@ def plan_text(plan):
                  '예상 영향: 격리 앱의 Pod 교체와 일시적 가용성 저하 가능.\n'
                  '효과 확인: 이미지 일치·Pod Ready·Argo 상태·정상 응답·업무 요청.\n'
                  '실패 시: 중단·보고, 승인되지 않은 추가 원복은 실행하지 않습니다.\n')
+    elif command:
+        text += ('다음 단계: 재시작 경로가 켜져 있으면 이 스레드에서 '
+                 f'봇을 멘션해 `request-approval this {plan.plan_hash}`로 재시작 승인 대기를 요청할 수 있습니다. '
+                 '그때 현재 상태를 읽어 재시작 조건(단일 Pod·Ready 아님·경쟁 제어기 없음 등)을 판정하고, '
+                 '통과할 때만 승인 대기를 엽니다. 승인 뒤에도 실제 재시작은 실행하지 않습니다.\n')
     else:
         text += '다음 단계: 부족한 증거를 보완하거나 지원되는 조치를 확인한 뒤 새 복구안 요청.\n'
     return text + ('이 초안은 저장된 관측 기준입니다. 실제 PR·명령·실행 승인·쓰기 자격을 만들지 않았습니다.\n'

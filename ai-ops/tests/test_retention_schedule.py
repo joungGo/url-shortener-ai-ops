@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -204,10 +205,14 @@ with patch('ai_ops.worker_runtime.check_local'),patch('ai_ops.worker_runtime.loa
                     until = time.monotonic()+10
                     while time.monotonic()<until:
                         try:
+                            # The purge happens inside the run; runs/status are recorded after
+                            # it in a separate transaction, so wait for that record too.
                             if (check_worker(self.queue.root)['pid']==child.pid
                                     and self.queue.show(old)['state']=='purged'):
-                                break
-                        except (OSError,ValueError):
+                                recorded = self.state()
+                                if recorded['runs']>=1 and recorded['status']!='running':
+                                    break
+                        except (OSError,ValueError,TypeError,sqlite3.Error):
                             pass
                         time.sleep(0.05)
                     else:

@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-27",
+  "slice": "WF10 input tool (WF11 follow-up 4): read-only collect + pure build validated by the renderer",
+  "live": false,
+  "kubectl_reads": ["lab_config", "endpoints", "kubernetes_service", "prometheus_service", "prometheus_pod"],
+  "tests_added": {"file": "ai-ops/tests/test_wf10_inputs.py", "count": 8},
+  "equivalence": {
+    "source": "install-20261126/wf10/inputs.json",
+    "source_sha256": "47bcb8a5684b8fff1a2e03b22c2403f09cf9a6001f13d2ffbfd3a429aa3d959b",
+    "toggles_off_equal": true,
+    "toggles_on": "candidate_rendered_not_approved, 12 resources"
+  },
+  "mutation": {"count": 35, "detected": 35, "note": "6 survived first (renderer rejected the same input); tests now assert the tool's own error codes and the real renderer hash"},
+  "full_suite": {"ran": 1957, "result": "OK (skipped=1)", "log_sha256": "a6ae595edea02b609d551ebee33632fdcad6fa65638594f6e90fdb15f4fd30b7"},
+  "boundary": "verified"
+}

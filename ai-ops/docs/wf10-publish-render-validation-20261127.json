@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-27",
+  "slice": "WF10 renderer PR-d: optional recovery.publish -> short-lived writer token only in slack-relay + prepare.publish_token_file",
+  "live": false,
+  "absent_input_identical_to_main": {"fixtures": ["base","recovery","restart","ci_relay"], "compared_with": "origin/main db9428b"},
+  "tests_added": {"file": "ai-ops/tests/test_wf10_publish_render.py", "count": 4},
+  "mutation": {"count": 8, "detected": 8, "note": "unknown recovery key survived first; test added"},
+  "full_suite": {"ran": 1943, "result": "OK (skipped=1)", "log_sha256": "4d966d8cae59fbd1844ef0dcce92d8477a429af3e9cc0795617467d2fa4d8af6"},
+  "boundary": "verified"
+}

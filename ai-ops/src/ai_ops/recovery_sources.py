@@ -186,6 +186,8 @@ class PrepareConfig(StrictModel):
     aws_role_name: StrictStr = Field(pattern=r'^[A-Za-z0-9+=,.@_-]{1,64}$')
     # In-cluster fixed-destination CONNECT proxy (design B'); None = direct (dev only).
     egress_proxy: StrictStr | None = Field(default=None, pattern=r'^http://[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?:[1-9][0-9]{1,4}$')
+    # WF11 A2 (2026-11-26): short-lived C03 writer App installation token; None = prepare only.
+    publish_token_file: StrictStr | None = None
 
     @model_validator(mode='after')
     def valid(self):
@@ -196,4 +198,7 @@ class PrepareConfig(StrictModel):
         if any(not path.startswith('/') for path in (self.drafts_dir, self.github_token_file,
                                                      self.normal_binding_file)):
             raise ValueError('prepare_path_rejected')
+        if self.publish_token_file is not None and (not self.publish_token_file.startswith('/')
+                                                    or self.egress_proxy is None):
+            raise ValueError('prepare_publish_rejected')  # absolute path and the fixed proxy only
         return self
