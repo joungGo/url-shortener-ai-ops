@@ -51,6 +51,11 @@ RECOVERY_SECRET_KEYS = ('reader', 'github')
 # only through the fixed-destination egress proxy, which then also relays GitHub artifact storage.
 # Absent -> output is byte-identical to before.
 CI_RELAY_FIELDS = ('secret',)
+# Optional recovery.publish (WF11 A2, 2026-11-27): the relay opens the WF07 PR with a short-lived
+# C03 writer App installation token (minted/revoked on the operator Mac per scenario). Merge and
+# sync stay human. Absent -> output unchanged.
+PUBLISH_FIELDS = ('secret',)
+PUBLISH_TOKEN = '/run/ai-pr-writer/token'
 CI_RELAY_TOKEN = '/run/ci-github/token'
 # WF11 (user decision 2026-11-26): the cluster Prometheus (kube-prometheus-stack) is the
 # in-cluster plain-HTTP endpoint without authentication (same as 2026-11-18 and B6). The
@@ -219,7 +224,8 @@ def recovery_config(v):
         raise ValueError('wf10_fields_rejected')
     restart = r.get('restart')
     ci_relay = r.get('ci_relay')
-    exact({k: x for k, x in r.items() if k not in ('restart', 'ci_relay')}, RECOVERY_FIELDS)
+    publish = r.get('publish')
+    exact({k: x for k, x in r.items() if k not in ('restart', 'ci_relay', 'publish')}, RECOVERY_FIELDS)
     exact(r['approval'], APPROVAL_FIELDS)
     exact(r['secrets'], RECOVERY_SECRET_KEYS)
     secrets = list(r['secrets'].values())
@@ -230,6 +236,9 @@ def recovery_config(v):
     if ci_relay is not None:
         exact(ci_relay, CI_RELAY_FIELDS)
         secrets.append(ci_relay['secret'])
+    if publish is not None:
+        exact(publish, PUBLISH_FIELDS)
+        secrets.append(publish['secret'])
     for x in secrets:
         name(x)
     if len(set(secrets) | set(v['secrets'].values())) != len(secrets) + len(v['secrets']):
@@ -269,7 +278,8 @@ def recovery_config(v):
         'prepare': {'principals': r['principals'], 'author_id': r['author_id'],
                     'drafts_dir': '/data/recovery-drafts', 'github_token_file': '/run/ai-github/token',
                     'normal_binding_file': '/etc/ai-ops/normal-ci-binding.json',
-                    'aws_role_name': r['aws_role_name'], 'egress_proxy': proxy},
+                    'aws_role_name': r['aws_role_name'], 'egress_proxy': proxy,
+                    **({'publish_token_file': PUBLISH_TOKEN} if publish is not None else {})},
         'restart': section}).model_dump()
 
 
@@ -390,6 +400,9 @@ def candidate(value):
         if recovery.get('restart') is not None:
             relay_extra.append(secret('recovery-prometheus',recovery['restart']['prometheus_secret'],
                                       ['token','ca.crt'],'/run/recovery-prometheus'))
+        if recovery.get('publish') is not None:
+            # Short-lived writer App installation token: only the relay (which publishes) holds it.
+            relay_extra.append(secret('pr-writer',recovery['publish']['secret'],['token'],PUBLISH_TOKEN.rsplit('/',1)[0]))
     ci_relay=(recovery or {}).get('ci_relay')
     ci_extra=[secret('ci-github',ci_relay['secret'],['token'],CI_RELAY_TOKEN.rsplit('/',1)[0])] if ci_relay is not None else []
     volumes.append({'name':'kubernetes','projected':{'defaultMode':288,'sources':[
@@ -559,6 +572,12 @@ def candidate(value):
         result['residual_risks']=result['residual_risks']+[
             'the egress proxy relays TLS to GitHub/STS/ECR: a compromised relay could reach those three hosts',
             'IRSA environment is injected into every container of every Pod using the service account (main, sender, egress), not only the relay']
+        if recovery.get('publish') is not None:
+            result['recovery']['publish']='c03_writer_app_pr_after_prepare_human_merge'
+            result['external_prerequisites']=result['external_prerequisites']+[
+                'PR publication (secret): short-lived C03 writer App installation token (c03-execution-lab only, contents/pull_requests write), minted on the operator Mac before the scenario and revoked after it']
+            result['residual_risks']=result['residual_risks']+[
+                'while the token is valid a compromised relay can open branches/PRs in c03-execution-lab (merge still needs the protected human review and CI)']
         if recovery.get('ci_relay') is not None:
             result['recovery']['ci_relay']='normal_ci_receipts_via_egress_proxy'
             result['external_prerequisites']=result['external_prerequisites']+[

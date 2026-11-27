@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-27 WF11 후속 3b: WF10 renderer 발행 토큰 입력 (Claude)
+
+- PR-c(#82) 병합 → main `db9428b`.
+- **이 PR:** 선택 입력 `recovery.publish.secret`을 추가했다. `slack-relay`에만 단기 설치 토큰을 넣고, `prepare.publish_token_file`을 설정한다. 네트워크와 다른 Pod는 그대로다.
+- **검증:** 입력이 없으면 main과 manifest hash가 동일하다(4개 fixture). 시험 4개, 결함 변형 8/8.
+- **다음:** Mac 단기 토큰 도구(발급·Secret·폐기) → 키트 S1 순서 반영.
+- 상세: [변경 문서](ai-ops/docs/wf10-publish-render-local-20261127.md)
+
 ## 2026-11-27 WF11 후속 3a: WF07 PR 발행 writer(C03 writer 앱) (Claude)
 
 - **결정**
