@@ -11,6 +11,8 @@ AI 구현·테스트·모델/규칙 조사·전용 chart와 AI Terraform root의
 
 ## 재설치 때 연결 전환
 
+현재 AI 설치·실습·철거 순서는 [AI 운영 재설치와 실습 절차(WF10 경로 · WF11 시나리오)](../docs/runbooks/wf10-wf11-reinstall.md)에 있다. 아래는 저장소 분리 때의 연결 전환 계약이다.
+
 새 저장소에는 GitHub Secret·배포 환경 승인·AWS OIDC 권한·App 설치를 복제하지 않았다. 현재 실제 환경은 기존 실행기와 그대로 연결돼 있다. 복사한 live workflow는 기존 repository identity에서만 실행하도록 잠겨 있으며 새 저장소에서는 skip된다. `ai-ops-image`도 publish=false 빌드만 가능하다. 자동 CI는 클라우드 인증·유료 모델 호출 없이 수행한다.
 
 1. PR156 이관 PR의 정확한 head/CI/리뷰를 확인하고 정상 반영한다. 기존 PR 예외 승인은 없다.
