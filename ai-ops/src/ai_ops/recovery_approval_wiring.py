@@ -159,7 +159,7 @@ class RecoveryApprovalService:
     read ports. The process entrypoint passes none (no live GitHub/CI/ECR readers
     exist yet), so WF07 preparation stays unconnected in a real deployment."""
     def __init__(self, adapter, config, *, observe=None, pr_bridge=None, connection_factory=None,
-                 restart_read=None):
+                 restart_read=None, pr_writer=None):
         self._connection_factory = connection_factory  # tests only: fake Kubernetes API
         if not isinstance(adapter, SlackAdapter):
             raise ValueError('recovery_approval_adapter_required')
@@ -182,6 +182,9 @@ class RecoveryApprovalService:
             if not isinstance(bridge, ImageRecoveryPRBridge) or bridge.approvals is not self.ledger:
                 raise ValueError('recovery_pr_bridge_rejected')
             self.pr_bridge = bridge
+        if pr_writer is not None and self.pr_bridge is None:
+            raise ValueError('recovery_pr_writer_without_bridge')
+        self.pr_writer = pr_writer
         self._cursor = ''
         # restart_read: tests only (fake current-state reader); otherwise the read-only port.
         self.restart = (RestartWiring(adapter, config, read=restart_read, connection_factory=connection_factory)
@@ -298,7 +301,9 @@ class RecoveryApprovalService:
         * ``approved`` -> ``ledger.revalidate`` as the approver (the plan requester):
           the button press is consent to this read, as its notice says;
         * ``proposal_ready`` without a WF07 record -> ``pr_bridge.prepare`` (exact
-          diff/PR payload, local only; publication is not wired).
+          diff/PR payload, local only);
+        * ``proposal_ready`` with a ``prepared`` record and a configured writer ->
+          ``pr_bridge.publish_local`` (C03 writer App, next tick; never merges).
 
         A crash mid-step never repeats it: the ledger/WF07 records time out to
         ``needs_review`` and a WF07 record, once created, is never prepared again.
@@ -322,6 +327,18 @@ class RecoveryApprovalService:
                 except (ValueError, OSError):
                     return {'action': 'prepare', 'state': 'failed', 'execution_allowed': False}
                 return {'action': 'prepare', 'state': result['state'], 'execution_allowed': False}
+            if (view['state'] == 'proposal_ready' and self.pr_writer is not None
+                    and self._pr_exists(view['plan_hash'])):
+                # Next tick (WF11 A2): publish a prepared record while the approval is still fresh.
+                # Separate from prepare so each tick stays inside RELAY_BLOCK_SECONDS; the bridge
+                # re-reads the proof right before writing and never retries an uncertain outcome.
+                try:
+                    if self.pr_bridge.show(view['plan_hash'], actor=actor)['state'] != 'prepared':
+                        continue
+                    result = self.pr_bridge.publish_local(view['plan_hash'], actor=actor, writer=self.pr_writer)
+                except (ValueError, OSError):
+                    return {'action': 'publish', 'state': 'failed', 'execution_allowed': False}
+                return {'action': 'publish', 'state': result['state'], 'execution_allowed': False}
         if self.restart is not None:
             views, _ = self.restart.ledger.page(limit=SYNC_PAGE, states=('approved',))
             for view in views:

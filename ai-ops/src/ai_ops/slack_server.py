@@ -29,7 +29,7 @@ from ai_ops.runtime_settings import runbook_settings_kwargs
 from ai_ops.slack_adapter import SlackAdapter, SlackPolicy
 from ai_ops.recovery_approval_wiring import (CONFIG_NAME, RecoveryApprovalConfig, RecoveryApprovalService,
                                              relay_retention)
-from ai_ops.recovery_proof_live import live_pr_bridge
+from ai_ops.recovery_proof_live import live_pr_bridge, live_pr_writer
 from ai_ops.recovery_retention import INTERVAL_SECONDS as RECOVERY_RETENTION_INTERVAL
 from ai_ops.slack_ingress import SlackEventsApp, SlackInteractivityApp, SlackRouter
 from ai_ops.slack_process import check_process, process_lock
@@ -335,7 +335,9 @@ def main(argv=None):
                 if recovery is not None:
                     # WF07 live preparation only in the relay and only with a `prepare` section.
                     bridge = live_pr_bridge(recovery, queue) if recovery.prepare is not None else None
-                    service = RecoveryApprovalService(runtime.adapter, recovery, pr_bridge=bridge)
+                    writer = live_pr_writer(recovery) if bridge is not None else None
+                    service = RecoveryApprovalService(runtime.adapter, recovery, pr_bridge=bridge,
+                                                      pr_writer=writer)
                     runtime.adapter.recovery_approvals = service
                 relay_loop(runtime, stopped, progress, recovery=service,
                            retention=relay_retention(runtime.adapter, service))

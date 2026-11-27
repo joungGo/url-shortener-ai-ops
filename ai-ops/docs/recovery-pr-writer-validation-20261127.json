@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-27",
+  "slice": "WF07 PR publication core (A2): GitHubAppPRWriter, bridge exact-type gate, prepare.publish_token_file, relay publishes on the tick after prepare, awaiting_review notice",
+  "decision": "user A2 (2026-11-26): relay auto-opens the PR with a short-lived writer-App installation token; merge and sync stay human",
+  "default_behavior_changed": false,
+  "live": false,
+  "design_defect_fixed_during_implementation": "prepare+publish in one relay tick could exceed RELAY_BLOCK_SECONDS(15)/progress age(30s): split ticks, 10s shared write budget",
+  "tests_added": {"file": "ai-ops/tests/test_recovery_pr_writer.py", "count": 19},
+  "related_tests": 132,
+  "mutation": {"count": 24, "detected": 24, "note": "2 survived first (_call guard, relay entrypoint wiring); tests added"},
+  "full_suite": {"ran": 1939, "result": "OK (skipped=1)", "log_sha256": "15bb9f873fe9e20b8b003c3f752952c279521326d8bfba78bdbc18af068c59f0"},
+  "boundary": "verified", "diff_check": "clean"
+}

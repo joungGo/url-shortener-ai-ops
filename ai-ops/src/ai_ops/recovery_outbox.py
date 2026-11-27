@@ -39,6 +39,8 @@ PR_NOTICES = {
     'no_pr': '현재 근거로는 복구 PR을 만들 조건이 아니어서 준비하지 않았습니다. 변경은 없습니다.',
     'needs_review': 'PR 준비 결과를 확정할 수 없어 중지했습니다. 자동 재시도나 변경은 하지 않습니다.',
     'cancelled': 'PR 준비가 취소되었습니다. 변경은 없습니다.',
+    'awaiting_review': ('C03 writer 앱으로 복구 PR을 열었습니다. 자동 병합·배포는 하지 않습니다. '
+                        '정확한 head 리뷰와 필수 CI 통과 후 사람이 병합하고, Argo sync도 별도 승인이 필요합니다.'),
 }
 # (state, reason) wording that replaces the generic notice when it would mislead.
 REASON_NOTICES = {
@@ -149,6 +151,9 @@ class RecoveryOutbox:
             return {'state': 'nothing_to_send', 'execution_allowed': False}
         channel, thread = self._thread(request_id)
         text = f'[{SCOPE_LABEL["prepare_proposal"]}] 계획 {plan_hash[:12]} {PR_NOTICES[state]}'
+        number = view.get('pull_number')
+        if state == 'awaiting_review' and type(number) is int and number > 0:
+            text += f' (PR #{number})'
         reason = view.get('reason')
         if isinstance(reason, str) and REASON.fullmatch(reason):
             text += f' (사유 코드: {reason})'

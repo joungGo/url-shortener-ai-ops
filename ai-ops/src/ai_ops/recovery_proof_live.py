@@ -189,6 +189,15 @@ def load_binding(path):
     return NormalCIBinding.model_validate_json(raw)
 
 
+def live_pr_writer(config, *, opener=None):
+    """C03 writer App PR writer when ``prepare.publish_token_file`` is set; otherwise None."""
+    prepare = config.prepare
+    if prepare is None or prepare.publish_token_file is None:
+        return None
+    from ai_ops.recovery_pr_writer import GitHubAppPRWriter
+    return GitHubAppPRWriter(prepare.publish_token_file, proxy=prepare.egress_proxy, opener=opener)
+
+
 def live_pr_bridge(config, queue, *, kube_connection=None, github_opener=None, ecr_clients=None):
     """Factory ``ledger -> ImageRecoveryPRBridge`` from ``config.prepare`` (relay only).
 

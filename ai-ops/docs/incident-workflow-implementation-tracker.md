@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-26 KST. 기준 AI main `0349917`(CI relay 네트워크 PR80), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf10-ci-relay-render-20261126`(CI relay renderer). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-26 KST. 기준 AI main `e54c38d`(CI relay renderer PR81), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/recovery-pr-writer-20261127`(WF07 PR 발행 writer). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -664,3 +664,9 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 - WF10 renderer에 선택 입력 `recovery.ci_relay`를 추가했다. 메인 Pod `ci-relay` 컨테이너와 egress `--github-artifacts`를 함께 렌더링한다. 입력이 없으면 출력이 이전과 같다.
 - 이것으로 WF07 정상 CI 근거 공급 경로의 코드가 갖춰졌다. 실제 확인은 다음 설치에서 한다.
 - 상세: [변경 문서](wf10-ci-relay-render-local-20261126.md)
+
+
+**WF11 후속 3a · 2026-11-27**
+
+- WF07 PR 발행 writer(C03 writer 앱)를 추가했다(사용자 결정 A2). relay가 준비 다음 tick에 PR을 열고, 병합과 sync는 사람이 한다.
+- 기본으로는 꺼져 있다. 상세: [변경 문서](recovery-pr-writer-local-20261127.md)

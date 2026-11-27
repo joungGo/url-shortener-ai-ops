@@ -28,6 +28,12 @@ def body(model):
     return model.model_dump(mode='json')
 
 
+def _writer_allowed(writer):
+    """Fixture writers (tests) or exactly the production C03 writer App class."""
+    from ai_ops.recovery_pr_writer import GitHubAppPRWriter
+    return getattr(writer,'mode',None)=='local_fixture' or type(writer) is GitHubAppPRWriter
+
+
 class ImageRecoveryPRBridge:
     """Durable one-plan/one-PR binding. Preparation is not merge authorization.
 
@@ -196,8 +202,9 @@ class ImageRecoveryPRBridge:
             return self._view(record)
 
     def publish_local(self,key,*,actor,writer):
-        """Exercise write ordering with a local Git fixture only; no production writer."""
-        if getattr(writer,'mode',None)!='local_fixture':raise ValueError('live_pr_writer_not_enabled')
+        """Publish within the freshness window: local Git fixture, or the C03 writer App
+        (``GitHubAppPRWriter``, exact type; WF11 follow-up A2 2026-11-26). Never merges."""
+        if not _writer_allowed(writer):raise ValueError('live_pr_writer_not_enabled')
         _,record=self._record(key,actor)
         if record['state']=='awaiting_review':return self._view(record)
         approval=self._approval(key,actor,fresh=True)
@@ -271,7 +278,7 @@ class ImageRecoveryPRBridge:
             return self._view(current)
 
     def reconcile(self,key,*,actor,writer):
-        if getattr(writer,'mode',None)!='local_fixture':raise ValueError('live_pr_writer_not_enabled')
+        if not _writer_allowed(writer):raise ValueError('live_pr_writer_not_enabled')
         _,record=self._record(key,actor)
         if record['state'] not in ('publishing','needs_review'):return self._view(record)
         number=writer.lookup(key)  # Read-only; a missing/ambiguous outcome is never retried.
