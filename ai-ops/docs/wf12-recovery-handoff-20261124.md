@@ -219,7 +219,7 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
 저장소 디렉터리, 모듈 묶음, CI 작업 7개의 검사 내용, 수동 workflow 6개, 로컬에서 CI와 같게 확인하는 방법은 [저장소 구조와 CI 검사 안내](../../docs/repository-and-ci.md)에 정리했다. 이 흐름에 직접 관련된 요점은 다음과 같다.
 
 - **PR 병합 조건:** `ai-ops-ci.yml`의 7개 작업(scope, contracts, image, terraform, Lease trace, WF03 notice, C03 Main PR Gate)이 정확한 head에서 모두 성공해야 한다. main push에서는 Gate가 설계대로 skip된다.
-- **이 흐름의 시험이 도는 곳:** 복구 흐름 전체가 contracts 작업의 단위 시험(PR63 기준 1817개)으로 돈다.
+- **이 흐름의 시험이 도는 곳:** 복구 흐름 전체가 contracts 작업의 단위 시험(PR87 기준 1964개)으로 돈다.
   - 실물 대신 가짜 Kubernetes·GitHub·AWS·Slack을 쓰고, 네트워크는 쓰지 않는다.
   - WF07 시험에는 `helm`이 필요하다.
 - **실물 작업:** 실습·이미지 등록 같은 실물 작업은 수동 workflow에서 GitHub 환경 승인을 받아야만 돈다.

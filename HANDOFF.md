@@ -1,5 +1,14 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-27 문서 현행화: 저장소 구조와 CI 검사 안내 (Claude)
+
+- PR87 병합 → main `6306a01`(main CI 6종 성공, Gate skip). 플랫폼 PR166(AI runbook 안내)은 사용자가 화면에서 병합 → 플랫폼 main `c02beeb`(문서만이라 main CI는 경로 필터로 미실행).
+- **이 PR(문서만):** `docs/repository-and-ci.md`(PR64, PR63 기준)를 main `6306a01` 기준으로 고쳤다.
+  - 저장소 PUBLIC(2026-11-26 사용자 결정). main branch protection은 설정돼 있지 않음(조회) → 절차는 운영 규칙으로 지킨다. 설정은 사용자가 정한다.
+  - GitHub 쓰기: A2 복구 PR 발행 하나만 연결(단기 writer 토큰, 허용 요청 7개, 병합·sync는 사람). 클러스터 쓰기는 그대로 local_fixture·미연결.
+  - 파일·모듈·시험 수(모듈 169, 시험 파일 181, 시험 1964개), `recovery_*` 17·`wf10_*`+`wf11_edge` 5, runbook 4개(현재 재설치 절차 포함).
+- WF12 문서 11절의 시험 수도 같은 기준으로 고쳤다.
+
 ## 2026-11-27 WF11 후속 6: 현재 AI 재설치·실습 runbook (Claude)
 
 - PR86 병합 → main `1ee4192`(main CI 6종 성공, Gate skip).
