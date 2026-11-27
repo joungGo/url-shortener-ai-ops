@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-27 KST. 기준 AI main `1f04c06`(단기 writer 토큰 도구 PR84), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf10-inputs-tool-20261127`(WF10 입력 작성 도구). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-27 KST. 기준 AI main `033fd5b`(문서 PR64, 그 앞 WF10 입력 도구 PR85 `b07ca62`), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/lab-protected-identity-20261127`(lab 설치 도구 B 전제 제거). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -688,3 +688,9 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 
 - WF10 입력 작성 도구(`ai_ops.wf10_inputs`)를 저장소로 옮겼다. 읽기 전용 수집과 renderer 검증을 거치는 조립으로 나눴고, `collector_cidrs` 규칙을 시험으로 고정했다.
 - 지난 설치 입력과 같은 결과를 확인했다. 실제 수집은 다음 설치에서 한다. 상세: [변경 문서](wf10-inputs-tool-local-20261127.md)
+
+
+**WF11 후속 5 · 2026-11-27**
+
+- lab 설치·시나리오의 운영 불변 확인에서 B worker 전제를 없앴다. 운영 앱은 필수, AI 서비스 객체는 있을 때만 확인한다(없으면 absent, 생김·없어짐·변경은 검출).
+- 키트 wrapper가 더는 필요 없다. 상세: [변경 문서](lab-protected-identity-local-20261127.md)

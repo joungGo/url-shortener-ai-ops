@@ -1,5 +1,15 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-27 WF11 후속 5: lab 설치 도구 B 전제 제거 (Claude)
+
+- PR85 병합 → main `b07ca62`(main CI 성공). 문서 PR64(저장소 구조와 CI 검사 안내)도 main을 합친 head `60ec34b`로 CI 7종 성공 후 병합 → main `033fd5b`.
+- **이 PR:** lab 설치·시나리오의 운영 불변 확인에서 B worker(StatefulSet·PVC) 전제를 없앴다.
+  - 운영 앱은 필수, AI 서비스 객체(WF10 Deployment·PVC, 예전 B)는 있을 때만 확인하고 없으면 absent로 기록한다.
+  - 전후 비교는 그대로라 생김·없어짐·변경을 잡는다. `deploy_b6_lab.py`와 `LabClient.production()`이 같은 정의(`b6_lab.protected_identity`)를 쓴다.
+- **검증:** 시험 7개, 결함 변형 14/14, 전체 1964개 통과.
+- **다음:** 재설치 키트의 `deploy_lab_wf11.py` wrapper 제거.
+- 상세: [변경 문서](ai-ops/docs/lab-protected-identity-local-20261127.md)
+
 ## 2026-11-27 WF11 후속 4: WF10 입력 작성 도구 (Claude)
 
 - PR-e(#84) 병합 → main `1f04c06`.

@@ -1,4 +1,4 @@
-"""고정 실습 namespace에만 설치하며 운영 Deployment·AI PVC의 불변을 확인한다."""
+"""고정 실습 namespace에만 설치하며 운영 Deployment와 (있으면) AI 서비스 객체의 불변을 확인한다."""
 
 import argparse
 import hashlib
@@ -8,7 +8,7 @@ import subprocess
 import uuid
 from datetime import datetime, timezone
 
-from ai_ops.b6_lab import CONTEXT, NAMESPACE, PURPOSE, validate_lab
+from ai_ops.b6_lab import CONTEXT, NAMESPACE, PURPOSE, protected_identity, validate_lab
 from ai_ops.b6_coordination import LabLease, require_manual_deployment
 from ai_ops.path_policy import cli_paths, write_private_json
 
@@ -22,13 +22,8 @@ def command(*args, payload=None, timeout=45):
 
 
 def production_identity():
-    identities = {}
-    for namespace, resource, name in (("url-shortener", "deployment", "url-shortener-api"),
-                                      ("ai-ops", "statefulset", "ai-ops"),
-                                      ("ai-ops", "pvc", "data-ai-ops-0")):
-        item = json.loads(command("kubectl", "--context", CONTEXT, "-n", namespace, "get", resource, name, "-o", "json"))
-        identities[namespace + "/" + name] = {key: item["metadata"][key] for key in ("uid", "generation") if key in item["metadata"]}
-    return identities
+    """운영 앱(필수)과 AI 서비스 객체(있을 때만: WF10 또는 예전 B worker)의 식별자."""
+    return protected_identity(lambda *args: command("kubectl", "--context", CONTEXT, *args))
 
 
 def deploy(bundle):
