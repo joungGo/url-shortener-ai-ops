@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-27",
+  "slice": "WF07 PR publication short-lived writer token tool (PR-e): issue/revoke on the operator Mac",
+  "live": false,
+  "fixed_values_verified": "2026-11-27 JWT read-only: app 5696038 c03-execution-lab-writer, installation 180499782 active, selected, contents/pull_requests write, metadata read",
+  "tests_added": {"file": "ai-ops/tests/test_recovery_pr_token.py", "count": 6},
+  "mutation": {"count": 14, "detected": 14, "note": "repository id check survived first; same-name-other-id case added"},
+  "real_openssl_jwt_signing": "ok (local, no network)",
+  "full_suite": {"ran": 1949, "result": "OK (skipped=1)", "log_sha256": "2c66169f347808f68c2fe8b56f35d1a667626ecda6bd294b96067ad750c24304"},
+  "boundary": "verified"
+}
