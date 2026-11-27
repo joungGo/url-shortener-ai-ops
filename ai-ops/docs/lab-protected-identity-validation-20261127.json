@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-27",
+  "slice": "Lab protected-object identity without the B-path AI worker premise (WF11 follow-up 5)",
+  "live": false,
+  "required": ["url-shortener/deployment/url-shortener-api"],
+  "optional": ["ai-ops/deployment/ai-ops", "ai-ops/pvc/ai-ops-data", "ai-ops/statefulset/ai-ops", "ai-ops/pvc/data-ai-ops-0"],
+  "users": ["ai-ops/scripts/deploy_b6_lab.py production_identity", "ai_ops.b6_scenarios.LabClient.production"],
+  "tests_added": {"file": "ai-ops/tests/test_b6_protected_identity.py", "count": 7},
+  "related_tests": {"modules": ["test_b6_lab", "test_b6_gitops", "test_b6_scenarios", "test_b6_image_scenario", "test_b6_sequence_capture"], "result": "OK"},
+  "mutation": {"count": 14, "detected": 14},
+  "full_suite": {"ran": 1964, "result": "OK (skipped=1)", "log_sha256": "2c474bce70692c0600f5435b47ef13d05168a44babb9060aa5d3b9f4bb56a6ee"},
+  "boundary": "verified"
+}
