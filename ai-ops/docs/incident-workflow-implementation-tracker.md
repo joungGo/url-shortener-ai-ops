@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-27 KST. 기준 AI main `1ee4192`(lab 설치 도구 B 전제 제거 PR86), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf10-wf11-runbook-20261127`(현재 AI 재설치·실습 runbook). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-27 KST. 기준 AI main `6306a01`(현재 AI 재설치·실습 runbook PR87), 플랫폼 main `c02beeb`(AI runbook 안내 PR166). 현재 작업 브랜치 `claude/repo-ci-doc-refresh-20261127`(저장소 구조와 CI 검사 안내 현행화). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
