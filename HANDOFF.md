@@ -1,5 +1,20 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-27 WF11 후속 3a: WF07 PR 발행 writer(C03 writer 앱) (Claude)
+
+- **결정**
+  - 처음에는 사용자가 "writer 앱, 운영자 수동 실행(A)"을 골랐다.
+  - 그런데 승인 신선도 기한이 30초라 수동 실행은 맞출 수 없다는 점을 확인했고, 사용자가 **A2**로 바꿨다. relay가 자동으로 PR을 열고, 단기 설치 토큰만 클러스터에 넣으며, 병합과 sync는 사람이 한다.
+- **이 PR(핵심, 기본 동작 불변)**
+  - `recovery_pr_writer.GitHubAppPRWriter`: 허용 목록 7개 요청뿐이라 merge·review·삭제가 불가능하다. c03의 `values.yaml` 한 파일만 다루고, 설치 토큰과 proxy만 쓰며, 6개 요청이 합계 10초 예산을 공유한다.
+  - bridge는 이 클래스를 정확히 일치할 때만 허용한다.
+  - `prepare.publish_token_file` 설정을 추가했다.
+  - relay는 준비 tick 다음 tick에 발행한다.
+  - `awaiting_review` 알림에 PR 번호만 붙인다.
+- **구현 중 고친 설계 결함:** 처음에는 준비와 발행을 같은 tick에 넣었다. relay tick 예산(15초)과 진행 나이(30초)를 넘을 수 있어 tick을 나눴다.
+- **다음:** renderer 입력(`recovery.publish`) → Mac 단기 토큰 도구 → 키트 반영.
+- 상세: [변경 문서](ai-ops/docs/recovery-pr-writer-local-20261127.md)
+
 ## 2026-11-26 WF11 후속 2b: WF10 renderer에 CI relay 컨테이너 연결 (Claude)
 
 - PR-a(#80) 병합 → main `0349917`.
