@@ -6,6 +6,7 @@ URL 단축 플랫폼의 운영 증거 검증, 규칙·AI 조사, 제한된 복�
 - [플랫폼 연결·재설치 전환 절차](integration/README.md)
 - [현재 작업 인계](HANDOFF.md)
 - [추출 경로·원본/분리 commit 대응](docs/repository-extraction.json)
+- [저장소 구조와 CI 검사 안내](docs/repository-and-ci.md)
 
 ## 장애 대응 워크플로 한눈에 보기 (2026-11-25)
 

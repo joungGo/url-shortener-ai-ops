@@ -214,6 +214,16 @@ PR 생성(GitHub 쓰기), 병합, 배포, 클러스터 쓰기는 **하지 않는
 3. **WF11:** 합성 경보 또는 승인된 장애 실습으로 단계 1~6을 실물에서 확인하고, 이 문서를 확정한다. 시나리오, 기대 판정, 증거, 상한·중단 조건, 자격 회수는 [WF11 합격 기준표 초안](wf11-acceptance-sheet-draft-20261125.md)에 있다(2026-11-25 council: 수동 PR·수동 원복으로 진행, PR 자동 발행은 선택 과제). 실행 순서와 명령은 [WF11 준비 절차 초안](wf11-preparation-procedure-draft-20261125.md)에 있다(주입은 사람이 격리 저장소 PR로, 실습 코드 재사용 없음).
 4. **그 뒤:** PR 발행 경로(쓰기, 별도 승인 설계), 재시작 실제 실행(쓰기 신원·실행기, WF11 결정), 그 다음 원복 프로세스 연결(원복 승인 흐름 `RollbackScope` 발급자 설계 포함; 상위 실행 경로가 있어야 계기가 생김).
 
+## 11. 저장소 구조와 CI 검사
+
+저장소 디렉터리, 모듈 묶음, CI 작업 7개의 검사 내용, 수동 workflow 6개, 로컬에서 CI와 같게 확인하는 방법은 [저장소 구조와 CI 검사 안내](../../docs/repository-and-ci.md)에 정리했다. 이 흐름에 직접 관련된 요점은 다음과 같다.
+
+- **PR 병합 조건:** `ai-ops-ci.yml`의 7개 작업(scope, contracts, image, terraform, Lease trace, WF03 notice, C03 Main PR Gate)이 정확한 head에서 모두 성공해야 한다. main push에서는 Gate가 설계대로 skip된다.
+- **이 흐름의 시험이 도는 곳:** 복구 흐름 전체가 contracts 작업의 단위 시험(PR63 기준 1817개)으로 돈다.
+  - 실물 대신 가짜 Kubernetes·GitHub·AWS·Slack을 쓰고, 네트워크는 쓰지 않는다.
+  - WF07 시험에는 `helm`이 필요하다.
+- **실물 작업:** 실습·이미지 등록 같은 실물 작업은 수동 workflow에서 GitHub 환경 승인을 받아야만 돈다.
+
 ## 반영 기록
 
 [PR #60](https://github.com/joungGo/url-shortener-ai-ops/pull/60) head `87f8d05d155e93b94026b0b31aab8a5904d81ad6`를 head 고정 일반 squash 병합해 main `4a623096fdf17dea464ae100fd45ec388395d8e1`에 반영했다(사용자 "진행해" 후). [PR CI45355975980](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45355975980) 7종 성공, tree `9f282f470649c4ba561d38cf2c2325f743d58df8` 일치, [main CI45356948426](https://github.com/joungGo/url-shortener-ai-ops/actions/runs/45356948426) 성공. 문서만 바꿨고, 병합 후 branch를 정리했다.
