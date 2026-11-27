@@ -1,5 +1,14 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-27 WF11 후속 6: 현재 AI 재설치·실습 runbook (Claude)
+
+- PR86 병합 → main `1ee4192`(main CI 6종 성공, Gate skip).
+- **이 PR(문서만):** `docs/runbooks/wf10-wf11-reinstall.md`를 새로 썼다.
+  - 개인 재설치 키트에만 있던 현재 AI 경로를 공개 문서로 옮겼다: 설치 10단계, S0 점검, 정상 CI 근거, S1(A2) 순서와 토큰 발급·폐기, 철거, 알려진 함정.
+  - 개인 경로·키트 스크립트 이름·비밀 값은 넣지 않았다.
+- 예전 B 경로 문서(`ai-ops-cluster-lifecycle.md`) 맨 위에 "지금은 쓰지 않음" 안내를, `integration/README.md`에 링크를 넣었다.
+- **다음:** 플랫폼 저장소 runbook(§2-2·§11-1, 수명주기 문서)에 이 문서 안내를 넣는다(별도 PR).
+
 ## 2026-11-27 WF11 후속 5: lab 설치 도구 B 전제 제거 (Claude)
 
 - PR85 병합 → main `b07ca62`(main CI 성공). 문서 PR64(저장소 구조와 CI 검사 안내)도 main을 합친 head `60ec34b`로 CI 7종 성공 후 병합 → main `033fd5b`.
