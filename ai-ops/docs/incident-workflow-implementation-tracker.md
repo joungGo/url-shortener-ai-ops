@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-26 KST. 기준 AI main `e54c38d`(CI relay renderer PR81), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/recovery-pr-writer-20261127`(WF07 PR 발행 writer). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-26 KST. 기준 AI main `db9428b`(WF07 PR 발행 writer PR82), 플랫폼 main `d195fcb`. 현재 작업 브랜치 `claude/wf10-publish-render-20261127`(발행 토큰 renderer 입력). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -670,3 +670,9 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 
 - WF07 PR 발행 writer(C03 writer 앱)를 추가했다(사용자 결정 A2). relay가 준비 다음 tick에 PR을 열고, 병합과 sync는 사람이 한다.
 - 기본으로는 꺼져 있다. 상세: [변경 문서](recovery-pr-writer-local-20261127.md)
+
+
+**WF11 후속 3b · 2026-11-27**
+
+- WF10 renderer에 선택 입력 `recovery.publish`를 추가했다. relay에만 단기 writer 토큰을 넣고 발행 설정을 연결한다. 입력이 없으면 출력이 이전과 같다.
+- 상세: [변경 문서](wf10-publish-render-local-20261127.md)
