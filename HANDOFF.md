@@ -1,5 +1,16 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-27 WF11 후속 3c: WF07 PR 발행용 단기 토큰 도구 (Claude)
+
+- PR-d(#83) 병합 → main `e56eb8b`.
+- **이 PR:** `ai_ops.recovery_pr_token issue|revoke`(운영자 Mac).
+  - writer 앱 키로 c03 한 저장소, contents·pull_requests 쓰기, 1시간 이내 설치 토큰을 발급해 Secret에 stdin으로 저장한다.
+  - 범위가 다르거나 저장에 실패하면 즉시 폐기한다.
+  - revoke는 토큰을 폐기한 뒤 Secret을 지운다.
+- **검증:** 시험 6개, 결함 변형 14/14, 실제 openssl 서명을 확인했다.
+- **A2 코드 완료(#82·#83·이 PR).** 재설치 키트에 S1 순서를 반영했다.
+- 상세: [변경 문서](ai-ops/docs/recovery-pr-token-local-20261127.md)
+
 ## 2026-11-27 WF11 후속 3b: WF10 renderer 발행 토큰 입력 (Claude)
 
 - PR-c(#82) 병합 → main `db9428b`.
