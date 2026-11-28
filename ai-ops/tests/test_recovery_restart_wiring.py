@@ -247,6 +247,15 @@ class RestartRequestTest(RestartWiringFixture, unittest.TestCase):
                           side_effect=ValueError('restart_ledger_full')):
             self.assertTrue(self.ask().startswith(FULL))
 
+    def test_own_candidate_from_another_thread_names_the_thread_without_reading(self):
+        from ai_ops.recovery_approval_wiring import OTHER_THREAD
+        event = self.f.command('request-approval', reference=self.f.eid, thread_ts='1000.000099')
+        event['event']['text'] += ' ' + self.candidate.plan_hash
+        receipt, _ = self.f.run_request(event)
+        self.adapter.reply(receipt['request_id'], self.f.transport)
+        self.assertTrue(self.f.transport.last_payload['text'].startswith(OTHER_THREAD))
+        self.assertEqual((self.restart_records(), self.reads), ([], 0))
+
     def test_unknown_code_is_uniform(self):
         with patch.object(type(self.service.restart.coordinator), 'prepare',
                           side_effect=ValueError('/private/path leaked')):

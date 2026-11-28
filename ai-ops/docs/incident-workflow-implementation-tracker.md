@@ -1,6 +1,6 @@
 # 장애 워크플로우 구현 작업표
 
-최종 갱신: 2026-11-27 KST. 기준 AI main `6306a01`(현재 AI 재설치·실습 runbook PR87), 플랫폼 main `c02beeb`(AI runbook 안내 PR166). 현재 작업 브랜치 `claude/repo-ci-doc-refresh-20261127`(저장소 구조와 CI 검사 안내 현행화). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
+최종 갱신: 2026-11-28 KST. 기준 AI main `c4ead9c`(저장소·CI 안내 현행화 PR88), 플랫폼 main `c02beeb`(AI runbook 안내 PR166). 현재 작업 브랜치 `claude/approval-reason-notice-20261128`(승인 요청 거절 사유 안내). [전체 계획](incident-workflow-and-improvement-plan-20261118.md). 로컬 코어·main 반영·실제 연결/검증은 구분한다.
 
 ## 상태와 완료 규칙
 
@@ -699,3 +699,8 @@ PR #69 → main `60faf1f`. PR CI45576610850 7종·main CI45577440373 성공, tre
 **WF11 후속 6 · 2026-11-27**
 
 - 현재 AI 재설치·실습·철거 절차를 [runbook](../../docs/runbooks/wf10-wf11-reinstall.md)으로 정리했다(개인 키트 README의 공개판). 예전 B 경로 문서에는 "지금은 쓰지 않음" 안내를 넣었다.
+
+
+**WF11 후속 7 · 2026-11-28**
+
+- 승인 요청 거절 사유 안내: 요청자 본인 계획이면 스레드·사건 불일치를 안내한다. 다른 사람 계획과 모르는 hash는 일반 거절로 유지한다. 상세: [변경 문서](approval-reason-notice-local-20261128.md)
