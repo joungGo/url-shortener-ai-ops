@@ -99,7 +99,7 @@ S2a(이미 회복 → `already_recovered`)는 PR 없이 진행한다. 토큰이 
 | 증상 | 원인 | 대응 |
 |---|---|---|
 | 조사가 증거 부족으로 끝남 | VPC CNI 네트워크 정책은 DNAT 전 Service IP로 판정한다. `collector_cidrs`에 Service IP가 없으면 수집이 막힌다 | `wf10_inputs`가 API 서버 endpoint, Service IP 2개, Prometheus Pod IP를 모두 넣는다 |
-| 승인 요청이 거절됨 | 계획 스레드와 다른 스레드에서 보냈다(설계대로) | `plan-recovery` 회신이 달린 스레드에서 다시 보낸다 |
+| 승인 요청이 거절됨 | 계획 스레드와 다른 스레드에서 보냈다(설계대로). 본인 계획이면 "다른 스레드" 또는 "사건 참조가 다름"이라고 안내한다(2026-11-28) | `plan-recovery` 회신이 달린 스레드에서 다시 보낸다 |
 | WF07이 `preparation_failed`(`normal_ci_history_unavailable`) | 정상 CI 영수증이 없다 | 4절을 먼저 끝낸다 |
 | 승인 관측이 `observation_expired` | 승인 신선도 30초 안에 진행되지 못했다 | relay가 자동으로 진행해야 한다(A2). 수동 단계로 바꾸지 않는다 |
 | 복구 효과 정상 판정이 `unknown` | API 서버 `pods/proxy` → lab-api:8000이 막혔다 | lab NetworkPolicy의 `api_server_cidrs`를 확인한다(PR #79) |

@@ -63,6 +63,13 @@ OPENED = ('승인 대기를 열었습니다(응답 마감 {until}). 승인·거�
           '아무것도 변경하지 않습니다.')
 EXISTING = ('이 계획의 승인 요청은 이미 처리되었습니다(상태: {state}). 같은 계획으로 다시 열지 않으며, '
             '필요하면 새 복구 계획을 요청하세요.')
+# Only for the requester's OWN plan (plan_request_id matched the signed actor): the requester
+# already knows that plan, so naming the mismatch reveals nothing new (WF11 follow-up 2026-11-28).
+# Unknown hashes and other principals' plans stay UNAVAILABLE, uniformly. No IDs in the text.
+OTHER_THREAD = ('이 계획은 다른 스레드에서 요청하신 복구 계획입니다. `plan-recovery` 회신이 달린 스레드에서 '
+                '같은 명령을 다시 보내세요. 승인 대기를 만들지 않았습니다.')
+OTHER_EVENT = ('사건 참조가 이 계획의 사건과 다릅니다. 계획 스레드에서 `this` 또는 계획 회신의 사건 참조로 '
+               '다시 보내세요. 승인 대기를 만들지 않았습니다.')
 # Error codes raised after the plan/principal checks passed, i.e. safe to distinguish.
 OBSERVATION_CODES = frozenset({
     'recovery_observation_not_connected', 'revalidation_observation_rejected',
@@ -209,13 +216,17 @@ class RecoveryApprovalService:
         actor = row['user_id']
         request_id = plan_request_id(self.adapter, plan_hash, actor=actor)
         if request_id is None:
-            return UNAVAILABLE
+            return UNAVAILABLE  # unknown, ambiguous or another principal's plan: never distinguished
         plan_row = self.adapter._row(request_id)
         entry = self.adapter._event_bridge().entry(request_id)
-        # Same signed audience: the plan's own thread/channel and event.
-        if ((plan_row['channel_id'], plan_row['thread_ts']) != (row['channel_id'], row['thread_ts'])
-                or entry is None or entry['event_id'] != event_id):
+        if entry is None:
             return UNAVAILABLE
+        # Same signed audience: the plan's own thread/channel and event. From here the plan is
+        # the requester's own, so the mismatch is named (still nothing is opened or observed).
+        if (plan_row['channel_id'], plan_row['thread_ts']) != (row['channel_id'], row['thread_ts']):
+            return OTHER_THREAD
+        if entry['event_id'] != event_id:
+            return OTHER_EVENT
         if is_restart_candidate(entry):
             if self.restart is None:
                 return RESTART_DISABLED

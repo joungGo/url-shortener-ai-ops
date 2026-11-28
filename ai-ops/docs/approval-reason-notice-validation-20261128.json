@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-28",
+  "slice": "Approval request rejection reason for the requester's own plan (WF11 follow-up 7)",
+  "live": false,
+  "new_replies": ["OTHER_THREAD", "OTHER_EVENT"],
+  "uniform_kept": ["unknown hash", "another principal's plan (same thread, other thread, other event)", "ambiguous plan", "ledger approval_unavailable"],
+  "tests": {"files": ["ai-ops/tests/test_recovery_approval_wiring.py", "ai-ops/tests/test_recovery_restart_wiring.py"], "added": 3, "replaced": 1, "related_ran": 62},
+  "mutation": {"count": 10, "detected": 10},
+  "full_suite": {"ran": 1967, "result": "OK (skipped=1)", "log_sha256": "b3596fa9566f155a534bbebecb776f3511d74a5d392481a2fdc624e693089200"},
+  "boundary": "verified"
+}

@@ -10,7 +10,8 @@ from contextlib import redirect_stdout
 from unittest.mock import Mock, patch
 
 from ai_ops import slack_server
-from ai_ops.recovery_approval_wiring import (CHANGED, EXISTING, NOT_OBSERVED, OPENED, UNAVAILABLE,
+from ai_ops.recovery_approval_wiring import (CHANGED, EXISTING, NOT_OBSERVED, OPENED, OTHER_EVENT,
+                                             OTHER_THREAD, UNAVAILABLE,
                                              RecoveryApprovalConfig, RecoveryApprovalService,
                                              parse_approval_arguments, plan_request_id)
 from ai_ops.recovery_slack_approval import blocks_valid, parse_button
@@ -136,12 +137,40 @@ class RequestApprovalTest(WiringFixture, unittest.TestCase):
         self.assertTrue(self.ask().startswith(APPROVAL_DISABLED))
         self.assertEqual(self.records(), [])
 
-    def test_unknown_hash_other_thread_or_other_event_are_uniform(self):
-        for kwargs in ({'plan_hash': 'f' * 64}, {'thread_ts': '1000.000099'}):
+    def test_unknown_hash_or_another_principals_plan_stay_uniform(self):
+        unknown = self.ask(plan_hash='f' * 64)
+        self.assertTrue(unknown.startswith(UNAVAILABLE))
+        # Another principal's plan: same thread, another thread or another event -> the same reply.
+        with self.adapter._db() as db:
+            db.execute('UPDATE slack_requests SET user_id=? WHERE request_id=?', ('UBOB0001', self.plan_request))
+        other = self.adapter.events.ingest('lab-seoul', dict(self.f.alert, fingerprint='fedcba9876543210'))
+        for kwargs in ({}, {'thread_ts': '1000.000099'}, {'reference': other}):
             with self.subTest(kwargs=kwargs):
-                self.assertTrue(self.ask(**kwargs).startswith(UNAVAILABLE))
+                self.assertEqual(self.ask(**kwargs), unknown)
         self.assertEqual(self.records(), [])
         self.assertEqual(self.a.probe_count, 0)
+
+    def test_own_plan_from_another_thread_names_the_thread_only(self):
+        text = self.ask(thread_ts='1000.000099')
+        self.assertTrue(text.startswith(OTHER_THREAD))
+        row = self.adapter._row(self.plan_request)
+        for value in (self.key, row['thread_ts'], row['channel_id'], self.actor):
+            self.assertNotIn(value, text)  # no identifiers, only the instruction
+        self.assertEqual(self.records(), [])
+        self.assertEqual(self.a.probe_count, 0)  # nothing observed or opened
+        self.assertTrue(self.ask().startswith(OPENED.split('(')[0]))  # the plan thread still works
+
+    def test_own_plan_with_another_event_names_the_event_only(self):
+        other = self.adapter.events.ingest('lab-seoul', dict(self.f.alert, fingerprint='fedcba9876543210'))
+        self.assertNotEqual(other, self.f.eid)
+        text = self.ask(reference=other)
+        self.assertTrue(text.startswith(OTHER_EVENT))
+        for value in (self.key, other, self.f.eid):
+            self.assertNotIn(value, text)
+        self.assertEqual(self.records(), [])
+        self.assertEqual(self.a.probe_count, 0)
+        # A wrong thread is reported first (both differ).
+        self.assertTrue(self.ask(reference=other, thread_ts='1000.000099').startswith(OTHER_THREAD))
 
     def test_non_approver_requester_cannot_open(self):
         policy = self.a.policy.model_copy(update={'approvers': ['UBOB0001', self.actor]})
