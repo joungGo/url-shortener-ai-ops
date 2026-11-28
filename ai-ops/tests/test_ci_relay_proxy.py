@@ -119,6 +119,10 @@ class ProxyArtifactTargetsTest(unittest.TestCase):
         for target in self.DENIED:
             with self.subTest(target=target), self.assertRaises(ValueError):
                 egress.parse_connect(connect(target), egress.TARGETS, egress.GITHUB_ARTIFACTS)
+        # Bare HTTP/1.0 CONNECT (Python 3.11 clients) reaches artifact storage too.
+        self.assertEqual(egress.parse_connect(b'CONNECT productionresultssa9.blob.core.windows.net:443 HTTP/1.0\r\n\r\n',
+                                              egress.TARGETS, egress.GITHUB_ARTIFACTS),
+                         'productionresultssa9.blob.core.windows.net:443')
         # The fixed WF07 targets stay allowed; a mismatched Host header is still rejected.
         self.assertEqual(egress.parse_connect(connect('api.github.com:443'), egress.TARGETS, egress.GITHUB_ARTIFACTS),
                          'api.github.com:443')

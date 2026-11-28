@@ -50,6 +50,19 @@ class ParseTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 parse_connect(raw)
 
+    def test_bare_http10_connect_from_python311_clients(self):
+        # Exact bytes captured in the image (Python 3.11.17 urllib and urllib3 2.8.0), 2026-11-28.
+        for target in ('api.github.com:443', 'sts.ap-northeast-2.amazonaws.com:443'):
+            self.assertEqual(parse_connect(f'CONNECT {target} HTTP/1.0\r\n\r\n'.encode()), target)
+        for raw in ('CONNECT api.github.com:443 HTTP/1.1\r\n\r\n',      # HTTP/1.1 still needs Host
+                    'CONNECT api.openai.com:443 HTTP/1.0\r\n\r\n',      # target still allowlisted
+                    'CONNECT api.github.com:80 HTTP/1.0\r\n\r\n',
+                    'CONNECT api.github.com:443 HTTP/1.0\r\nUser-Agent: x\r\n\r\n',
+                    'CONNECT api.github.com:443 HTTP/1.0\r\nHost: evil.test:443\r\n\r\n',
+                    'CONNECT api.github.com:443 HTTP/1.0\r\n'):
+            with self.subTest(raw=raw[:48]), self.assertRaises(ValueError):
+                parse_connect(raw.encode())
+
     def test_every_dns_answer_must_be_public_ipv4(self):
         self.assertEqual(public_addresses('api.github.com:443', lambda *a, **k: answer('140.82.112.5'))[0][4][0],
                          '140.82.112.5')
