@@ -1,5 +1,12 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-28 재설치 중 수정: 송신 proxy의 HTTP/1.0 CONNECT (Claude)
+
+- PR90 병합 → main `b839fd9`.
+- **발견:** 이미지의 Python 3.11 클라이언트(urllib, urllib3·boto3)가 헤더 없는 `CONNECT … HTTP/1.0`을 보내, proxy가 403으로 거부했다. 그래서 CI relay·PR writer·WF07 읽기가 실제 환경에서 모두 막혀 있었다.
+- **이 PR:** HTTP/1.0이고 헤더가 없을 때만 받는다(대상은 허용 목록 그대로, HTTP/1.1은 Host 필수). 시험 추가, 결함 변형 2/2.
+- 상세: [변경 문서](ai-ops/docs/egress-proxy-http10-connect-20261128.md)
+
 ## 2026-11-28 재설치 중 수정: GitHub 앱 설치 토큰 새 형식 (Claude)
 
 - PR89 병합 → main `d828546`(main CI 성공). 이 main으로 재설치 진행 중(2026-11-28 14:48 KST 시작).

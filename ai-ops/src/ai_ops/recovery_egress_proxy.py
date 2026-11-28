@@ -52,8 +52,15 @@ def parse_connect(raw: bytes, targets=TARGETS, patterns=()) -> str:
     parts = lines[0].split(' ')
     allowed = parts[1] in targets or any(p.fullmatch(parts[1]) for p in patterns) if len(parts) == 3 else False
     if (len(parts) != 3 or parts[0] != 'CONNECT' or not allowed
-            or parts[2] not in ('HTTP/1.0', 'HTTP/1.1') or len(lines) != 2):
+            or parts[2] not in ('HTTP/1.0', 'HTTP/1.1') or len(lines) not in (1, 2)):
         raise ValueError('proxy_target_rejected')
+    if len(lines) == 1:
+        # Python 3.11 http.client (urllib, and urllib3 under boto3) tunnels with a bare
+        # 'CONNECT host:443 HTTP/1.0' and no headers (seen in the image 2026-11-28). The target is
+        # still the allowlisted request line; HTTP/1.1 keeps requiring the matching Host header.
+        if parts[2] != 'HTTP/1.0':
+            raise ValueError('proxy_header_rejected')
+        return parts[1]
     key, sep, value = lines[1].partition(':')
     if not sep or key.lower() != 'host' or value.strip().lower() != parts[1]:
         raise ValueError('proxy_header_rejected')
