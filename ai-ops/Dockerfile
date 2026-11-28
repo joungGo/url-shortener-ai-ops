@@ -27,6 +27,24 @@ WORKDIR /build
 COPY requirements.lock ./
 RUN python -m pip install --no-cache-dir --require-hashes --only-binary=:all: --target=/install -r requirements.lock
 
+# WF07 준비는 복구 diff가 이미지 값 하나만 바꾸는지 `helm template` 이중 렌더로 검증한다(c_pr_link).
+# CI와 같은 Helm v4.1.3 공식 배포본을 sha256으로 고정해 바이너리만 실행 이미지에 넣는다(2026-11-28 실물에서 부재 발견).
+# ECR BASIC 스캔은 Go 바이너리를 보지 않으므로 버전·sha256·CVE 확인은 사람이 맡는다.
+FROM base AS helm
+RUN python - <<'HELM_FETCH'
+import hashlib, io, os, tarfile, urllib.request
+URL = 'https://get.helm.sh/helm-v4.1.3-linux-amd64.tar.gz'
+SHA256 = '02ce9722d541238f81459938b84cf47df2fdf1187493b4bfb2346754d82a4700'
+data = urllib.request.urlopen(URL, timeout=120).read()
+assert hashlib.sha256(data).hexdigest() == SHA256, 'helm_archive_digest_mismatch'
+with tarfile.open(fileobj=io.BytesIO(data)) as archive:
+    member = archive.getmember('linux-amd64/helm')
+    assert member.isfile() and member.size < 200_000_000
+    with open('/usr/local/bin/helm', 'wb') as binary:
+        binary.write(archive.extractfile(member).read())
+os.chmod('/usr/local/bin/helm', 0o755)
+HELM_FETCH
+
 FROM base AS runtime
 # 빌드 도구는 의존성 단계에서만 사용하고 실행 이미지에서 제거한다.
 RUN python -m pip uninstall --yes pip setuptools wheel \
@@ -35,7 +53,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/opt/ai-ops/src:/opt/ai-ops/dependencies \
     AI_OPS_RUNBOOK_ROOT=/opt/ai-ops/runbooks \
-    HOME=/tmp
+    HOME=/tmp \
+    HELM_CACHE_HOME=/tmp/helm/cache \
+    HELM_CONFIG_HOME=/tmp/helm/config \
+    HELM_DATA_HOME=/tmp/helm/data
+COPY --from=helm /usr/local/bin/helm /usr/local/bin/helm
 WORKDIR /opt/ai-ops
 COPY --from=dependencies /install ./dependencies
 COPY src/ ./src/

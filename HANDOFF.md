@@ -1,5 +1,13 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-28 재설치 중 수정: 실행 이미지에 Helm 포함 (Claude)
+
+- PR91 병합 → main `3b450b6`. 실물에서 proxy 수정 확인(CI relay·WF07 읽기 정상).
+- **발견:** WF07 준비의 `helm template` 이중 렌더 검증이 이미지에 helm이 없어 실패했다. 앞 단계(읽기 4개·식별자·초안)는 모두 통과했다.
+- **이 PR:** Dockerfile에 Helm v4.1.3(sha256 고정) 바이너리와 `HELM_*_HOME=/tmp/helm/*`. CI image 작업에 실제 Pod 조건 스모크 시험을 추가했다. 검사 로직은 그대로다.
+- llm-council(사용자 요청)이 A(지금 수정 후 S1 재실행)와 중단선(20:25 KST 철거 시작)을 권고했다.
+- 상세: [변경 문서](ai-ops/docs/image-helm-20261128.md)
+
 ## 2026-11-28 재설치 중 수정: 송신 proxy의 HTTP/1.0 CONNECT (Claude)
 
 - PR90 병합 → main `b839fd9`.

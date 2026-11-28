@@ -142,6 +142,11 @@ jobs:
             --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --entrypoint python ai-ops:ci -c \
             'from ai_ops.runbook_search import RunbookSearch; result=RunbookSearch().search("ImagePullBackOff",document_ids=["deployment"]); assert result["hits"][0]["section"]["start_line"] == 43; assert not result["execution_allowed"]'
+          # WF07 준비의 helm 이중 렌더를 실제 Pod와 같은 조건(통신 없음·읽기 전용 루트·/tmp만 쓰기)에서 실행한다.
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            -v "$PWD/ai-ops/lab:/chart:ro" --entrypoint python ai-ops:ci -c \
+            'import subprocess; from pathlib import Path; from ai_ops.c_pr_link import check_rendered_image_change; assert subprocess.run(["helm","version","--short"],capture_output=True,check=True).stdout.decode().startswith("v4.1.3"); files={n:(Path("/chart")/n).read_bytes() for n in ("Chart.yaml","values.schema.json","templates/deployment.yaml")}; check_rendered_image_change(files,"sha256:"+"a"*64,"sha256:"+"b"*64)'
 
 
 
