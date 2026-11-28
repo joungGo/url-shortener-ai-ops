@@ -131,6 +131,23 @@ class TokenToolTest(unittest.TestCase):
             with self.subTest(path=path), self.assertRaisesRegex(ValueError, 'pr_token_request_rejected'):
                 t.github(method, path, 'x')
 
+    def test_current_github_installation_token_format(self):
+        # Shape seen live 2026-11-28: 'ghs_' + 386 chars including '-', '.', '_'.
+        current = 'ghs_' + ('aB3-x.Y_' * 49)[:386]
+        f = Fakes(response=granted(token=current))
+        self.assertEqual(self.issue(f)['status'], 'issued')
+        [apply] = [c for c in f.kube_calls if c[0][:1] == ['apply']]
+        self.assertEqual(base64.b64decode(json.loads(apply[1])['data']['token']).decode(), current)
+        f = Fakes(stored=base64.b64encode(current.encode()))
+        self.assertEqual(t.revoke('ai-ops', 'ai-ops-pr-writer', http=f.http, kube=f.kube)['status'], 'revoked')
+        self.assertEqual(f.calls, [('DELETE', '/installation/token', current, None)])
+        for bad in ('ghs_' + 'a' * 1021, 'ghs_' + 'a' * 19, 'ghs_' + 'a' * 30 + ' x', 'ghs_' + 'a' * 30 + '\nx',
+                    'ghs_' + 'a' * 30 + '/', 'ghs_' + 'a' * 30 + '+=', 'ghp_' + 'a' * 36, 'github_pat_' + 'a' * 40):
+            f = Fakes(response=granted(token=bad))
+            with self.subTest(bad=repr(bad[-6:])), self.assertRaisesRegex(ValueError, 'pr_token_response_rejected'):
+                self.issue(f)
+            self.assertFalse(any(c[0][:1] == ['apply'] for c in f.kube_calls))
+
     def test_cli_prints_fixed_json_without_secrets(self):
         out = io.StringIO()
         with patch.object(t, 'issue', side_effect=ValueError(TOKEN)), redirect_stdout(out):

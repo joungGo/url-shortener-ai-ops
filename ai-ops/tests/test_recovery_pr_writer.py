@@ -126,10 +126,15 @@ class WriterTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'pr_writer_token_file_rejected'):
             self.writer.create(KEY, payload())
         self.token.chmod(0o600)
-        for bad in ('github_pat_' + 'x' * 30, 'ghp_' + 'x' * 36, 'ghs_short'):
+        for bad in ('github_pat_' + 'x' * 30, 'ghp_' + 'x' * 36, 'ghs_short', 'ghs_' + 'x' * 1021,
+                    'ghs_' + 'x' * 30 + ' y', 'ghs_' + 'x' * 30 + '/', 'ghs_' + 'x' * 30 + '+='):
             self.token.write_text(bad)
             with self.subTest(token=bad[:8]), self.assertRaisesRegex(ValueError, 'pr_writer_token_rejected'):
                 self.writer.create(KEY, payload())
+        # Current GitHub format (seen live 2026-11-28): 'ghs_' + 386 chars including '-', '.', '_'.
+        current = 'ghs_' + ('aB3-x.Y_' * 49)[:386]
+        self.token.write_text(current + '\n')
+        self.assertEqual(self.writer._token(), current)
         for bad in ('https://p:8080', 'http://p', 'http://u@p:8080'):
             with self.subTest(proxy=bad), self.assertRaisesRegex(ValueError, 'pr_writer_proxy_rejected'):
                 GitHubAppPRWriter(self.token, proxy=bad)

@@ -1,5 +1,12 @@
 # 작업 인계 · 2026-11-17 최신 정리
 
+## 2026-11-28 재설치 중 수정: GitHub 앱 설치 토큰 새 형식 (Claude)
+
+- PR89 병합 → main `d828546`(main CI 성공). 이 main으로 재설치 진행 중(2026-11-28 14:48 KST 시작).
+- **발견:** GitHub 설치 토큰이 `ghs_`+386자(`-._` 포함)로 바뀌어 `recovery_pr_token`·`recovery_pr_writer`의 형식 검사가 거부했다.
+- **이 PR:** 형식을 `ghs_[A-Za-z0-9._-]{20,1020}`로 넓히고 정의를 writer 한 곳에 둔다. 시험 추가, 결함 변형 4/4.
+- 상세: [변경 문서](ai-ops/docs/installation-token-format-20261128.md)
+
 ## 2026-11-28 WF11 후속 7: 승인 요청 거절 사유 안내 (Claude)
 
 - PR88 병합 → main `c4ead9c`(main CI 성공).
