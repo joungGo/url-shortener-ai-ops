@@ -35,7 +35,7 @@ REPOSITORY_ID = 1452572723
 PERMISSIONS = {'contents': 'write', 'pull_requests': 'write'}
 ALLOWED_GRANTED = ({'contents': 'write', 'pull_requests': 'write'},
                    {'contents': 'write', 'pull_requests': 'write', 'metadata': 'read'})
-TOKEN = re.compile(r'ghs_[A-Za-z0-9]{20,255}')
+from ai_ops.recovery_pr_writer import TOKEN  # one definition of the installation token format
 NAME = re.compile(r'[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?')
 MAX_LIFETIME = timedelta(hours=1, minutes=1)
 

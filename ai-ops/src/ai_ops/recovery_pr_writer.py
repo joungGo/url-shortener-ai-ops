@@ -32,7 +32,9 @@ from ai_ops.c_recovery import ISOLATED_REPOSITORY, VALUES_PATH
 API = 'https://api.github.com'
 REPO_PATH = '/repos/' + ISOLATED_REPOSITORY
 PROXY = re.compile(r'http://[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?:[1-9][0-9]{1,4}\Z')
-TOKEN = re.compile(r'ghs_[A-Za-z0-9]{20,255}')   # GitHub App installation tokens only
+# GitHub App installation tokens only. GitHub changed the format (seen live 2026-11-28: 'ghs_' + 386
+# chars including '-', '.', '_'); accept that charset with a bound, never whitespace or other bytes.
+TOKEN = re.compile(r'ghs_[A-Za-z0-9._-]{20,1020}')
 SHA = re.compile(r'[0-9a-f]{40}')
 PLAN = re.compile(r'[0-9a-f]{64}')
 MAX_BYTES = 1024 * 1024
